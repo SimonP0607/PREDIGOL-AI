@@ -54,6 +54,11 @@ codificada, así que hoy no cambia ninguna regla. Fuente: verificación del 19-n
 BetPlay 2026, una persona coteja los artículos 27 a 34 con el PDF oficial (huella SHA-256 `8b377600…b5b0c2`): paquete y acta en
 [`DOC_008_COTEJO_REGLAMENTO_DIMAYOR_2026.md`](DOC_008_COTEJO_REGLAMENTO_DIMAYOR_2026.md). Pendiente del dueño.
 
+*Nota del 20-nov-2026 (PM-09-01, BE-075).* Colombia pasa a `v2.yaml`: el descenso cita el **art. 34** (v1 citaba el 32) y las
+fuentes se corrigen según el §4 a, c y d de DOC-008; `v1.yaml` queda `retired`. La v2 añade lo que hace falta para calcular
+reclasificación, cupos y descenso (`past`, `windows`, `ties_on`, `places`) y dos huecos (parágrafos de los arts. 30-31; redondeo).
+Cálculo en sombra y apagado: [`PM_09_01_TABLAS_COLOMBIANAS.md`](PM_09_01_TABLAS_COLOMBIANAS.md).
+
 **No codificado, con motivo**: Copa Libertadores (el CDN oficial de CONMEBOL rechazó la descarga, HTTP 403; el cambio de desempate
 de 2026 solo se conoce por prensa y la prensa no es fuente de una regla), las otras 71 ligas y las 54 copas restantes (pendientes,
 sin reglamento leído). Temporadas no cubiertas responden también «no codificado»: Ligue 1 2026/27 (reglamento no localizado),
@@ -99,7 +104,7 @@ reglas o el motor y deja de reconstruirlas, la prueba falla.
 
 ```
 python -m scripts.ia_rules check                      # los ficheros validan (no toca la base)
-python -m scripts.ia_rules load                       # registra las 13 versiones en core.competition_rules (idempotente)
+python -m scripts.ia_rules load                       # registra las 14 versiones en core.competition_rules (idempotente)
 python -m scripts.ia_rules status                     # cobertura frente a lo que sigue producción; versiones por cargar
 python -m scripts.ia_rules show --league 239 --season 2026
 python -m scripts.ia_rules reconstruct --league 39 --season 2025 --phase season.league --group "Premier League"

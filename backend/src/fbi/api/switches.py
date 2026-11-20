@@ -93,6 +93,11 @@ AVAILABILITY_PHASES: Final = "FBI_AVAILABILITY_PHASES"
 read its season's ``todas`` - and ``=1`` adds each season's phase cells (``previa``, ``liga_o_grupos``, ``eliminatoria``) and grades a
 cup match's blocks by the cells of its own phase. The nightly batch measures the phases either way (invisible while it is off)."""
 
+USAGE_CONSOLE: Final = "FBI_USAGE_CONSOLE"
+"""The owner's console of the provider's requests by lane, endpoint and competition (plan PM, PM-04-05; BE-076, UX-175): OFF while
+the line is absent - ``GET /admin/monitoring/provider-usage`` answers 404 and the console shows no tab - and ``=1`` opens it (the
+API recreated). It reads what the worker already counts; it asks the provider nothing."""
+
 MARKET_PROBS: Final = "FBI_MARKET_PROBS"
 """The probabilities by market of a match (plan EA, EA-201/EA-202; contract C-14): OFF while the line is absent and ``=1`` shows the
 three marks - model, implied, history - on the Mercados tab. A reader sees a model's figure only for a market the catalogue holds
@@ -186,6 +191,11 @@ def availability_on() -> bool:
 def availability_phases_on() -> bool:
     """Whether C-16 reads the cups by phase (``FBI_AVAILABILITY_PHASES``, off by default)."""
     return user_switch(AVAILABILITY_PHASES, default=False)
+
+
+def usage_console_on() -> bool:
+    """Whether the owner's console of the provider's requests answers (``FBI_USAGE_CONSOLE``, off by default)."""
+    return user_switch(USAGE_CONSOLE, default=False)
 
 
 def market_probs_on() -> bool:

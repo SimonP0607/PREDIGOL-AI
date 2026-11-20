@@ -1,0 +1,28 @@
+# Results changed off the pitch, Primera A 2025 (provider league 239, season 2025): see 2024.yaml.
+# Both matches are "AWD" in core.fixtures with no row in core.fixture_results: without this file a table leaves them out.
+schema: competition-decisions/1
+league_id: 239
+season: 2025
+decisions:
+  - fixture: 1336689
+    round: Apertura - 17
+    home: 1465
+    away: 1136
+    kind: awarded
+    result: {home: 0, away: 3}
+    evidence: >-
+      Awarded (status AWD), no score stored. The Win Sports relegation table of 20-nov-2026 counts Once Caldas 181 points in 116
+      matches: the results without this match give 178 in 115. The 0-3 is the usual score of an awarded match; its goals do not
+      enter any 2026 table (art. 33 breaks ties on 2026 only). No provider table of the Apertura 2025 is stored.
+    verified: false
+  - fixture: 1392451
+    round: Clausura - 11
+    home: 1137
+    away: 1131
+    kind: awarded
+    result: {home: 0, away: 3}
+    evidence: >-
+      Awarded (status AWD), no score stored. The provider's table «Primera A, Clausura 2025» gives Bucaramanga 20 played, 37 points,
+      31-20 and Atlético Nacional 20 played, 37 points, 38-24: the results give 19 played, 34 (28-20) and 19, 37 (38-21), exactly this
+      match counted 0-3. Win Sports counts Bucaramanga 190 and Nacional 208 in 116.
+    verified: false

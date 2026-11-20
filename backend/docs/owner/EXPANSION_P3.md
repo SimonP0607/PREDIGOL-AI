@@ -200,3 +200,70 @@ de presupuesto interno, menos del 0,5 %. La historia la pone en precio el paso 3
 `manage_competitions apply` con él dejaría de seguir ~130 competiciones; ahora se niega a apagar más de 5 sin
 `--allow-mass-disable`. No se aplica.
 
+
+## 8. Limitaciones del proveedor: lo pedido que no existe, lo descontinuado y lo cíclico (PM-03-08, DOC-010, 20-nov-2026)
+
+Plan Maestro PM, sección 3 y tarea PM-03-08. Catálogo leído en producción el **20-nov-2026 a las 14:27 UTC** (`raw.league_coverage`,
+el `/leagues` diario de `catalogue_refresh`; solo lectura, 0 peticiones): **702 competiciones** en los 28 países prioritarios (Colombia,
+las internacionales y los 26 países de la sección 3), las mismas 702 del anexo A del plan (catálogo del 19-nov). La lista vive en
+`config/catalogue_watch.yaml`; esta sección es su lectura.
+
+### 8.1 Pedidas que no existen en el proveedor (11)
+
+No figuran en `GET /leagues` de API-Football con ningún id. No se pueden seguir; quedan como limitación documentada.
+
+| País | Pedida | Lo que sí hay |
+| --- | --- | --- |
+| Panamá | Segunda división (Liga Prom) | solo la Liga Panameña de Fútbol (304), candidata del lote 6 |
+| Panamá | Copa | — |
+| Panamá | Supercopa | — |
+| Dinamarca | Supercopa | — |
+| Escocia | Supercopa | — |
+| Austria | Supercopa | — |
+| Estados Unidos | Supercopa | — |
+| Corea del Sur | Supercopa | — |
+| Australia | Supercopa | — |
+| Australia | Segunda división nacional | no hay liga nacional: Australian Championship (1202, lote 8) y ligas estatales |
+| India | Durand Cup | solo la AIFF Super Cup (545, lote 8) |
+
+### 8.2 Listadas sin temporada abierta (10)
+
+| Id | Competición | Tipo | Última temporada en el proveedor | Qué se hace |
+| ---: | --- | --- | ---: | --- |
+| 264 | Copa MX | descontinuada | 2019 | nada hasta que liste una temporada nueva |
+| 65 | Coupe de la Ligue (Francia) | descontinuada | 2019 | ídem (la competición dejó de jugarse en 2020) |
+| 1032 | Copa de la Liga Profesional (Argentina) | descontinuada | 2024 | ídem |
+| 808 | CONCACAF Nations League - Qualification | descontinuada | 2018 | ídem |
+| 806 | OFC Nations Cup | cíclica | 2024 | alta cuando liste la edición siguiente |
+| 35 | Asian Cup - Qualification | cíclica | 2024 (edición 2024-2026 terminada) | ídem |
+| 960 | Euro Championship - Qualification | cíclica | 2023 | ídem (clasificación de 2028) |
+| 858 | CONCACAF Gold Cup - Qualification | cíclica | 2025 | ídem |
+| 548 | Super Cup (Japón) | cíclica | 2025 (feb-2025) | ídem |
+| 1186 | FIFA Club World Cup - Play-In | puntual | 2025 | edición única; se vigila por si se repite |
+
+### 8.3 La vigilancia
+
+`fbi.catalog.watch` compara lo que lista el proveedor con la línea base del archivo **por identificador, nunca por nombre** (un cambio de
+nombre no es una competición nueva). Dos avisos:
+
+* **`nueva`**: un id de un país prioritario que no estaba el 20-nov. Es por donde aparecería una de las 11 de §8.1 si el proveedor la
+  añade (no tienen id, así que se vigila el país entero).
+* **`edicion`**: una temporada más nueva que la última de §8.2 (una descontinuada que vuelve o la edición siguiente de una cíclica).
+
+Dónde corre:
+
+* **A mano, cuando quieras** (0 peticiones, solo lectura; funciona con el interruptor apagado):
+  `docker exec -w /app predigol-worker python -m scripts.catalogue_watch --limits`. Sale con 0 si no hay nada nuevo y con 3 si hay
+  avisos, uno por línea.
+* **Cada día**, tras el `catalogue_refresh`, solo con `FBI_CATALOGUE_WATCH=on` en `app.env` (**apagado por omisión**; se lee en cada
+  refresco, sin reiniciar). Cada aviso va al registro del worker como `catalogue_watch.finding` (nivel *warning*) y a las notas de la
+  fila `catalogue_refresh` de `raw.ingestion_runs` (`watch: N finding(s): …`). Si la comprobación falla, se anota `watch failed` y el
+  refresco del catálogo sigue igual.
+
+Un aviso se repite cada día hasta que un PR actualiza `config/catalogue_watch.yaml` (añade el id a `known` o mueve `last_season`): ese
+PR es el acuse. Seguir la competición es el procedimiento de siempre (candidata y lote en `config/expansion.yaml`, sonda,
+`scripts.expand_leagues`), nunca automático.
+
+**Límite conocido:** el país se compara tal como lo escribe el proveedor (sin distinguir mayúsculas ni espacios). Si el proveedor
+diera de alta una competición con otro nombre de país (p. ej. «Panamá» con tilde), el aviso no saltaría; la orden manual lista el
+total de competiciones del proveedor para notar un salto grande.

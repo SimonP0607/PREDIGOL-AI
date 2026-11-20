@@ -15,18 +15,24 @@ import json
 import os
 import re
 from collections.abc import Callable
-from typing import Any
+from datetime import date
+from typing import Annotated, Any
 from urllib.parse import urlsplit
 
 import httpx
+import psycopg
 import structlog
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Query, Request
 from starlette.concurrency import run_in_threadpool
 
 from fbi.api.contracts.monitoring import EnvelopeForwarded, MonitoringClient
+from fbi.api.contracts.provider_usage import ProviderUsage
+from fbi.api.deps import get_db
+from fbi.api.envelope import Envelope
 from fbi.api.errors import ApiError
 from fbi.api.limits import SlidingWindow
 from fbi.api.security import client_ip
+from fbi.api.services import provider_usage
 from fbi.core import sentry
 
 log = structlog.get_logger("api.monitoring")
@@ -223,3 +229,14 @@ def post_test_error() -> None:
     unexpected error, and reaches Sentry with that id, the release and the owner's pseudonym - only a SUPER_ADMIN
     can raise it."""
     raise MonitoringTestError("PrediGol monitoring test (A2): raised on purpose from the console")
+
+
+@admin_router.get("/monitoring/provider-usage", response_model=Envelope[ProviderUsage])
+def get_provider_usage(
+    conn: Annotated[psycopg.Connection[Any], Depends(get_db)],
+    until: Annotated[date | None, Query(description="The window's last day (UTC), today by default.")] = None,
+    days: Annotated[int, Query(ge=1, le=provider_usage.MAX_DAYS)] = provider_usage.DEFAULT_DAYS,
+) -> Envelope[ProviderUsage]:
+    """The provider's requests by day, lane, endpoint and competition, with the margin and the guards (plan PM, PM-04-05; BE-076).
+    404 while ``FBI_USAGE_CONSOLE`` is off. Reads what the worker counts; asks the provider nothing."""
+    return provider_usage.usage(conn, until=until, days=days)

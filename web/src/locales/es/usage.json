@@ -1,0 +1,83 @@
+{
+  "area": {
+    "label": "Vista de operación",
+    "operation": "Operación",
+    "usage": "Consumo del proveedor"
+  },
+  "title": "Consumo del proveedor",
+  "description": "Las peticiones a API-Football por día, carril, endpoint y competición, con el margen y los guardianes. Solo lee lo que el worker ya cuenta; no pregunta nada al proveedor.",
+  "window": {
+    "label": "Ventana",
+    "days": "{n} días",
+    "until": "Hasta (UTC)",
+    "range": "{since} – {until}"
+  },
+  "kpi": {
+    "today": "Hoy",
+    "todayHint": "{n} contadas por endpoint y carril",
+    "projected": "Proyección del día",
+    "projectedHint": "Margen {margin} ({pct} %) sobre el presupuesto de {budget}",
+    "mean": "Media de la ventana",
+    "meanHint": "Mediana {median} · {days} días",
+    "maxNormal": "Máximo de un día normal",
+    "maxNormalHint": "{day} · {n} días con el presupuesto agotado (máximo {max})"
+  },
+  "lanes": {
+    "title": "Por carril",
+    "subtitle": "Hoy frente al techo de cada carril (FBI_APIFOOTBALL_LANES {mode}).",
+    "lane": "Carril",
+    "priority": "Prioridad",
+    "today": "Hoy",
+    "ceiling": "Techo",
+    "share": "Del techo",
+    "max": "Mayor día",
+    "vital": "vital",
+    "since": "Contado por carril desde el {day}.",
+    "progress": "{lane}: {pct} % del techo"
+  },
+  "days": {
+    "title": "Por día",
+    "subtitle": "Peticiones enviadas cada día UTC (raw.provider_quota).",
+    "day": "Día",
+    "spent": "Enviadas",
+    "budget": "Presupuesto",
+    "exhausted": "Presupuesto agotado"
+  },
+  "endpoints": {
+    "title": "Por endpoint",
+    "subtitle": "Los endpoints con más peticiones hoy y en la ventana.",
+    "endpoint": "Endpoint",
+    "lane": "Carril",
+    "today": "Hoy",
+    "window": "Ventana"
+  },
+  "competitions": {
+    "title": "Por competición",
+    "subtitle": "Respuestas nuevas guardadas que nombran una liga (raw.ingestion_payloads).",
+    "note": "No son peticiones: el contador de peticiones guarda endpoint, carril y trabajo, no la competición, y una respuesta igual a otra ya guardada no se guarda otra vez. Sirve para ver qué ligas traen datos nuevos.",
+    "competition": "Competición",
+    "country": "País",
+    "responses": "Respuestas guardadas",
+    "unknown": "Liga {id} (sin alta)"
+  },
+  "guards": {
+    "title": "Guardianes y pausas",
+    "lanes": "Carriles",
+    "dynamic": "Límites dinámicos",
+    "reserve": "Reserva de emergencia",
+    "account": "Guardián de la cuenta",
+    "pause": "Pausa ante un rechazo de la cuenta",
+    "quiet": "Última petición contada",
+    "quietValue": "hace {n} min",
+    "quietNone": "ninguna hoy",
+    "on": "encendido",
+    "off": "apagado",
+    "note": "Una pausa de la cuenta vive en la memoria del worker y no se guarda: aquí se ve por el silencio desde la última petición contada.",
+    "mode": {
+      "off": "apagados",
+      "measure": "medición",
+      "enforce": "aplicando"
+    }
+  },
+  "empty": "Sin peticiones contadas en la ventana."
+}

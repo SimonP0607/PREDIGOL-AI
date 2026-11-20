@@ -90,6 +90,8 @@ export interface Me {
   /** What PrediGol has per competition, datum and market (plan PM, C-16; FBI_AVAILABILITY, off by default): the states
    * «información no disponible» and the owner's console of the matrix only then. */
   availability?: boolean;
+  /** The owner's console of the provider's requests by lane, endpoint and competition (plan PM, PM-04-05; FBI_USAGE_CONSOLE). */
+  usage_console?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }

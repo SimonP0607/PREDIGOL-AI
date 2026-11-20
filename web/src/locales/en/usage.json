@@ -1,0 +1,83 @@
+{
+  "area": {
+    "label": "Operation view",
+    "operation": "Operation",
+    "usage": "Provider usage"
+  },
+  "title": "Provider usage",
+  "description": "Requests to API-Football by day, lane, endpoint and competition, with the margin and the guards. It only reads what the worker already counts; it asks the provider nothing.",
+  "window": {
+    "label": "Window",
+    "days": "{n} days",
+    "until": "Until (UTC)",
+    "range": "{since} – {until}"
+  },
+  "kpi": {
+    "today": "Today",
+    "todayHint": "{n} counted by endpoint and lane",
+    "projected": "Today's projection",
+    "projectedHint": "Margin {margin} ({pct} %) on the budget of {budget}",
+    "mean": "Window mean",
+    "meanHint": "Median {median} · {days} days",
+    "maxNormal": "Largest normal day",
+    "maxNormalHint": "{day} · {n} days with the budget spent (largest {max})"
+  },
+  "lanes": {
+    "title": "By lane",
+    "subtitle": "Today against each lane's ceiling (FBI_APIFOOTBALL_LANES {mode}).",
+    "lane": "Lane",
+    "priority": "Priority",
+    "today": "Today",
+    "ceiling": "Ceiling",
+    "share": "Of ceiling",
+    "max": "Largest day",
+    "vital": "vital",
+    "since": "Counted by lane since {day}.",
+    "progress": "{lane}: {pct} % of the ceiling"
+  },
+  "days": {
+    "title": "By day",
+    "subtitle": "Requests sent each UTC day (raw.provider_quota).",
+    "day": "Day",
+    "spent": "Sent",
+    "budget": "Budget",
+    "exhausted": "Budget spent"
+  },
+  "endpoints": {
+    "title": "By endpoint",
+    "subtitle": "The endpoints with most requests today and in the window.",
+    "endpoint": "Endpoint",
+    "lane": "Lane",
+    "today": "Today",
+    "window": "Window"
+  },
+  "competitions": {
+    "title": "By competition",
+    "subtitle": "New answers stored that name a league (raw.ingestion_payloads).",
+    "note": "These are not requests: the request counter keeps endpoint, lane and job, not the competition, and an answer equal to one already stored is not stored again. It shows which leagues bring new data.",
+    "competition": "Competition",
+    "country": "Country",
+    "responses": "Answers stored",
+    "unknown": "League {id} (not registered)"
+  },
+  "guards": {
+    "title": "Guards and pauses",
+    "lanes": "Lanes",
+    "dynamic": "Dynamic limits",
+    "reserve": "Emergency reserve",
+    "account": "Account guard",
+    "pause": "Pause on an account refusal",
+    "quiet": "Last request counted",
+    "quietValue": "{n} min ago",
+    "quietNone": "none today",
+    "on": "on",
+    "off": "off",
+    "note": "An account pause lives in the worker's memory and is not stored: here it shows as the silence since the last request counted.",
+    "mode": {
+      "off": "off",
+      "measure": "measuring",
+      "enforce": "enforcing"
+    }
+  },
+  "empty": "No requests counted in the window."
+}

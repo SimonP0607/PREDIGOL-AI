@@ -1,0 +1,194 @@
+# Liga BetPlay DIMAYOR I and II 2026 (provider league 239, season 2026). DIMAYOR regulation 2026, edition V0 of 14-01-2026
+# (file created 16-04-2026, SHA-256 8b377600...b0c2; cotejo DOC-008).
+# v2 (BE-075, PM-09-01, 20-nov-2026): the relegation of the last two is art. 34 (v1 cited art. 32, the formula); sources
+# corrected as DOC-008 section 4 a, c, d; the data the tables need to be computed: the earlier seasons of the average and
+# their phases (past), the clubs' windows of art. 32 (windows), the scope of art. 33's tie-breakers (ties_on) and the
+# places of arts. 30-31 (places). The paragraphs of arts. 30-31 and the rounding of the average are gaps, not rules.
+# NOTHING here is shown to readers until the owner signs the cotejo (DOC-008 section 5) and DM-14 (FBI_COMPETITION_TABLES).
+# The format changes inside the year: tournament I ends in quarter-finals, semi-finals and final; tournament II in two
+# groups of four (cuadrangulares) and a final. The provider's labels carry it: "Apertura - ..." is I, "Clausura - ..." is II.
+schema: competition-rules/1
+league_id: 239
+competition: Primera A
+country: Colombia
+version: 2
+seasons: [2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: División Mayor del Fútbol Profesional Colombiano (DIMAYOR)
+    title: Reglamento Liga BetPlay DIMAYOR 2026 (V0)
+    url: https://dimayor.com.co/wp-content/uploads/2026/04/REGLAMENTO-LIGA-2026-V0.pdf
+    published: 2026-01-14
+    checked_at: 2026-11-20
+    applies_to: Liga BetPlay DIMAYOR I and II 2026
+    articles: arts. 4-34
+  - publisher: División Mayor del Fútbol Profesional Colombiano (DIMAYOR)
+    title: Reglamento Liga BetPlay DIMAYOR 2026 (V12, January edition)
+    url: https://dimayor.com.co/wp-content/uploads/2026/01/REGLAMENTO-LIGA-2026-V12.pdf
+    published: 2026-01-09
+    checked_at: 2026-11-20
+    applies_to: Liga BetPlay DIMAYOR I and II 2026 (earlier edition, same competition system)
+tournaments:
+  - key: liga_i
+    name: Liga BetPlay DIMAYOR I 2026
+    phases:
+      - key: fase_1
+        name: Fase I - Todos contra todos
+        format: league
+        rounds: ["Apertura - [0-9]*"]
+        teams: 20
+        schedule: single_round_robin
+        matches_per_team: 19
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - goals_against_fewer
+            - away_goals_against_fewer
+            - {criterion: lots, note: "art. 9; for the last place into the next phase, a tie still open after criterion 5 is settled by the match or matches DIMAYOR sets"}
+        zones:
+          - {kind: next_phase, from: 1, to: 8, target: quarter-finals}
+      - key: cuartos
+        name: Fase II - Cuartos de final
+        format: knockout
+        rounds: ["Apertura - Quarter-finals"]
+        schedule: ties
+        knockout:
+          legs: 2
+          level: [points_over_legs, aggregate, penalties]
+          seeding: "1st and 2nd of Fase I seeded in brackets A and D and at home in the second leg; the rest drawn (art. 10)"
+      - key: semifinales
+        name: Fase III - Semifinales
+        format: knockout
+        rounds: ["Apertura - Semi-finals"]
+        schedule: ties
+        knockout: {legs: 2, level: [points_over_legs, aggregate, penalties], seeding: "winner A v winner B, winner C v winner D (art. 12)"}
+      - key: final
+        name: Fase IV - Final
+        format: knockout
+        rounds: ["Apertura - Final"]
+        schedule: ties
+        knockout: {legs: 2, level: [points_over_legs, aggregate, penalties]}
+  - key: liga_ii
+    name: Liga BetPlay DIMAYOR II 2026
+    phases:
+      - key: fase_1
+        name: Fase I - Todos contra todos
+        format: league
+        rounds: ["Clausura - [0-9]*"]
+        teams: 20
+        schedule: single_round_robin
+        matches_per_team: 19
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - goals_against_fewer
+            - away_goals_against_fewer
+            - {criterion: lots, note: "art. 20; for the last place into the next phase, a tie still open after criterion 5 is settled by the match or matches DIMAYOR sets"}
+        zones:
+          - {kind: next_phase, from: 1, to: 8, target: cuadrangulares semifinales}
+      - key: cuadrangulares
+        name: Fase II - Cuadrangulares semifinales
+        format: groups
+        rounds: ["Clausura - Quadrangular - *"]
+        groups: 2
+        group_size: 4
+        schedule: double_round_robin
+        matches_per_team: 6
+        ranking:
+          tiebreakers:
+            - {criterion: seed_priority, note: "art. 22: in a tie with the other clubs, the 1st and 2nd of Fase I (heads of group) go to the final"}
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - goals_against_fewer
+            - away_goals_against_fewer
+            - {criterion: prior_phase_rank, note: "the better placed in the Fase I table of tournament II"}
+          note: "Groups A and B drawn: 1st and 2nd of Fase I head the groups, 3rd to 8th drawn into them."
+        zones:
+          - {kind: next_phase, from: 1, to: 1, per_group: true, target: final}
+      - key: final
+        name: Fase III - Final
+        format: knockout
+        rounds: ["Clausura - Final"]
+        schedule: ties
+        knockout: {legs: 2, level: [points_over_legs, aggregate, penalties]}
+tables:
+  - key: tabla_liga_i
+    name: Tabla de posiciones Liga I 2026
+    kind: aggregate
+    counts: ["liga_i.*"]
+    ranking:
+      tiebreakers: [goal_difference, goals_for, away_goals_for, goals_against_fewer, away_goals_against_fewer, lots]
+    note: "art. 16-17: the points of all four phases of tournament I."
+  - key: tabla_liga_ii
+    name: Tabla de posiciones Liga II 2026
+    kind: aggregate
+    counts: ["liga_ii.*"]
+    ranking:
+      tiebreakers: [goal_difference, goals_for, away_goals_for, goals_against_fewer, away_goals_against_fewer, lots]
+    note: "art. 25-26: the points of all three phases of tournament II."
+  - key: reclasificacion
+    name: Tabla de reclasificación total 2026
+    kind: aggregate
+    counts: ["liga_i.*", "liga_ii.*"]
+    ranking:
+      tiebreakers: [goal_difference, goals_for, away_goals_for, goals_against_fewer, away_goals_against_fewer, lots]
+    zones:
+      - {kind: continental, from: 1, to: 4, conditional: true, target: CONMEBOL Libertadores 2027 (Colombia 3 and 4), note: "art. 30: the two champions are Colombia 1 and 2; the best placed non-champions take 3 and 4"}
+      - {kind: continental, from: 1, to: 8, conditional: true, target: CONMEBOL Sudamericana 2027 (Colombia 2-4), note: "art. 31: the cup winner is Colombia 1; the best placed not in the Libertadores take 2-4"}
+    places:
+      - competition: CONMEBOL Libertadores 2027
+        article: art. 30
+        slots:
+          - {slot: Colombia 1, source: champion, of: liga_i}
+          - {slot: Colombia 2, source: champion, of: liga_ii}
+          - {slot: Colombia 3, source: table_rank}
+          - {slot: Colombia 4, source: table_rank}
+        note: "the best placed of the reclasificación without being champions; paragraphs 1-5 are not coded (see gaps)"
+      - competition: CONMEBOL Sudamericana 2027
+        article: art. 31
+        slots:
+          - {slot: Colombia 1, source: cup_winner, of: Copa BetPlay DIMAYOR 2026}
+          - {slot: Colombia 2, source: table_rank}
+          - {slot: Colombia 3, source: table_rank}
+          - {slot: Colombia 4, source: table_rank}
+        note: "the best placed of the reclasificación with no place in the Libertadores 2027; paragraphs 1-2 are not coded"
+    note: "art. 27-28: the points of every match of both tournaments, all phases."
+  - key: descenso
+    name: Tabla de descenso 2026 (promedio)
+    kind: average
+    counts: ["liga_i.fase_1", "liga_ii.fase_1"]
+    seasons: 3
+    metric: points_per_match
+    ranking:
+      tiebreakers:
+        - points
+        - goal_difference
+        - goals_for
+        - away_goals_for
+        - goals_against_fewer
+        - away_goals_against_fewer
+        - wins
+        - {criterion: playoff, note: "the match or matches DIMAYOR sets"}
+      note: "art. 33: ties in the average are broken on the sum of Fase I of tournaments I and II 2026 only."
+    ties_on: ["liga_i.fase_1", "liga_ii.fase_1"]
+    zones:
+      - {kind: relegation, last: 2, target: Primera B 2027, note: "art. 34"}
+    exceptions:
+      - "Jaguares FC and Cúcuta Deportivo (promoted from the Torneo 2025): average over Fase I of tournaments I and II 2026 only."
+      - "Llaneros FC: average over Fase I of tournaments I and II of 2025 and 2026."
+    past:
+      - {season: 2024, rounds: ["Apertura - [0-9]*", "Clausura - [0-9]*"], note: "Fase I of the Liga I and II 2024 (19 rounds each)"}
+      - {season: 2025, rounds: ["Apertura - [0-9]*", "Clausura - [0-9]*"], note: "Fase I of the Liga I and II 2025 (20 rounds each)"}
+    windows:
+      - {team: 1133, name: Jaguares FC, seasons: [2026], note: "promoted from the Torneo 2025 (art. 32)"}
+      - {team: 1470, name: Cúcuta Deportivo, seasons: [2026], note: "promoted from the Torneo 2025 (art. 32)"}
+      - {team: 1464, name: Llaneros FC, seasons: [2025, 2026], note: "art. 32"}
+    note: "art. 32: points divided by matches, Fase I of the six tournaments 2024-I to 2026-II; Fase I only (no knockout or group phase counts)."
+gaps:
+  - {topic: continental, reason: "The paragraphs of art. 30 (1-5) and art. 31 (1-2) - the same club champion twice, a champion that also wins a CONMEBOL cup, a relegated club with a place, what DIMAYOR assigns - and art. 18 of the Copa regulation are not coded: a place they would move is never computed (the allocation stops and says so)."}
+  - {topic: table, reason: "Art. 32 says the average is computed in Excel and states no rounding: the order is the exact quotient and the tie-breakers of art. 33; a figure shown with three decimals is a display (cotejo DOC-008, row 12, open)."}
