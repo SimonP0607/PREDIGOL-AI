@@ -92,8 +92,8 @@ from fbi.ai.contracts.base import (
 )
 from fbi.ai.contracts.base import Agent as AgentName
 from fbi.ai.idempotency import Effort
-from fbi.ai.package import Slice, parse_stamp
-from fbi.ai.packet import canonical
+from fbi.ai.package import Slice, parse_stamp, real_tokens
+from fbi.ai.packet import canonical, content_hash
 from fbi.ai.providers.base import JsonRequest
 
 AGENT: Final = "match"
@@ -259,9 +259,9 @@ def _findings(slice_: Slice, naming: Naming, asked: Sequence[Named], contradicti
     return [found[k] for k in sorted(found)]
 
 
-def _request(mode: Mode, slice_: Slice, *, at: datetime, more: Mapping[str, Any]) -> JsonRequest:
+def _request(mode: Mode, slice_: Slice, *, at: datetime, more: Mapping[str, Any], note: str = NOTE) -> JsonRequest:
     ask: dict[str, Any] = {"mode": mode, "now": at.isoformat(), **_timing(slice_, at), **more,
-                           prompts.CITABLE_KEY: list(citable_refs(slice_.document)), "note": NOTE}
+                           prompts.CITABLE_KEY: list(citable_refs(slice_.document)), "note": note}
     shared = canonical(slice_.document) + "\n"
     variable = canonical(ask)
     return JsonRequest(system=SYSTEM[mode], user=shared + variable, schema=copy.deepcopy(schema_of(ASSESSMENT)), schema_name=SCHEMA_NAME,
@@ -269,16 +269,147 @@ def _request(mode: Mode, slice_: Slice, *, at: datetime, more: Mapping[str, Any]
                        native_schema=NATIVE)
 
 
-def context_request(slice_: Slice, *, at: datetime) -> JsonRequest:
+# ── the isolated view (match-v7, IA-148, plan PM PM-11-06) ───────────────────────────────────────────────────────────
+
+VERSION_ISOLATED: Final = "match-v7"
+"""The Match Agent asked over the ISOLATED view of its slice (``isolate``): ``match-v6`` in everything else - the prompts, the contract, the
+reader. Not in force: production asks ``match-v6``. It exists so that battery-v4 can measure it (``ia_battery_v4 --match-view isolated``)
+before anyone decides to adopt it; adopting it is a change of the agent in shadow, with its own measurement and the owner's word."""
+ISOLATION: Final = "match-isolation-v1"
+"""The rules of ``isolate``. A change to them is a new version (and a new ``VERSION_ISOLATED``)."""
+ISOLATED_NOTE: Final = (f"The package holds no outside text: names are roles and every value is the server's. Cite only the references listed "
+                        f'in "{prompts.CITABLE_KEY}", copied exactly.')
+
+_ISO_TIME: Final = re.compile(r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:\d{2}|Z)?)?$")
+_CODE: Final = re.compile(r"^[a-z][a-z0-9_]{0,39}$|^[A-Z][A-Z0-9_]{0,39}$")
+"""A code the server writes (``injury``, ``CONFIRMED``, ``away_short_rest``)."""
+_FORM: Final = re.compile(r"^[WDL]{1,20}$")
+_FORMATION: Final = re.compile(r"^[1-9](-[1-9]){1,4}$")
+_MARKET: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .+/_-]{0,29}$")
+"""A market key or a selection of PrediGol's own catalogue (``1X2``, ``Home``, ``Over 2.5``): only in the blocks the server prices."""
+EVIDENCE_KEPT: Final = frozenset({"id", "kind", "side", "player_id", "status", "source_class", "published_on"})
+"""What of an evidence the isolated view keeps: the typed index. Never the summary, its origin or the domain - the text and the host an outsider
+wrote - nor the flags the cleaning of that text raised (a flag is the shadow of the text)."""
+CODE_KEYS: Final = frozenset({"kind", "side", "status", "source_class", "stage", "class", "validation", "version", "contract", "slice", "pass",
+                              "pressure", "zone", "identity", "model", "position", "role", "calibration", "basis", "family", "type_code"})
+TIME_KEYS: Final = frozenset({"kickoff_at", "known_at", "as_of", "opening_as_of", "published_on", "price_at", "updated_at", "date"})
+FORM_KEYS: Final = frozenset({"results", "form"})
+MARKET_BLOCKS: Final = frozenset({"market", "models", "families"})
+MARKET_KEYS: Final = frozenset({"market", "selection", "market_key", "line"})
+REASONS: Final = (("injur", "injury"), ("knock", "injury"), ("muscle", "injury"), ("hamstring", "injury"), ("knee", "injury"),
+                  ("ankle", "injury"), ("surgery", "injury"), ("suspen", "suspension"), ("card", "suspension"), ("ill", "illness"),
+                  ("virus", "illness"), ("international", "international_duty"), ("national", "international_duty"))
+"""The provider's reason of an absence, read as a closed code: what it says, never its words (anything else is ``other``)."""
+ABSENCE_TYPES: Final = (("missing", "missing"), ("question", "doubtful"), ("doubt", "doubtful"))
+
+
+def _code_of(text: str, table: Sequence[tuple[str, str]]) -> str:
+    low = text.lower()
+    return next((code for needle, code in table if needle in low), "other")
+
+
+def _iso_value(key: str, value: str, path: tuple[str, ...]) -> str | None:
+    """The string the isolated view keeps at ``key`` (under ``path``), or None to leave it out. Default: out."""
+    if key in TIME_KEYS or key.endswith("_at"):
+        return value if _ISO_TIME.fullmatch(value) else None
+    if key in CODE_KEYS:
+        return value if _CODE.fullmatch(value) else None
+    if key in FORM_KEYS:
+        return value if _FORM.fullmatch(value) else None
+    if key in ("main_formation", "formation"):
+        return value if _FORMATION.fullmatch(value) else None
+    if path and path[0] in MARKET_BLOCKS and key in MARKET_KEYS:
+        return value if _MARKET.fullmatch(value) else None
+    if key == "reason" and "absences" in path:
+        return _code_of(value, REASONS)
+    if key == "type" and "absences" in path:
+        return _code_of(value, ABSENCE_TYPES)
+    return None
+
+
+def _iso_node(node: Any, path: tuple[str, ...], counts: dict[str, int]) -> Any:
+    if isinstance(node, Mapping):
+        out: dict[str, Any] = {}
+        for k, v in node.items():
+            key = str(k)
+            if isinstance(v, str):
+                kept = _iso_value(key, v, path)
+                if kept is None:
+                    counts["left_out"] = counts.get("left_out", 0) + 1
+                    continue
+                out[key] = kept
+            else:
+                out[key] = _iso_node(v, (*path, key), counts)
+        return out
+    if isinstance(node, list):
+        items: list[Any] = []
+        for i, v in enumerate(node):
+            if isinstance(v, Mapping) and "name" in v and isinstance(v.get("name"), str) and path and path[0] == "shared":
+                side = next((p for p in path if p in ("home", "away")), "match")
+                group = "absent" if "absences" in path else "player"
+                v = {**v, "name": f"{side}_{group}_{i + 1}"}  # a role, never the provider's text
+                named = _iso_node({k: x for k, x in v.items() if k != "name"}, path, counts)
+                items.append({"name": v["name"], **named})
+                continue
+            if isinstance(v, str):
+                if _CODE.fullmatch(v):
+                    items.append(v)
+                else:
+                    counts["left_out"] = counts.get("left_out", 0) + 1
+                continue
+            items.append(_iso_node(v, path, counts))
+        return items
+    return node
+
+
+def isolated_document(document: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, int]]:
+    """The slice's document with no text from outside (``ISOLATION``): every evidence reduced to its typed index (``EVIDENCE_KEPT``), the
+    package's ``flags`` left out, a player's name replaced by a role (``home_player_2``, ``away_absent_1``), the reason and the type of an
+    absence read as closed codes, and every other string kept only where it is a code, a time, a form, a formation or a market of the server's
+    own catalogue - anything else (a team, a coach, a referee, a venue, a round, a competition, a bookmaker) is left out. Structure, numbers and
+    booleans are kept, so every reference of the isolated view is one of the slice. Pure."""
+    counts: dict[str, int] = {}
+    out: dict[str, Any] = {}
+    for key, value in document.items():
+        if key == "flags":
+            counts["flags_left_out"] = len(value) if isinstance(value, list) else 1
+            continue
+        if key == "evidence" and isinstance(value, list):
+            out[key] = [{k: v for k, v in e.items() if k in EVIDENCE_KEPT} for e in value if isinstance(e, Mapping)]
+            counts["evidence_texts_left_out"] = sum(1 for e in value if isinstance(e, Mapping) and "summary" in e)
+            continue
+        if isinstance(value, str):
+            kept = _iso_value(str(key), value, ())
+            if kept is not None:
+                out[key] = kept
+            else:
+                counts["left_out"] = counts.get("left_out", 0) + 1
+            continue
+        out[key] = _iso_node(value, (str(key),), counts)
+    return out, counts
+
+
+def isolate(slice_: Slice) -> Slice:
+    """The slice as ``match-v7`` reads it: ``isolated_document`` of its document, the same name, match, moment and cap (smaller, so it fits)."""
+    document, _counts = isolated_document(slice_.document)
+    tokens = min(slice_.tokens, real_tokens(document))
+    return replace(slice_, document=document, hash=content_hash(document), tokens=tokens)
+
+
+def context_request(slice_: Slice, *, at: datetime, isolated: bool = False) -> JsonRequest:
     """The request of the ``context`` task: the slice and what is asked now (the time and the minutes to the kick-off) - no candidates, no
     findings. ``at`` is the moment of the PASS, with its zone: the same pass asks with the same ``at`` or the hash of the request moves.
+    ``isolated``: ``match-v7``, over ``isolate(slice_)`` (off: ``match-v6``, byte for byte as before).
     Raises ValueError for a slice that is not the match's, does not fit or is blocked, and for a time with no zone."""
     when = _moment(at)
     _readable(slice_)
+    if isolated:
+        return _request("CONTEXT", isolate(slice_), at=when, more={}, note=ISOLATED_NOTE)
     return _request("CONTEXT", slice_, at=when, more={})
 
 
-def evaluation_request(slice_: Slice, naming: Naming, *, at: datetime, contradictions: Sequence[Contradiction] = ()) -> JsonRequest:
+def evaluation_request(slice_: Slice, naming: Naming, *, at: datetime, contradictions: Sequence[Contradiction] = (),
+                       isolated: bool = False) -> JsonRequest:
     """The request of the ``evaluation`` task: the same slice, and the candidates of goals and result of ``naming`` by their name with what
     the server knows of each, and the findings of the detector that touch them. Raises ValueError for what cannot be asked: the preconditions
     of ``context_request``, nothing to assess, more candidates than the contract takes, a candidate of another match, a finding about a
@@ -287,9 +418,12 @@ def evaluation_request(slice_: Slice, naming: Naming, *, at: datetime, contradic
     _readable(slice_)
     asked = _asked(slice_, naming)
     more: dict[str, Any] = {"candidates": [_candidate_json(n) for n in asked]}
-    findings = _findings(slice_, naming, asked, contradictions)
+    view = isolate(slice_) if isolated else slice_
+    findings = _findings(view, naming, asked, contradictions)
     if findings:
         more["contradictions"] = findings
+    if isolated:
+        return _request("EVALUATION", view, at=when, more=more, note=ISOLATED_NOTE)
     return _request("EVALUATION", slice_, at=when, more=more)
 
 
