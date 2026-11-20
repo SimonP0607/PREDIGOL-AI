@@ -117,3 +117,14 @@ def test_the_command_measures_only_the_target_match_and_never_records(capsys: py
     assert cli.main(["plan", "--targets", "match", "stats", "--match-view", "isolated"]) == cli.CANNOT
     assert "alone" in capsys.readouterr().out
     assert cli.main(["sign", "--targets", "match", "--match-view", "isolated"]) == cli.CANNOT
+
+
+def test_collect_checks_the_deterministic_layer_over_the_door_production_reads() -> None:
+    from fbi.ai.battery import v4_run
+
+    # 20-nov-2026: the first collect of the isolated view stopped in offline.run (the door check looks for the case's text, which the
+    # isolated view no longer carries). The layer is the server's own cleaning: it is always checked over the package's slice.
+    with aw.match_view("isolated"):
+        report = v4_run.offline_layer(["match"])
+        assert aw.current_match_view() == "isolated"
+    assert report.ok
