@@ -411,8 +411,8 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-009 · DOC-008
+CI-020 · SEG-003 · UX-173 · BE-055 · FE-004 · OPS-011 · DOC-008
 
-IA-145
+IA-146
 
 (El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)
