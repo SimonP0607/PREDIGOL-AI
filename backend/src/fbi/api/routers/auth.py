@@ -40,6 +40,7 @@ from fbi.api.security import (
 )
 from fbi.api.services import news as news_service
 from fbi.api.switches import (
+    availability_on,
     explain_on,
     market_probs_on,
     match_intelligence_on,
@@ -92,7 +93,7 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         news_v2=news_v2_on() and news_feed_on() and news_service.users_may_see(),
         match_intelligence=match_intelligence_on(),
         stats_v2=stats_v2_on(), market_probs=market_probs_on(), parlay_markets_v2=parlay_markets_v2_on(),
-        player_markets=player_markets_on(),
+        player_markets=player_markets_on(), availability=availability_on(),
     )
 
 

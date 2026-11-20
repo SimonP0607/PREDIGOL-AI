@@ -117,6 +117,9 @@ class Me(Contract):
                                                                "EA-501; FBI_PARLAY_MARKETS_V2, off by default).")
     player_markets: bool = Field(default=False, description="The players' markets of a match (plan EA, C-15; "
                                                             "FBI_PLAYER_MARKETS, off by default).")
+    availability: bool = Field(default=False, description="What PrediGol has per competition, datum and market (plan PM, C-16; "
+                                                          "FBI_AVAILABILITY, off by default): the states «información no "
+                                                          "disponible» and the owner's console of the matrix only then.")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")

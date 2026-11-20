@@ -1,0 +1,66 @@
+{
+  "kind": {
+    "no_existe": "No existe en esta competición",
+    "cobertura_parcial": "Cobertura parcial",
+    "muestra_insuficiente": "Muestra insuficiente",
+    "pendiente": "Aún no disponible",
+    "en_revision": "En revisión"
+  },
+  "step": {
+    "existe": "Existe",
+    "cobertura": "Cobertura suficiente",
+    "cuota": "Cuota vigente",
+    "probabilidad": "Probabilidad calculada",
+    "autorizada": "Calibrada y autorizada",
+    "liquidable": "Liquidable",
+    "reglas": "Cumple reglas"
+  },
+  "result": {
+    "si": "Sí",
+    "no": "No",
+    "sin_evaluar": "Sin evaluar"
+  },
+  "module": {
+    "mi_parlay": "Mi parlay",
+    "picks": "Picks",
+    "cuotas": "Cuotas"
+  },
+  "list": {
+    "sep": ", ",
+    "lastNegative": " ni ",
+    "last": " y "
+  },
+  "notOffered": "Esta competición no ofrece {subjects}.",
+  "notSettled": "PrediGol no puede liquidar {subject} en esta competición: no se puede añadir a Mi parlay. La cuota sigue siendo informativa.",
+  "partial": {
+    "pct": "Cobertura parcial de {subjects}: el dato llega en el {pct} % de los partidos de esta competición. Las cifras usan solo los partidos que lo tienen.",
+    "plain": "Cobertura parcial de {subjects} en esta competición. Las cifras usan solo los partidos que lo tienen."
+  },
+  "thin": {
+    "badge": "Pocos datos",
+    "body": "Mostramos {subject} desde {min} partidos. Con {n}, la cifra no dice nada.",
+    "bodyCount": "Hay {n} partidos con {subject}: pocos para una cifra. Se enseña el recuento, no una tasa.",
+    "progress": "{n} de {min} partidos",
+    "left": "faltan {k}",
+    "group": "Pocos datos de {subjects}: se enseña el recuento, no una tasa."
+  },
+  "pending": {
+    "title": "{subject}: aún no disponible",
+    "when": "Suele publicarse {when}.",
+    "existe": "El dato llegará cuando el proveedor lo publique.",
+    "cobertura": "Esta competición aún no está medida; se mide cada noche.",
+    "cuota": "Todavía no hay una cuota vigente con al menos 3 casas. Aparecerá en Cuotas y en Mi parlay cuando la haya.",
+    "probabilidad": "PrediGol aún no calculó esta probabilidad. La cuota del mercado sigue valiendo.",
+    "reglas": "Todavía no hay un precio que este módulo pueda usar. Lo demás del partido sigue valiendo.",
+    "group": "Aún no disponible: {subjects}. Llegará cuando se publique."
+  },
+  "review": {
+    "title": "Estamos revisando {subject}.",
+    "autorizada": "La probabilidad de PrediGol se retira mientras el modelo está en evaluación; la probabilidad implícita del mercado sigue valiendo.",
+    "reglas": "No entra en {module} mientras lo revisamos; la cuota sigue valiendo.",
+    "other": "El dato existe, pero ahora no es fiable. Lo demás de esta pantalla sigue valiendo.",
+    "report": "Reportar un dato",
+    "group": "En revisión: {subjects}. Lo demás de esta pantalla sigue valiendo."
+  },
+  "notesLabel": "Información no disponible en esta pantalla"
+}

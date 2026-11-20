@@ -87,6 +87,9 @@ export interface Me {
   parlay_markets_v2?: boolean;
   /** The players' markets of a match (plan EA, C-15; FBI_PLAYER_MARKETS). */
   player_markets?: boolean;
+  /** What PrediGol has per competition, datum and market (plan PM, C-16; FBI_AVAILABILITY, off by default): the states
+   * «información no disponible» and the owner's console of the matrix only then. */
+  availability?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }

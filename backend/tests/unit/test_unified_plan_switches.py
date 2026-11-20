@@ -37,3 +37,16 @@ def test_each_switch_is_off_until_its_line_turns_it_on(name: str, on: Callable[[
 def test_the_page_is_told_each_switch_and_it_is_off_by_default(name: str, on: Callable[[], bool], field: str) -> None:
     assert name.startswith("FBI_")
     assert Me.model_fields[field].default is False
+
+
+@pytest.mark.parametrize(("value", "expected"), [(None, False), ("", False), ("1", True), ("0", False)])
+def test_c16_availability_is_told_to_the_page_and_off_by_default(value: str | None, expected: bool,
+                                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan PM, PM-14-01 (UX-173): the page draws the states «información no disponible» and the console of the matrix only
+    with C-16 on; /auth/me says it as ``availability``, off until FBI_AVAILABILITY's line turns it on."""
+    if value is None:
+        monkeypatch.delenv(switches.AVAILABILITY, raising=False)
+    else:
+        monkeypatch.setenv(switches.AVAILABILITY, value)
+    assert Me.model_fields["availability"].default is False
+    assert switches.availability_on() is expected
