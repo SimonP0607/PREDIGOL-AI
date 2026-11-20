@@ -395,6 +395,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-048 | La pasada de estadísticas confirma cada temporada por separado (las lecturas abrían la transacción y todo quedaba en una sola hasta el final) e informe EA-008 de cobertura medido en producción (`src/fbi/stats/stats_coverage.json`, 125 temporadas) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #389 | BE-047 |
 | BE-049 | Plan de estadísticas avanzadas, decisiones del 19-nov-2026: Mi parlay toma un mercado del catálogo solo si la temporada del partido registra lo que liquida su regla (≥ 80 % de los partidos terminados y ≥ 10; `fbi.market.settle_coverage`, motivo `sin_cobertura`, C-14 1.1.0); las cifras del modelo en «Probabilidades» en los mismos términos que la implícita y el histórico (`fbi.market.coherence`: pares con devolución, líneas de cuarto, doble oportunidad leída del 1X2 de la familia) | desplegado (en producción el 19-nov-2026 a las 05:38 UTC con la cadena `20261119T0415Z-auto-9099566`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #392 | BE-047 |
 | BE-050 | La pasada de estadísticas conserva el documento guardado cuando no cambió (su puntero TOAST) y solo mueve su hora: la tabla dejaba de caber en 500 MB al reescribir 89 562 documentos cada noche (472 → 537 MB). Tras desplegarlo, una pasada completa no la hace crecer y una compactación única (`VACUUM FULL`, 27 s) la dejó en 317 MB | desplegado (en producción el 19-nov-2026 a las 09:31 UTC con la cadena `20261119T0846Z-auto-2027ea1`, sin migración; humo 0 y verificación con 0 líneas NOT OK) | #394 | BE-048 |
+| BE-054 | Plan Maestro PM, bloque 2 (PM-02-01, decisión DM-04): las reglas `coverage-levels-v1` como módulo puro `fbi.coverage.levels` (nivel por dato y por mercado, familias, resumen del directorio, herencia «provisional» y bajada tras dos recálculos); importa los umbrales que el código ya usa (0,80 y 10 de `settle_coverage`, 0,50 y 30 de `market_status`, 3 casas de `eligibility`) y añade solo 95 % y 5 casas. Reproduce las 272 filas del anexo B (prueba con una muestra de 55). Nadie lo usa todavía: sin migración ni cambio de comportamiento | sin efecto en producción (módulo sin usar) | este PR | PM-02-01 |
 
 ## Otras áreas
 
@@ -410,8 +411,8 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-173 · BE-051 · FE-004 · OPS-009 · DOC-006
+CI-020 · SEG-003 · UX-173 · BE-055 · FE-004 · OPS-011 · DOC-008
 
-IA-145
+IA-146
 
 (El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)
