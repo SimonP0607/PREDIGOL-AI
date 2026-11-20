@@ -570,7 +570,7 @@ RapidAPI no licencia datos ni garantiza su procedencia [P]. Sus términos dicen 
 | API-Football | «api-sports», el titular | Legítima, pero duplica lo contratado |
 | APIs no oficiales de X e Instagram | Extracción declarada | No usar |
 
-Regla de alta de cualquier proveedor (tarea PM-00-04): quién es el editor, si tiene términos propios, si declara su fuente y si el precio es creíble para un dato licenciado.
+Regla de alta de cualquier proveedor (tarea PM-00-04): quién es el editor, si tiene términos propios, si declara su fuente y si el precio es creíble para un dato licenciado. Las preguntas completas, la lista de exclusión y la disciplina de conocimiento están en [`DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md`](DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md).
 
 ### Lo que sí se incorpora
 
@@ -604,7 +604,7 @@ Falta el dato que decide: cuánto se adelanta X a la web oficial y a API-Footbal
 
 Bajas y lesiones son datos de salud de personas identificadas. El plan trata solo lo que el club o el jugador hicieron público, con fuente y fecha, y sin detalle médico. La Ley 1581 de 2012 debe revisarla un abogado (DM-08).
 
-El anexo D reúne las 110 filas: las 82 API del catálogo previo, 28 nuevas y 22 estados actualizados hoy.
+El anexo D reúne las 110 filas: las 82 API del catálogo previo, 28 nuevas y 22 estados actualizados hoy. Cada fila nueva del anexo D se da de alta con las preguntas de [`DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md`](DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md).
 
 ## 8. Destino de las 59 oportunidades
 
@@ -958,7 +958,7 @@ Son tres cosas distintas y no se mezclan.
 | Evidencia de partido | Hechos de un partido concreto | Hoja de hechos, con fuente y fecha | Es lo único que entra en un prompt |
 | Datos de entrenamiento | Series para ajustar modelos | Base propia y LAB | Solo con licencia que lo permita |
 
-Ningún libro ni artículo entra en un prompt.
+Ningún libro ni artículo entra en un prompt. Reglas completas en [`DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md`](DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md).
 
 | Método | Referencia | Dónde se aplica | Estado de la referencia |
 |---|---|---|---|
@@ -1232,7 +1232,7 @@ Resueltas con fuente antes del plan: `half=true` existe; el reglamento vigente d
 | A | `A_matriz_mundial_competiciones.csv` | 1.264 filas: prioridad, acción, lote y niveles |
 | B | `B_matriz_estadisticas_mercados.csv` | 272 filas: nivel por dato, mercado y familia |
 | C | `C_inventario_api_football.csv` | 1.049 campos de 39 endpoints |
-| D | `D_catalogo_apis_actualizado.csv` | 110 recursos de API con su decisión |
+| D | `D_catalogo_apis_actualizado.csv` | 110 recursos de API con su decisión; regla de alta en [`DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md`](DISCIPLINA_CONOCIMIENTO_Y_ALTA_PROVEEDORES.md) |
 | E | `E_destino_59_oportunidades.csv` | Destino, tareas y condición de cada oportunidad |
 | F | `F_presupuesto_operativo.csv` | 65 partidas de los tres escenarios |
 | G | `G_trazabilidad_visual.csv` | 26 funcionalidades con lámina y componente |
