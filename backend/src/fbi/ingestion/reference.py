@@ -58,7 +58,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Protocol
 
 import psycopg
 from psycopg.rows import tuple_row
@@ -646,12 +646,13 @@ WITH nxt AS (
 """Each team's next scheduled kick-off: the teams playing soonest are asked first."""
 
 TEAMS_SQL = NEXT_KICKOFF + """, scope AS (
-    SELECT DISTINCT t.id FROM core.fixtures f
+    SELECT t.id, array_agg(DISTINCT c.provider_league_id) AS leagues FROM core.fixtures f
       JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
       JOIN core.competitions c ON c.id = cs.competition_id
       JOIN core.teams t ON t.id IN (f.home_team_id, f.away_team_id)
-     WHERE c.is_tracked AND cs.is_current)
-SELECT t.provider_team_id, COALESCE(n.kickoff_at <= %(at)s + interval '72 hours', false)
+     WHERE c.is_tracked AND cs.is_current
+     GROUP BY t.id)
+SELECT t.provider_team_id, COALESCE(n.kickoff_at <= %(at)s + interval '72 hours', false), scope.leagues
   FROM scope JOIN core.teams t ON t.id = scope.id
   LEFT JOIN nxt n ON n.team_id = t.id
   LEFT JOIN core.team_kind k ON k.team_id = t.id
@@ -660,11 +661,11 @@ SELECT t.provider_team_id, COALESCE(n.kickoff_at <= %(at)s + interval '72 hours'
 """
 """Teams of the current tracked seasons, the soonest to play first. ``clubs_only`` leaves out national sides
 (PrediGol's classification, core.team_kind): the provider lists no transfer for them - asked on 4 Oct 2026,
-/transfers?team=1..4 answered nothing."""
+/transfers?team=1..4 answered nothing. ``leagues``: the competitions the team plays in (the reference depth, PM-04-04)."""
 
 PEOPLE_SQL = {
     "player": """
-SELECT ps.provider_player_id FROM core.fixture_player_stats ps
+SELECT ps.provider_player_id, array_agg(DISTINCT c.provider_league_id) FROM core.fixture_player_stats ps
   JOIN core.fixtures f ON f.id = ps.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
@@ -672,7 +673,7 @@ SELECT ps.provider_player_id FROM core.fixture_player_stats ps
  GROUP BY 1
  ORDER BY max(f.kickoff_at) DESC, 1""",
     "coach": """
-SELECT l.provider_coach_id FROM core.fixture_lineups l
+SELECT l.provider_coach_id, array_agg(DISTINCT c.provider_league_id) FROM core.fixture_lineups l
   JOIN core.fixtures f ON f.id = l.fixture_id
   JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
   JOIN core.competitions c ON c.id = cs.competition_id
@@ -680,7 +681,7 @@ SELECT l.provider_coach_id FROM core.fixture_lineups l
  GROUP BY 1
  ORDER BY max(f.kickoff_at) DESC, 1""",
 }
-"""The people in scope, the most recently seen on a pitch or a bench first."""
+"""The people in scope, the most recently seen on a pitch or a bench first, with the competitions they were seen in."""
 
 TEAM_SEASONS_SQL = NEXT_KICKOFF + """
 SELECT cs.id, c.provider_league_id, cs.season, t.id, t.provider_team_id,
@@ -712,6 +713,48 @@ Read when the worker calls the feeds: change it in ``app.env`` and ``predigolctl
 
 def trims_on() -> bool:
     return os.environ.get(TRIMS_SWITCH, "off").strip().lower() in {"1", "on", "true", "yes"}
+
+
+DEPTH_SWITCH = "FBI_REFERENCE_DEPTH"
+"""The reference as deep as the competition's level and priority (plan PM, PM-04-04; BE-063; ``fbi.coverage.depth``). OFF by default
+(every competition ``completa``: exactly the behaviour before); 1/on/true/yes: a ``media`` competition (level C) loses trophies, past
+absences and careers; a ``minima`` one (level D, or not measured yet, without P0/P1) keeps only the squad and the coach; ``/players``
+only for P0 to P2 and never ``minima``. Read when the worker calls the feeds: change it in ``app.env`` and ``predigolctl up``."""
+
+
+def depth_on() -> bool:
+    return os.environ.get(DEPTH_SWITCH, "off").strip().lower() in {"1", "on", "true", "yes"}
+
+
+def _leagues(value: Any) -> list[int]:
+    """The provider league ids an aggregate returned (``array_agg``; NULL for none)."""
+    return sorted(int(v) for v in (value or []) if v is not None)
+
+
+class DepthView(Protocol):
+    """What the reference asks of the depth of the competitions (``fbi.coverage.depth.DepthMap``). Passed in by the worker, never
+    imported here: ``fbi.coverage`` reads the market layer, and an import from ingestion would join the import cycle that
+    tests/unit/test_architecture.py keeps from growing."""
+
+    def keeps(self, feed: str, leagues: Iterable[int]) -> bool: ...
+
+    def player_seasons(self, league: int) -> bool: ...
+
+
+DepthSource = Callable[[psycopg.Connection, datetime], DepthView]
+
+
+def depth_view(conn: psycopg.Connection, at: datetime, depths: DepthSource | None) -> DepthView | None:
+    """The view for this pass, or None (switch off, or no source given: every competition ``completa``)."""
+    return depths(conn, at) if depths is not None and depth_on() else None
+
+
+def within_depth(view: DepthView | None, feed: str, targets: list[Target]) -> list[Target]:
+    """Only the targets whose competitions are deep enough for ``feed``; a target that names no competition is kept. Without a
+    view (``FBI_REFERENCE_DEPTH`` off): ``targets`` as they are."""
+    if view is None:
+        return targets
+    return [t for t in targets if "leagues" not in t.context or view.keeps(feed, t.context["leagues"])]
 NEVER_AGAIN = timedelta(days=3650)
 DAY = timedelta(hours=23)
 """Just under a day, so a daily feed that ran a little late is not pushed a whole day later."""
@@ -770,8 +813,9 @@ def team_targets(daily_if_playing: bool, clubs_only: bool = False) -> Callable[[
         with conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(TEAMS_SQL, {"at": at, "clubs_only": clubs_only})
             rows = cur.fetchall()
-        return [Target(f"team:{tid}", {"team": int(tid)}, DAY if (daily_if_playing and playing) else WEEK, {})
-                for tid, playing in rows]
+        return [Target(f"team:{tid}", {"team": int(tid)}, DAY if (daily_if_playing and playing) else WEEK,
+                       {"leagues": _leagues(leagues)})
+                for tid, playing, leagues in rows]
     return targets
 
 
@@ -796,9 +840,10 @@ def people_targets(kind: str, list_key: str) -> Callable[[psycopg.Connection, da
     def targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
         with conn.cursor(row_factory=tuple_row) as cur:
             cur.execute(PEOPLE_SQL[kind])
-            ids = [int(r[0]) for r in cur.fetchall()]
-        return [Target(f"{kind}:{i}", {param: str(i)}, WEEK, {"kind": kind, "ids": [i], "list_key": list_key})
-                for i in ids]
+            rows = [(int(r[0]), _leagues(r[1])) for r in cur.fetchall()]
+        return [Target(f"{kind}:{i}", {param: str(i)}, WEEK,
+                       {"kind": kind, "ids": [i], "list_key": list_key, "leagues": leagues})
+                for i, leagues in rows]
     return targets
 
 
@@ -840,7 +885,8 @@ when the player's /transfers list changed after the last ask."""
 
 CAREER_SQL = """
 WITH people AS (
-    SELECT ps.provider_player_id, max(f.kickoff_at) AS seen FROM core.fixture_player_stats ps
+    SELECT ps.provider_player_id, max(f.kickoff_at) AS seen, array_agg(DISTINCT c.provider_league_id) AS leagues
+      FROM core.fixture_player_stats ps
       JOIN core.fixtures f ON f.id = ps.fixture_id
       JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
       JOIN core.competitions c ON c.id = cs.competition_id
@@ -848,7 +894,7 @@ WITH people AS (
      GROUP BY 1)
 SELECT p.provider_player_id,
        EXISTS (SELECT 1 FROM core.player_transfers x WHERE x.provider_player_id = p.provider_player_id
-                 AND x.observed_at > k.checked_at) AS moved
+                 AND x.observed_at > k.checked_at) AS moved, p.leagues
   FROM people p
   LEFT JOIN core.reference_checks k ON k.feed = 'players_teams' AND k.target = 'player:' || p.provider_player_id
  ORDER BY p.seen DESC, 1
@@ -862,7 +908,7 @@ def player_team_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
         cur.execute(CAREER_SQL)
         rows = cur.fetchall()
     return [Target(f"player:{pid}", {"player": int(pid)}, timedelta(0) if moved else CAREER_REFRESH,
-                   {"ids": [int(pid)]}) for pid, moved in rows]
+                   {"ids": [int(pid)], "leagues": _leagues(leagues)}) for pid, moved, leagues in rows]
 
 
 PROFILE_RETRY = timedelta(days=30)
@@ -871,11 +917,13 @@ then kept current by the monthly /players/profiles sweep or the weekly /coachs r
 
 MISSING_PLAYER_PROFILES_SQL = """
 WITH appeared AS (
-    SELECT lp.provider_player_id, max(f.kickoff_at) AS seen
+    SELECT lp.provider_player_id, max(f.kickoff_at) AS seen, array_agg(DISTINCT c.provider_league_id) AS leagues
       FROM core.fixture_lineup_players lp JOIN core.fixtures f ON f.id = lp.fixture_id
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+      JOIN core.competitions c ON c.id = cs.competition_id
      WHERE f.kickoff_at > %(at)s - interval '365 days' AND lp.provider_player_id > 0
      GROUP BY 1)
-SELECT a.provider_player_id FROM appeared a JOIN core.players p ON p.provider_player_id = a.provider_player_id
+SELECT a.provider_player_id, a.leagues FROM appeared a JOIN core.players p ON p.provider_player_id = a.provider_player_id
  WHERE p.profile_fetched_at IS NULL
  ORDER BY a.seen DESC, 1
 """
@@ -901,8 +949,8 @@ Asked by id."""
 def missing_player_profile_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
     with conn.cursor(row_factory=tuple_row) as cur:
         cur.execute(MISSING_PLAYER_PROFILES_SQL, {"at": at})
-        return [Target(f"player:{pid}", {"player": int(pid)}, PROFILE_RETRY, {"ids": [int(pid)]})
-                for (pid,) in cur.fetchall()]
+        return [Target(f"player:{pid}", {"player": int(pid)}, PROFILE_RETRY, {"ids": [int(pid)], "leagues": _leagues(leagues)})
+                for pid, leagues in cur.fetchall()]
 
 
 def missing_coach_profile_targets(conn: psycopg.Connection, at: datetime) -> list[Target]:
@@ -982,9 +1030,10 @@ def last_checks(conn: psycopg.Connection, feed: str) -> dict[str, datetime]:
         return {str(a): b for a, b in cur.fetchall()}
 
 
-def due_targets(conn: psycopg.Connection, feed: Feed, at: datetime) -> list[Target]:
+def due_targets(conn: psycopg.Connection, feed: Feed, at: datetime, view: DepthView | None = None) -> list[Target]:
     held = last_checks(conn, feed.name)
-    due = [t for t in feed.targets(conn, at) if t.key not in held or held[t.key] <= at - t.every]
+    due = [t for t in within_depth(view, feed.name, feed.targets(conn, at))
+           if t.key not in held or held[t.key] <= at - t.every]
     due.sort(key=lambda t: held.get(t.key, datetime.min.replace(tzinfo=UTC)))
     return due
 
@@ -1020,9 +1069,11 @@ class ReferenceReport:
 
 async def refresh_reference(conn: psycopg.Connection, provider: Any, *, daily_budget: int, max_requests: int = 600,
                             feeds: Iterable[Feed] = FEEDS, at: datetime | None = None,
-                            prematch_windows: Iterable[int] = (4320, 2880, 1440, 720, 360, 180)) -> ReferenceReport:
+                            prematch_windows: Iterable[int] = (4320, 2880, 1440, 720, 360, 180),
+                            depths: DepthSource | None = None) -> ReferenceReport:
     """Ask what is due within ``max_requests`` and never into the live reserve: first a fair share for every feed
-    with something due, then what is left feed by feed in priority order (predictions first)."""
+    with something due, then what is left feed by feed in priority order (predictions first). ``depths``: the depth of the
+    competitions (``fbi.coverage.depth.current``), read once for the pass and used only while ``FBI_REFERENCE_DEPTH`` is on."""
     from fbi.ingestion.backfill import live_reserve
     from fbi.providers.quota import read_usage
 
@@ -1032,7 +1083,8 @@ async def refresh_reference(conn: psycopg.Connection, provider: Any, *, daily_bu
     report.remaining_before = read_usage(conn, budget=daily_budget).remaining
     report.allowance = max(0, min(max_requests, report.remaining_before - report.reserve))
     feeds = list(feeds)
-    plan = {f.name: due_targets(conn, f, moment)[:f.max_per_run * f.batch] for f in feeds}
+    view = depth_view(conn, moment, depths)
+    plan = {f.name: due_targets(conn, f, moment, view)[:f.max_per_run * f.batch] for f in feeds}
     conn.commit()
     report.due = {k: len(v) for k, v in plan.items() if v}
     if not report.due:

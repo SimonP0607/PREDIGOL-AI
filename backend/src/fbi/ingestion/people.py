@@ -24,13 +24,16 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import psycopg
 from psycopg.rows import tuple_row
 from psycopg.types.json import Json
 
 from fbi.providers.api_football.details import PlayerProfileRef, SquadMemberRef
+
+if TYPE_CHECKING:
+    from fbi.ingestion.reference import DepthSource
 
 PROFILE_COLUMNS = ("name", "firstname", "lastname", "birth_date", "birth_place", "birth_country", "nationality",
                    "height_cm", "weight_kg", "position", "photo_url")
@@ -182,7 +185,7 @@ def _monthly_due(league: int, at: datetime) -> bool:
     return league % MONTH_DAYS + 1 <= at.day
 
 
-def seed_player_seasons(conn: psycopg.Connection, *, at: datetime) -> int:
+def seed_player_seasons(conn: psycopg.Connection, *, at: datetime, depths: DepthSource | None = None) -> int:
     """The week's sweep of the provider's season player statistics (/players?league&season, 20 a page) for every
     current tracked season its coverage says has them: page 1 of each, whose answer adds the other pages.
     ``batch_key`` names the ISO week, so a week is never two sets of units; and a season swept within
@@ -190,10 +193,14 @@ def seed_player_seasons(conn: psycopg.Connection, *, at: datetime) -> int:
 
     With the trims (``FBI_REFERENCE_TRIMS``, PM-04-03): once a MONTH (``batch_key`` names the month), each competition on its own
     day (``_monthly_due``) and never within ``MONTHLY_SWEEP_GAP_DAYS`` of its previous sweep. The aggregate is the sum of the
-    per-match statistics PrediGol already keeps; the player page shows it «según el proveedor» and keeps every field."""
-    from fbi.ingestion.reference import trims_on
+    per-match statistics PrediGol already keeps; the player page shows it «según el proveedor» and keeps every field.
+
+    With the reference depth (``FBI_REFERENCE_DEPTH``, PM-04-04): only the competitions of priority P0 to P2 (or without priority)
+    that are not ``minima`` (``fbi.coverage.depth.DepthMap.player_seasons``; ``depths`` is passed in by the worker)."""
+    from fbi.ingestion.reference import depth_view, trims_on
 
     monthly = trims_on()
+    deep = depth_view(conn, at, depths)
     iso = at.isocalendar()
     generation = f"m{at.year}{at.month:02d}" if monthly else f"w{iso.year}{iso.week:02d}"
     gap = MONTHLY_SWEEP_GAP_DAYS if monthly else PLAYER_SWEEP_GAP_DAYS
@@ -202,6 +209,8 @@ def seed_player_seasons(conn: psycopg.Connection, *, at: datetime) -> int:
         cur.execute(PLAYER_SEASONS_SQL, {"at": at, "gap": gap})
         for league, season in cur.fetchall():
             if monthly and not _monthly_due(int(league), at):
+                continue
+            if deep is not None and not deep.player_seasons(int(league)):
                 continue
             cur.execute(
                 "INSERT INTO raw.backfill_tasks (kind, provider_league_id, season, priority, endpoint, params, page, "
