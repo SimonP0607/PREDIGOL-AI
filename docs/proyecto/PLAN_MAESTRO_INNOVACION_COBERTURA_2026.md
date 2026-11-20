@@ -1152,7 +1152,7 @@ Quedan fuera las decisiones de otros planes: D1 a D12 de la auditoría de seguri
 
 ## 15. Verificaciones, límites y anexos
 
-Este plan se apoya en mediciones del 19-nov-2026 y deja 12 cosas sin medir y 9 contradicciones abiertas. Ninguna cifra supuesta se usa para una decisión irreversible.
+Este plan se apoya en mediciones del 19-nov-2026 y dejaba 12 cosas sin medir y 9 contradicciones abiertas; el estado de cada contradicción tras PM-00-03 (20-nov-2026) está en la tabla de contradicciones. Ninguna cifra supuesta se usa para una decisión irreversible.
 
 ### Lo que no se midió
 
@@ -1173,21 +1173,39 @@ Este plan se apoya en mediciones del 19-nov-2026 y deja 12 cosas sin medir y 9 c
 
 Tampoco se pudieron listar los PR abiertos. No se accedió al panel de la cuenta de API-Football.
 
-### Contradicciones abiertas
+### Contradicciones: estado al 20-nov-2026 (PM-00-03)
 
-| Asunto | Versiones | Tratamiento |
-|---|---|---|
-| Precio de Ultra | 26 USD en la página viva; 29 en el documento interno | El dueño lo mira en su panel (DM-09) |
-| Renovación | «No auto-renewal» en el texto literal; «Automatic Renewal» en un resumen automático | Se trata como sin renovación automática |
-| Mercados extraídos | 55 marcados para extraer; 42 con historia en 14 días | Se dan las dos cifras |
-| Gasto de Exa en noviembre | 12,90 y 81,22 USD | Sin resolver |
-| Dataset de Wyscout | CC BY 4.0 en figshare; «non-commercial» en D4Science | Solo LAB; abogado |
-| Licencia de Wikidata | CC0 según lectura interna; no verificable hoy | Captura manual del dueño |
-| Versión de `@vercel/og` | 1.0.3 en el registro; 0.6.2 en la web de npm | Manda el registro; fijar versión |
-| Horas de `fixtures_sync` | Dos series en los documentos | Se leen antes de cada despliegue |
-| Horas de copia | 03:30, 04:15 y 05:30 UTC en el repositorio; 04:30, 05:15 y 06:31 en `list-timers` | Probable hora local del servidor; confirmar en PM-00-02 |
+Cada contradicción entre documentos, código y medición, con su estado: **resuelta con fuente** (la fuente manda y el texto que la contradecía está corregido o anotado), **decisión del dueño** (la fuente no basta) o **en curso** (la cierra la tarea que se cita). Las numeradas son las 16 de la reconciliación del 19-nov; las N, las 5 nuevas de la verificación del mismo día. Los documentos del proyecto (`claude/*`) no se editan desde el repositorio: lo que en ellos queda por corregir se anota en el estado del plan.
 
-Resueltas con fuente: `half=true` existe; el reglamento vigente de la Liga es el V0 del 14-ene-2026; la Copa cambió a partido único el 25-ago-2026.
+| # | Asunto | Versiones | Estado | Fuente y corrección |
+|---|---|---|---|---|
+| 1 | Córners por mitad | «El proveedor no los da» (plan EA, `fbi/market/rules.py`, guía F9) frente a `half=true` | Resuelta con fuente; frase definitiva en curso (PM-01-05) | Blog oficial y contrato 3.9.3 (`integration.py`). **Confirmado en 5 competiciones el 19-nov** (Champions, Premier, Primera A, Segunda española, Nations League; nada en Primera B, National League e Isthmian); **medición por competición en curso (PM-01-05)**. Anotado en `ESTADISTICAS_AVANZADAS_EA.md`, `CATALOGO_MERCADOS_F9.md` y `PREPARTIDO_V3_F6.md`. La nota de las reglas `corners_1h`/`corners_2h` es dato servido: cambia con la regla nueva de PM-05-03 |
+| 2 | Calibración coherente (OP-29) | «En LAB sin registrar» frente a protocolo INT-A02 | Resuelta con fuente | Registrado, ejecutado el 11-nov y **rechazado** en los tres mercados (`backend/docs/owner/IA_036_CALIBRACION_COHERENTE.md`) |
+| 3 | xG descriptivo (OP-13) | «El resto no consta» | Resuelta con fuente | `fbi/stats/team.py` publica xG a favor, en contra y goles − xG («pegada») |
+| 4 | INP (OP-44) | «Solo en laboratorio» | Resuelta con fuente | `web/src/lib/perf/vitals.ts` lo mide en el 3 % de las visitas reales |
+| 5 | Cuántas competiciones | 2 en `competitions.yaml`, 136, 138 | Resuelta con fuente | **138 seguidas** (83 ligas, 55 copas) el 19-nov 22:07 UTC (PM-00-02, #397). `competitions.yaml` lleva ahora la cabecera «archivado, no aplicar» |
+| 6 | Límite interno de peticiones | 60, 3.000 y 60.000 | Resuelta con fuente | Cada cifra es de un entorno: 60.000 en producción (`deploy/vps/app.env.example`, leído en el servidor el 19-nov), 60 en el `.env.example` de desarrollo con el plan gratuito, 3.000 por defecto del código. El efectivo es `min(presupuesto, cupo del plan)` |
+| 7 | `tax-v3` | Reservado por el plan EA para cuotas de jugador; usado por el libro vigente | Resuelta con fuente | `fbi/odds/book_taxonomy.py` usa `tax-v3`; la historia sigue en `tax-v2`. Una ampliación de jugador necesita otro nombre. Anotado en `ESTADISTICAS_AVANZADAS_EA.md` |
+| 8 | Tablas del plan EA | Cuatro tablas `stats.*` frente a una de documentos | Resuelta con fuente | `analytics.stat_documents` (migración 0167). Anotado en `ESTADISTICAS_AVANZADAS_EA.md` |
+| 9 | Estado del plan UX | «Intelligence no ha entregado contratos» | Resuelta con fuente | C-01 a C-12 están en `main` desde el 18-nov; UX-159 a UX-171 siguen sin empezar. Corregir el estado UX del proyecto |
+| 10 | Gate B | «Evaluable el 25-nov» | Resuelta con fuente | Cerrado como «no evaluado» el 17-nov; `FBI_AI_MODE=shadow` en producción (leído el 19-nov). Corregir el plan Intelligence del proyecto |
+| 11 | Horas de `fixtures_sync` | 01, 07, 13 y 19 h frente a 03:41, 09:41, 15:41 y 21:41 UTC | Resuelta con fuente | No tiene hora fija: cada 6 h desde el arranque de su última pasada correcta (`next_run_after`, `apps/worker/scheduler.py`). El 19-nov, 03:41, 09:41, 15:41 y 21:41 UTC. **Se leen en `raw.ingestion_runs` antes de cada despliegue.** Anotado en `CHECKLIST_POR_FASE_F14.md` y `PREPARTIDO_V3_F6.md` |
+| 12 | Retirada de `/odds/best` | «Desde el 17-nov» frente a endpoint aún en `main` | En curso (PM-13-07) y decisión del dueño | Relectura de `audit.deprecated_api_use` el 24-nov; se retira con 7 días sin filas `browser` y el visto bueno del dueño |
+| 13 | `robots.txt` y `noindex` | Permite todo frente a `noindex, nofollow` | En curso (PM-14-10) | Coherentes solo por accidente; los alinea PM-14-10 según DM-12 |
+| 14 | Permisos de las tablas de 0167 | ¿Entrada en `grants.sql`? | Resuelta con fuente; confirmación de la sesión de seguridad | `analytics.*` queda cubierto por las concesiones por esquema de `backend/deploy/vps/db/grants.sql` (líneas 36–53) |
+| 15 | GBM en producción | `v2_models.py` importa scikit-learn | Resuelta con fuente | La imagen instala solo el extra `analytics` (`backend/Dockerfile`, línea 22): el experimento corre fuera del servidor |
+| 16 | Gasto de IA de la primera quincena de noviembre (incluye Exa) | 62,88 + 12,90 USD frente a 81,22 USD | Decisión del dueño | Sin resolver hasta la factura de Exa |
+| N1 | Precio de Ultra | 26 USD en la página viva del 19-nov; 29 en el documento interno y en la página del 29-sep | **Decisión del dueño (DM-09), abierta** | `config/api_plans.yaml` con la tabla del 19-nov (Free 0/100, Pro 16/7.500, Ultra 26/75.000, Mega 36/150.000 USD), su fecha, su fuente y la discrepancia anotada |
+| N2 | Renovación | «No auto-renewal» frente a un resumen automático | Resuelta con fuente | Texto literal de la página de precios: prepago sin renovación; al vencer, plan gratuito. Renovar antes del 29-nov (PM-01-01) |
+| N3 | Formato de la Copa BetPlay 2026 | V5 (17-mar): ida y vuelta | Resuelta con fuente | Vigente la V1 del 25-ago: octavos y cuartos a partido único. La Copa no está codificada: hoy no cambia ninguna regla |
+| N4 | Versión del reglamento de la Liga BetPlay | «V0 de 16-04-2026» frente a V0 de 14-ene-2026 y V12 | Resuelta con fuente | Vigente la «V0 - 14/01/26»; el 16-abr es la fecha de subida. Corregido en `IA_072_REGLAMENTOS.md`; `config/rules/239_primera_a_colombia/v1.yaml` lo corrige la sesión de Intelligence con su próxima versión (las versiones no se reescriben) |
+| N5 | Versión de `@vercel/og` | 1.0.3 en el registro; 0.6.2 en la web de npm | Resuelta con fuente | Manda el registro (Node ≥ 22); se fija la versión cuando se use |
+| — | Mercados extraídos | 55 marcados; 42 con historia en 14 días | Resuelta (no es contradicción) | Son dos medidas distintas; se dan las dos |
+| — | Dataset de Wyscout | CC BY 4.0 en figshare; «non-commercial» en D4Science | Decisión del dueño (DM-08) | Solo LAB hasta la respuesta del abogado o de los autores |
+| — | Licencia de Wikidata | CC0 según lectura interna | Decisión del dueño | Captura manual del dueño |
+| — | Horas de copia | 03:30, 04:15 y 05:30 UTC frente a 04:30, 05:15 y 06:31 | Resuelta con fuente | `list-timers` da hora local (`Europe/Berlin`); coinciden con las UTC del repositorio (PM-00-02) |
+
+Resueltas con fuente antes del plan: `half=true` existe; el reglamento vigente de la Liga es el V0 del 14-ene-2026; la Copa cambió a partido único el 25-ago-2026.
 
 ### Supuestos de este plan
 

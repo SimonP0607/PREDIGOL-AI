@@ -431,7 +431,7 @@ dejado ninguna corrida en el libro porque aún no hay un partido que se haya ase
 1. Copia verificada y **prueba de restauración** antes de migrar. 0089 y 0090 son dos tablas, una vista y un disparador sobre una función que
    ya existe; no tocan nada existente y, al no tener claves foráneas, no necesitan bloquear `core.fixtures` (las migraciones 0085 y 0086 sí
    esperaron por la transacción de 27 minutos del trabajo de partidos). Aun así se hace fuera de las horas de ese trabajo (01:03, 07:03, 13:03
-   y 19:03 UTC) y de la auditoría nocturna.
+   y 19:03 UTC) y de la auditoría nocturna. *(nota del 20-nov-2026, PM-00-03: horas de octubre; no son fijas y se leen en `raw.ingestion_runs` antes de cada despliegue, ver `CHECKLIST_POR_FASE_F14.md`)*
 2. `predigolctl deploy`: respaldo propio del despliegue, migración, permisos, reinicio y salud. Con las tablas vacías todo se comporta como
    antes y el bloque no se ve para ningún usuario.
 3. **Carga inicial** de los últimos 400 días: `python -m scripts.match_knowledge build --days 400 --apply` (38.121 partidos, un commit por cada
