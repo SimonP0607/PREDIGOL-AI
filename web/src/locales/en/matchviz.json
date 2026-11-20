@@ -1,0 +1,40 @@
+{
+  "source": {
+    "api_football": "match statistics from API-Football",
+    "football_data": "match statistics from football-data.co.uk"
+  },
+  "table": {
+    "show": "Show as a table",
+    "datum": "Figure"
+  },
+  "funnel": {
+    "title": "Shot funnel",
+    "subtitle": "Of every shot, how many were on target and how many ended in a goal.",
+    "subject": "Shot funnel of {home} and {away}",
+    "shots": "Shots",
+    "onTarget": "On target",
+    "goals": "Goals",
+    "note": "The percentage is the part of each team's shots that reached that step.",
+    "ownGoals": "Own goals do not come from a shot of the team: they are not counted here ({count}).",
+    "goalsFromScore": "Goals taken from the score: the match events do not tell own goals apart.",
+    "method": "Shots, shots on target and goals of each team in this match, as the provider delivers them. Each step is compared with the same team's shots. Goals come from the match events; if they do not add up to the score, from the score.",
+    "aria": "{team}: {shots} shots, {onTarget} on target, {goals} goals"
+  },
+  "zones": {
+    "title": "Shot zone · 2 zones",
+    "subtitle": "Inside or outside the box: the two zones the provider delivers.",
+    "subject": "Shots inside and outside the box of {home} and {away}",
+    "inside": "inside",
+    "outside": "outside",
+    "insideLong": "Inside the box",
+    "outsideLong": "Outside the box",
+    "blocked": "Blocked shots",
+    "xg": "Match xG",
+    "xgPerShot": "xG per shot",
+    "xgSource": "xG from API-Football.",
+    "honest": "These are the two zones the provider delivers. This is not a shot map: where each shot was taken is not known.",
+    "method": "The provider counts each team's shots inside and outside the box; the percentage is the part of that team's shots in each zone. It does not give where each shot was taken, so there is no map: only these two zones.",
+    "aria": "{team}: {inside} shots inside the box ({insidePct} %) and {outside} outside ({outsidePct} %)"
+  },
+  "footer": "Source: {source} · {n} match."
+}

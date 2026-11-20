@@ -9,6 +9,7 @@ import type { MatchCtx } from "./context";
 import { ageLevel, notPlayed, ratedPlayers, seasonRows, statRows } from "./model";
 import { ProfileBlock } from "./ProfileBlock";
 import { PreviewStats } from "./stats/PreviewStats";
+import { MatchVizSection } from "./stats/MatchVizSection";
 import { useStatsSwitches } from "@/lib/auth/AuthProvider";
 import {
   Block,
@@ -148,24 +149,30 @@ export function StatsTab({ ctx }: { ctx: MatchCtx }) {
   const lines = ctx.center.data?.statistics.status === "ok" ? ctx.center.data.statistics.data : [];
   const at = lines[0]?.fetched_at ?? null;
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-      <Block
-        title={t("match.stats.title")}
-        icon={<BarChart3 />}
-        right={
-          at && ctx.phase === "live" ? <FreshnessLabel at={at} level={ageLevel(at, 3, 10)} /> : null
-        }
-      >
-        <CenterSection center={ctx.center} pick={(c) => c.statistics}>
-          {(data) => (
-            <div className="space-y-4">
-              <TeamsLegend home={home} away={away} />
-              <StatBars rows={statRows(data)} />
-            </div>
-          )}
-        </CenterSection>
-      </Block>
-      <TopPlayersBlock ctx={ctx} />
+    <div className="space-y-4">
+      {/* plan PM, block 10 (lámina I01): each piece behind its own switch, off by default - off, nothing is drawn here */}
+      <MatchVizSection ctx={ctx} />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <Block
+          title={t("match.stats.title")}
+          icon={<BarChart3 />}
+          right={
+            at && ctx.phase === "live" ? (
+              <FreshnessLabel at={at} level={ageLevel(at, 3, 10)} />
+            ) : null
+          }
+        >
+          <CenterSection center={ctx.center} pick={(c) => c.statistics}>
+            {(data) => (
+              <div className="space-y-4">
+                <TeamsLegend home={home} away={away} />
+                <StatBars rows={statRows(data)} />
+              </div>
+            )}
+          </CenterSection>
+        </Block>
+        <TopPlayersBlock ctx={ctx} />
+      </div>
     </div>
   );
 }

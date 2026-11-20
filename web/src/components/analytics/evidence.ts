@@ -96,7 +96,21 @@ export interface MeanReading {
   digits?: number | undefined;
 }
 
-export type Reading = RateReading | MeanReading;
+/**
+ * What one match delivered (plan PM, PM-10-01; FE-005): the figures of a single match as the provider gave them. Its sample is
+ * the match itself (n = 1) and its origin is said; the sentence says it is what happened, never a tendency.
+ */
+export interface MatchReading {
+  kind: "match";
+  subject: string;
+  /** Matches the figures come from: 1 for one match's own figures. */
+  n: number;
+  /** Where the figures come from, in the reader's words («estadísticas del partido de API-Football»). */
+  source: string;
+  minSample: number;
+}
+
+export type Reading = RateReading | MeanReading | MatchReading;
 
 function asPct(x: number): number {
   return x <= 1 ? x * 100 : x;
@@ -110,6 +124,8 @@ export function cappedLevel(level: EvidenceLevel, reading: Reading): EvidenceLev
 /** The reading sentence: what the chart shows, with its sample and its interval, in the reader's language. */
 export function readingSentence(r: Reading): string {
   const n = localInt(r.n);
+  if (r.kind === "match")
+    return t("evidence.sentence.match", { subject: r.subject, n, source: r.source });
   if (r.kind === "rate") {
     if (r.n < r.minSample)
       return t("evidence.sentence.rateThin", { subject: r.subject, k: localInt(r.k), n });
