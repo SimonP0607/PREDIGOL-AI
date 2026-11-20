@@ -31,4 +31,4 @@ def test_load_dry_run_plans_every_file_and_writes_nothing(capsys: pytest.Capture
     code, out = _run(capsys, "load", "--dry-run")
     assert code == 0 and out["dry_run"] is True
     planned = out["planned"]
-    assert isinstance(planned, list) and len(planned) == 13
+    assert isinstance(planned, list) and len(planned) == 14  # 13 until Colombia v2 (BE-075, 20-nov-2026)
