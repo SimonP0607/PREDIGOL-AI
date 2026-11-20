@@ -51,9 +51,12 @@ def test_each_depth_keeps_squad_and_coach() -> None:
 
 
 def test_summary_of_takes_the_latest_season_with_a_sample() -> None:
-    full = (dict.fromkeys(levels.DATA, "B"), dict.fromkeys(levels.MARKETS, "B"))
-    poor = (dict.fromkeys(levels.DATA, "D"), dict.fromkeys(levels.MARKETS, "D"))
-    partial: tuple[dict[str, levels.Level], dict[str, levels.Level]] = ({"events": "A"}, {})
+    graded = tuple[dict[str, levels.Level], dict[str, levels.Level]]
+    b: levels.Level = "B"
+    d: levels.Level = "D"
+    full: graded = (dict.fromkeys(levels.DATA, b), dict.fromkeys(levels.MARKETS, b))
+    poor: graded = (dict.fromkeys(levels.DATA, d), dict.fromkeys(levels.MARKETS, d))
+    partial: graded = ({"events": "A"}, {})
     assert depth.summary_of({2026: full, 2025: poor}) == "B"
     assert depth.summary_of({2026: partial, 2025: poor}) == "D", "a season graded only in part is MI: the one before decides"
     assert depth.summary_of({2026: partial}) == "MI"
