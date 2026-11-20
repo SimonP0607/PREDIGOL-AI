@@ -15,7 +15,7 @@ def _run(capsys: pytest.CaptureFixture[str], *argv: str) -> tuple[int, dict[str,
 
 def test_check_validates_the_repository_files(capsys: pytest.CaptureFixture[str]) -> None:
     code, out = _run(capsys, "check")
-    assert code == 0 and out["valid"] is True and out["leagues"] == 83
+    assert code == 0 and out["valid"] is True and out["leagues"] == 84
 
 
 def test_show_answers_coded_with_the_rules_or_not_coded_with_the_reason(capsys: pytest.CaptureFixture[str]) -> None:

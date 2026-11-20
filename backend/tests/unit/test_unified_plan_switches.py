@@ -63,3 +63,16 @@ def test_shot_funnel_is_told_to_the_page_and_off_by_default(value: str | None, e
         monkeypatch.setenv(switches.MATCH_SHOT_FUNNEL, value)
     assert Me.model_fields["match_shot_funnel"].default is False
     assert switches.match_shot_funnel_on() is expected
+
+
+@pytest.mark.parametrize(("value", "expected"), [(None, False), ("", False), ("1", True), ("0", False)])
+def test_match_balance_is_told_to_the_page_and_off_by_default(value: str | None, expected: bool,
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan PM, PM-10-02 (FE-006): the Match Center's balance and strip of the score's state only with FBI_MATCH_BALANCE's line
+    on; /auth/me says it as ``match_balance``, off by default."""
+    if value is None:
+        monkeypatch.delenv(switches.MATCH_BALANCE, raising=False)
+    else:
+        monkeypatch.setenv(switches.MATCH_BALANCE, value)
+    assert Me.model_fields["match_balance"].default is False
+    assert switches.match_balance_on() is expected

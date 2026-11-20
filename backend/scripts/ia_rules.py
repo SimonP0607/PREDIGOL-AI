@@ -2,12 +2,14 @@
 
     python -m scripts.ia_rules check                       # the files and the coverage hold to the schema (no database)
     python -m scripts.ia_rules show --league 239 --season 2026 [--on 2026-09-01]   # what rules_for answers
+    python -m scripts.ia_rules show --league 241 --season 2026 --shadow   # IA-149: also a version coded in shadow
     python -m scripts.ia_rules status                      # coverage against the tracked competitions, versions loaded
     python -m scripts.ia_rules load [--dry-run]            # after a deploy: record the versions in core.competition_rules
     python -m scripts.ia_rules reconstruct --league 39 --season 2025 --phase season.league --group "Premier League"
 
 ``load`` is the only command that writes, and only to the append-only table of migration 0143 (idempotent: a version already
-recorded writes nothing). Every other command opens the database read-only (``status``, ``reconstruct``) or not at all
+recorded writes nothing; a version coded in shadow - IA-149 - is not recorded until the owner's cotejo makes it ``coded``).
+Every other command opens the database read-only (``status``, ``reconstruct``) or not at all
 (``check``, ``show``). Nothing here calls a model or a web page. Exit 0; 1 when a check fails (an invalid file, a tracked
 competition missing from the coverage, a reconstruction that disagrees); 2 when it cannot run.
 """
@@ -41,6 +43,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--phase", help="reconstruct: tournament.phase of the rules file (e.g. season.league)")
     ap.add_argument("--group", action="append", default=[], help="reconstruct: a provider table (core.standings.group_key)")
     ap.add_argument("--dry-run", action="store_true", help="load: what it would record, without writing")
+    ap.add_argument("--shadow", action="store_true",
+                    help="show: answer a version coded in shadow too (IA-149; no reader is answered that way)")
     ap.add_argument("--json", action="store_true", dest="as_json")
     ap.add_argument("--dsn", help="the database (default: the worker's own)")
     return ap
@@ -56,7 +60,7 @@ def cmd_check(_args: argparse.Namespace) -> tuple[dict[str, Any], int]:
 def cmd_show(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     if args.league is None or args.season is None:
         return {"error": "show needs --league and --season"}, CANNOT
-    answer = rl.rules_for(args.league, args.season, on=args.on)
+    answer = rl.rules_for(args.league, args.season, on=args.on, include_shadow=args.shadow)
     out = answer.as_json()
     if isinstance(answer, rl.Coded):
         out["rules"] = answer.file.as_json()
@@ -78,7 +82,7 @@ def cmd_status(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         tracked = store.tracked(conn)
         recorded = store.loaded(conn)
     summary = rl.summary(lib, {i: n for i, (n, _t) in tracked.items()})
-    files = {(f.rules.league_id, f.rules.version): f.sha256 for f in lib.files}
+    files = {(f.rules.league_id, f.rules.version): f.sha256 for f in lib.files if f.rules.state != "shadow"}
     db = {(r["league_id"], r["version"]): r["sha256"] for r in recorded}
     summary["tracked"] = {"leagues": sum(1 for _n, t in tracked.values() if t == "league"),
                           "cups": sum(1 for _n, t in tracked.values() if t != "league")}
@@ -90,15 +94,18 @@ def cmd_load(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     problems = rl.validate()
     if problems:
         return {"error": "the files do not validate; nothing loaded", "problems": problems}, NO
-    files = rl.load_files()
+    every = rl.load_files()
+    files = [f for f in every if f.rules.state != "shadow"]  # IA-149: recorded when the cotejo makes them coded
+    shadow = [{"league_id": f.rules.league_id, "version": f.rules.version, "file": f.path} for f in every
+              if f.rules.state == "shadow"]
     planned = [{"league_id": f.rules.league_id, "version": f.rules.version, "file": f.path, "sha256": f.sha256} for f in files]
     if args.dry_run:
-        return {"dry_run": True, "planned": planned}, OK
+        return {"dry_run": True, "planned": planned, "shadow_not_recorded": shadow}, OK
     with _connect(args, write=True) as conn:
         done = store.load(conn, files, at=datetime.now(UTC), code_version=os.environ.get("FBI_CODE_VERSION"))
         conn.commit()
     return {"loaded": [{"league_id": d.league_id, "version": d.version, "file": d.path, "created": d.created} for d in done],
-            "note": "a version already recorded writes nothing (created = false)"}, OK
+            "shadow_not_recorded": shadow, "note": "a version already recorded writes nothing (created = false)"}, OK
 
 
 def cmd_reconstruct(args: argparse.Namespace) -> tuple[dict[str, Any], int]:

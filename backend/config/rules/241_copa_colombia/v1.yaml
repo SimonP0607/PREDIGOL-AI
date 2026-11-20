@@ -1,0 +1,116 @@
+# Copa BetPlay DIMAYOR 2026 (provider league 241 «Copa Colombia», season 2026). DIMAYOR regulation of the Copa 2026, edition
+# «V1 - 25/08/26» (file created 25-08-2026, Last-Modified 01-09-2026; downloaded 20-nov-2026 21:06 UTC, SHA-256
+# ebfcac5d...b413, 46 pages). It replaced the V5 of 17-03-2026 (SHA-256 c6828e35...8c28) only in arts. 16-17: the round of 16
+# (Fase II) and the quarter-finals (Fase III) became SINGLE matches, a draw settled by penalties; arts. 4-15 and 18 read the
+# same in both (OCR of pages 8-12 of each file, 20-nov-2026).
+# IA-149 (plan PM, PM-03-09, 20-nov-2026): CODED IN SHADOW. rules_for answers «reglamento no codificado» (pending_review) to
+# every reader until a person compares it with the PDF article by article
+# (backend/docs/owner/IA_149_COTEJO_REGLAMENTOS_COPA_TORNEO_2026.md) and the owner signs it.
+# The provider's labels (production, 20-nov-2026): "Group Stage - 1..5" (Fase 1A), "Play-offs" (Fase 1B), "Round of 16",
+# "Quarter-finals", "Semi-finals"; the final is not on the calendar yet. Every round of 16 and quarter-final match stored
+# (2-sep to 2-nov-2026) is one match per pairing, as V1 says; all were played after 25-ago-2026.
+schema: competition-rules/1
+league_id: 241
+competition: Copa Colombia
+country: Colombia
+version: 1
+state: shadow
+pending: "Cotejo of arts. 4-18 of the Copa 2026 regulation V1 against the official PDF by a person, signed by the owner (IA-149, table of backend/docs/owner/IA_149_COTEJO_REGLAMENTOS_COPA_TORNEO_2026.md)."
+seasons: [2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: División Mayor del Fútbol Profesional Colombiano (DIMAYOR)
+    title: Reglamento Copa BetPlay DIMAYOR 2026 (V1)
+    url: https://dimayor.com.co/wp-content/uploads/2026/09/REGLAMENTO-COPA-2026-V1-1.pdf
+    published: 2026-08-25
+    checked_at: 2026-11-20
+    applies_to: Copa BetPlay DIMAYOR 2026
+    articles: arts. 4-18
+    edition: V1 - 25/08/26
+    sha256: ebfcac5d1de5f61a317304ac76a2fa78523b5ddce5a744ddcd740db2bf25b413
+  - publisher: División Mayor del Fútbol Profesional Colombiano (DIMAYOR)
+    title: Reglamento Copa BetPlay DIMAYOR 2026 (V5, March edition)
+    url: https://dimayor.com.co/wp-content/uploads/2026/04/REGLAMENTO-COPA-2026-V5.pdf
+    published: 2026-03-17
+    checked_at: 2026-11-20
+    applies_to: Copa BetPlay DIMAYOR 2026 (earlier edition; differs in arts. 16-17 only)
+    articles: arts. 4-18
+    sha256: c6828e35834ff02bd96ff43d5ce7bf4813101ddffee2eae01ecb44f2b56d8c28
+tournaments:
+  - key: copa
+    name: Copa BetPlay DIMAYOR 2026
+    phases:
+      - key: fase_1a
+        name: Fase 1A - Grupos
+        format: groups
+        rounds: ["Group Stage - *"]
+        groups: 4
+        group_size: 5
+        schedule: single_round_robin
+        matches_per_team: 4
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - goals_against_fewer
+            - away_goals_against_fewer
+            - {criterion: lots, note: "art. 9; for the last place into the next phase, a tie still open after criterion 5 is settled by the match or matches DIMAYOR sets"}
+          note: "Art. 8: the 12 Liga clubs out of the quarter-finals of Liga I 2026 (9th-20th of its Fase I) and the 8 Torneo clubs out of the cuadrangulares of Torneo I 2026 (9th-16th), placed by those tables; five rounds, each club rests once, two home and two away."
+        zones:
+          - {kind: next_phase, from: 1, to: 2, per_group: true, target: Fase II - Octavos de final}
+      - key: fase_1b
+        name: Fase 1B
+        format: knockout
+        rounds: ["Play-offs"]
+        schedule: ties
+        knockout:
+          legs: 2
+          level: [points_over_legs, aggregate, penalties]
+          seeding: "art. 12: the 8 of the Liga I 2026 quarter-finals against the 8 of the Torneo I 2026 cuadrangulares by Fase I place (L8-T1, L6-T3, L4-T5, L2-T7, L1-T8, L3-T6, L5-T4, L7-T2); the Torneo club is at home in the second leg"
+      - key: octavos
+        name: Fase II - Octavos de final
+        format: knockout
+        rounds: ["Round of 16"]
+        schedule: ties
+        knockout:
+          legs: 1
+          level: [penalties]
+          seeding: "art. 16: the bracket of the regulation (winner of 1B tie A v D2, B v B2, C v D1, D v B1, E v A1, F v C1, G v A2, H v C2); same division, at home the better placed in its reclasificación at the end of the first half of the year; different divisions, the Torneo club"
+        note: "Art. 17: a draw goes straight to penalties (no extra time). V5 had two legs here."
+      - key: cuartos
+        name: Fase III - Cuartos de final
+        format: knockout
+        rounds: ["Quarter-finals"]
+        schedule: ties
+        knockout:
+          legs: 1
+          level: [penalties]
+          seeding: "art. 16: winners 1-2, 3-4, 5-6, 7-8 of the bracket; home as in Fase II"
+        note: "Art. 17: a draw goes straight to penalties (no extra time). V5 had two legs here."
+      - key: semifinales
+        name: Fase IV - Semifinales
+        format: knockout
+        rounds: ["Semi-finals"]
+        schedule: ties
+        knockout:
+          legs: 2
+          level: [points_over_legs, aggregate, penalties]
+          seeding: "art. 16: same division, the better placed in its reclasificación at the end of the first half is at home in the second leg; different divisions, the Torneo club"
+      - key: final
+        name: Fase V - Final
+        format: knockout
+        rounds: ["Final"]
+        schedule: ties
+        knockout:
+          legs: 2
+          level: [points_over_legs, aggregate, penalties]
+          seeding: "art. 16, as in Fase IV"
+        note: "Not on the provider's calendar on 20-nov-2026: the label 'Final' is to be confirmed when it appears."
+gaps:
+  - {topic: continental, reason: "Art. 18: the cup winner is Colombia 1 in the CONMEBOL Sudamericana 2027 only if it plays the Liga (first division) in 2027; otherwise a prize, and the place goes to the best placed of the Liga's reclasificación with no international place. Not computed here; it is the cup_winner slot of 239_primera_a_colombia/v2.yaml (art. 31), whose gap still stops the allocation."}
+  - {topic: seeding, reason: "Arts. 8, 12 and 16 place the clubs by the Fase I tables and the reclasificación of the Liga and the Torneo at the end of the first half of the year (other competitions' tables): recorded as notes, not computed."}
+notes:
+  - "Art. 4: a phase decided on penalties gives no extra points and the shoot-out's goals are not goals."
+  - "Art. 5: 36 clubs (the 20 of the Liga and the 16 of the Torneo)."
+  - "Bets settle on the 90 minutes (fbi.picks.settlement, regulation_90): a single match of Fases II-III level at 90 minutes is a draw for the 1X2 even though a club goes through on penalties; there is no extra time in this competition."

@@ -89,6 +89,13 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "analytics.coverage_changes", "INSERT", False),
     ("predigol_api", "analytics.availability_discrepancies", "SELECT", True),
     ("predigol_api", "analytics.availability_discrepancies", "UPDATE", False),
+    # the market's margin and dispersion by competition and day (PM-05-07, 0170): the nightly batch writes and rewrites a day, never
+    # deletes one; the API reads it
+    ("predigol_worker", "market.league_daily_stats", "INSERT", True),
+    ("predigol_worker", "market.league_daily_stats", "UPDATE", True),
+    ("predigol_worker", "market.league_daily_stats", "DELETE", False),
+    ("predigol_api", "market.league_daily_stats", "SELECT", True),
+    ("predigol_api", "market.league_daily_stats", "INSERT", False),
     # the current-price book (BE-010): the worker builds it and purges it, the API reads it
     ("predigol_worker", "market.book_current", "INSERT", True),
     ("predigol_worker", "market.book_current", "UPDATE", True),

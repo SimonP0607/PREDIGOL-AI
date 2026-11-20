@@ -64,11 +64,14 @@ class Loaded:
 
 def load(conn: psycopg.Connection[Any], files: Iterable[RulesFile], *, at: datetime, code_version: str | None = None
          ) -> list[Loaded]:
-    """Record every file's version (idempotent: the same content twice writes nothing). One transaction; the caller commits."""
+    """Record every file's version (idempotent: the same content twice writes nothing). One transaction; the caller commits.
+    A version coded in shadow (IA-149) is skipped: it is recorded when the owner's cotejo makes it ``coded``."""
     out: list[Loaded] = []
     with conn.cursor(row_factory=tuple_row) as cur:
         for f in files:
             r = f.rules
+            if r.state == "shadow":
+                continue
             cur.execute(INSERT_SQL, {
                 "league": r.league_id, "version": r.version, "state": r.state, "reason": r.retired_reason,
                 "seasons": list(r.seasons), "valid_from": r.valid_from, "valid_to": r.valid_to, "schema": SCHEMA,
