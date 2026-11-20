@@ -36,9 +36,14 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
+import threading
+import time
 from collections.abc import Awaitable, Callable, Mapping
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from types import MappingProxyType
 
 import psycopg
 import structlog
@@ -414,22 +419,32 @@ class PersistentMinuteLimiter:
     """
 
     def __init__(self, *, limit: int, connect: Callable[[], psycopg.Connection], provider: str = DEFAULT_PROVIDER,
-                 sleep: Callable[[float], Awaitable[None]] | None = None) -> None:
+                 sleep: Callable[[float], Awaitable[None]] | None = None, summarize: bool = False) -> None:
         if limit < 1:
             raise ValueError("the per-minute limit must be at least 1 request")
         self.limit = limit
         self._connect = connect
         self._provider = provider
         self._sleep = sleep or asyncio.sleep
+        self._summarize = summarize
 
     def try_spend(self, tokens: int = 1) -> bool:
-        """Reserve ``tokens`` in the current minute, or refuse without spending."""
+        """Reserve ``tokens`` in the current minute, or refuse without spending.
+
+        The first request of each hour (across every process) also prunes what is older than two days - and, with ``summarize``
+        (plan PM, PM-01-02), keeps the day of yesterday and of today in ``raw.provider_minute_daily`` first, so the peaks outlive
+        the 48 hours of the counter. A summary that cannot be written is logged, never raised: it must not cost the request."""
         moment = now()
         minute = moment.replace(second=0, microsecond=0)
         with self._connect() as conn:
             row = conn.execute(_MINUTE_SPEND, {"provider": self._provider, "minute": minute, "n": tokens,
                                                "limit": self.limit}).fetchone()
             if row is not None and int(row[0]) == tokens and minute.minute == 0:
+                if self._summarize:
+                    try:
+                        summarize_minutes(conn, provider=self._provider, at=minute)
+                    except psycopg.Error as exc:
+                        log.warning("quota.minute_summary_not_kept", error=type(exc).__name__)
                 conn.execute(_MINUTE_PRUNE, {"provider": self._provider, "before": minute - timedelta(days=2)})
         return row is not None
 
@@ -445,3 +460,194 @@ class PersistentMinuteLimiter:
             await self._sleep(delay)
             waited += delay
         return waited
+
+
+# ── the daily summary of the per-minute counter (plan PM, PM-01-02, migration 0168) ─────────────────────────────────────────
+
+_MINUTE_SUMMARY = """
+INSERT INTO raw.provider_minute_daily AS d (provider, usage_date, minutes_active, requests, max_per_minute, peak_minute, p50, p95,
+       p99, complete, computed_at)
+SELECT %(provider)s, m.day, count(*), sum(m.spent), max(m.spent), (array_agg(m.minute ORDER BY m.spent DESC, m.minute))[1],
+       percentile_cont(0.50) WITHIN GROUP (ORDER BY m.spent), percentile_cont(0.95) WITHIN GROUP (ORDER BY m.spent),
+       percentile_cont(0.99) WITHIN GROUP (ORDER BY m.spent), m.day < %(today)s, now()
+  FROM (SELECT (minute AT TIME ZONE 'UTC')::date AS day, minute, spent FROM raw.provider_minute_usage
+         WHERE provider = %(provider)s AND minute >= %(since)s AND minute < %(until)s) m
+ GROUP BY m.day
+ON CONFLICT (provider, usage_date) DO UPDATE SET
+       minutes_active = EXCLUDED.minutes_active, requests = EXCLUDED.requests, max_per_minute = EXCLUDED.max_per_minute,
+       peak_minute = EXCLUDED.peak_minute, p50 = EXCLUDED.p50, p95 = EXCLUDED.p95, p99 = EXCLUDED.p99,
+       complete = EXCLUDED.complete, computed_at = EXCLUDED.computed_at
+ WHERE NOT d.complete OR EXCLUDED.requests >= d.requests
+"""
+"""Yesterday and today, from the minutes the counter still holds (48 h). Percentiles over the minutes WITH requests - the measure of
+19 Nov 2026 (p95 = 85, max 202 over 450) was taken that way. A finished day is only rewritten by a count at least as large: once
+the prune has begun to remove its first minutes, a late recomputation cannot shrink it."""
+
+
+def summarize_minutes(conn: psycopg.Connection, *, provider: str = DEFAULT_PROVIDER, at: datetime | None = None) -> int:
+    """Keep yesterday's and today's per-minute peaks (UTC) in ``raw.provider_minute_daily``; returns the days written."""
+    moment = at or now()
+    today = moment.date()
+    since = moment.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+    with conn.cursor() as cur:
+        cur.execute(_MINUTE_SUMMARY, {"provider": provider, "today": today, "since": since, "until": since + timedelta(days=2)})
+        return cur.rowcount
+
+
+# ── requests by endpoint, lane and job (plan PM, PM-01-02, migration 0168) ──────────────────────────────────────────────────
+
+NO_LANE = "sin_carril"
+NO_JOB = "sin_trabajo"
+OTHER_ENDPOINT = "/otro"
+USAGE_FLUSH_SECONDS = 60.0
+"""The counts are added to the table at most this often per process (and on close): one statement a minute, not one per request."""
+USAGE_MAX_KEYS = 5_000
+"""A bound on what waits in memory (a day has a few dozen keys); a count beyond it is dropped and logged, never kept without limit."""
+
+PROVISIONAL_LANES: Mapping[str, str] = MappingProxyType({
+    # 1 directo
+    "live_match_capture": "directo", "live_odds_capture": "directo",
+    # 2 cuotas
+    "odds_capture": "cuotas", "odds_book_refresh": "cuotas", "final_prematch": "cuotas",
+    # 3 alineaciones
+    "prematch_lineups": "alineaciones", "lineup_watch": "alineaciones",
+    # 4 resultados
+    "results_sync": "resultados", "results_repair": "resultados", "post_match_detail": "resultados",
+    # 5 calendario y prioritarias
+    "fixtures_sync": "calendario", "catalogue_refresh": "calendario", "seasons_refresh": "calendario", "teams_sync": "calendario",
+    # 6 estadisticas y contexto
+    "context_refresh": "estadisticas_contexto", "context_due": "estadisticas_contexto",
+    "context_refresh_manual": "estadisticas_contexto",
+    # 7 jugadores y referencia
+    "reference_refresh": "referencia",
+    # 8 historicos
+    "historical_backfill": "historicos", "historical_odds_import": "historicos", "raw_backfill_season_stats": "historicos",
+    # 9 ampliacion
+    "league_probe": "ampliacion", "league_expansion": "ampliacion", "plan_probe": "ampliacion", "window_probe": "ampliacion",
+    "capacity_probe": "ampliacion",
+    # 10 reparacion
+    "reprocess_fixture_venues": "reparacion",
+})
+"""The lane of each job until PM-04-01 creates the lanes of the quota: the table of the plan (PLAN_MAESTRO, «Reparto del cupo en
+carriles»), by the ``job_type`` the ledger records. A job not listed counts under ``sin_carril``.
+
+CONTRACT FOR PM-04-01: a job that knows its lane says so with ``bind_usage_lane(name)`` (it wins over this table); this table may
+then be replaced by the configuration of the lanes. ``raw.provider_endpoint_usage`` keeps the ``job`` beside the ``lane``, so the
+history can be re-read under the new lanes without asking the provider again. A lane is ``[a-z0-9_]``, at most 40 characters."""
+
+_usage_job: ContextVar[str | None] = ContextVar("provider_usage_job", default=None)
+_usage_lane: ContextVar[str | None] = ContextVar("provider_usage_lane", default=None)
+_ENDPOINT = re.compile(r"/[a-z0-9_/-]{0,63}")
+_TAG_CHARS = re.compile(r"[^a-z0-9_]+")
+
+
+def _tag(value: str | None, *, limit: int) -> str | None:
+    if value is None:
+        return None
+    cleaned = _TAG_CHARS.sub("_", str(value).strip().lower()).strip("_")[:limit]
+    return cleaned or None
+
+
+def bind_usage_job(job: str | None) -> None:
+    """The job whose requests follow in this task (``RunLedger.open`` calls it with the run's ``job_type``)."""
+    _usage_job.set(_tag(job, limit=64))
+
+
+def bind_usage_lane(lane: str | None) -> None:
+    """The lane of the quota of the requests that follow in this task, when the job declares it (PM-04-01). None: from the job."""
+    _usage_lane.set(_tag(lane, limit=40))
+
+
+def current_usage_tags() -> tuple[str, str]:
+    """(lane, job) of a request made now in this task: the declared lane, or the provisional one of the job, or ``sin_carril``."""
+    job = _usage_job.get() or NO_JOB
+    lane = _usage_lane.get() or PROVISIONAL_LANES.get(job, NO_LANE)
+    return lane, job
+
+
+def normalise_endpoint(endpoint: str) -> str:
+    """``/fixtures`` for ``fixtures``, ``/Fixtures/`` or ``/fixtures?x=1``; ``/otro`` for anything that is not a plain path."""
+    path = "/" + str(endpoint).split("?", 1)[0].strip().lower().strip("/")
+    return path if _ENDPOINT.fullmatch(path) else OTHER_ENDPOINT
+
+
+_USAGE_UPSERT = """
+INSERT INTO raw.provider_endpoint_usage AS u (provider, usage_date, endpoint, lane, job, requests, first_at, updated_at)
+SELECT %(provider)s, v.day, v.endpoint, v.lane, v.job, v.n, %(at)s, %(at)s
+  FROM unnest(%(days)s::date[], %(endpoints)s::text[], %(lanes)s::text[], %(jobs)s::text[], %(counts)s::bigint[])
+       WITH ORDINALITY AS v(day, endpoint, lane, job, n, i)
+ ORDER BY v.i
+ON CONFLICT (provider, usage_date, endpoint, lane, job) DO UPDATE SET
+       requests = u.requests + EXCLUDED.requests, updated_at = EXCLUDED.updated_at
+"""
+"""One statement per flush. The keys arrive sorted, so two processes flushing the same keys lock them in the same order (no
+deadlock); each adds its own count to the row (the row lock serialises them)."""
+
+UsageKey = tuple[date, str, str, str]
+
+
+class EndpointUsageCounter:
+    """How many requests went to each endpoint, by UTC day, lane and job: counted in memory, added to ``raw.provider_endpoint_usage``
+    at most every ``flush_every`` seconds and on ``flush()`` (the client's close, the process's exit).
+
+    ``record`` is called by the client right after the daily budget accepted the request - the same place ``raw.provider_quota`` is
+    spent, every attempt included - so a day's sum here matches that ledger. What could be lost is what a killed process had not yet
+    flushed: at most a minute of its requests. Shared by every client of a process and by its threads (a lock); a flush that fails
+    keeps the counts for the next one and is logged, never raised: counting must not cost the request."""
+
+    def __init__(self, *, connect: Callable[[], psycopg.Connection], provider: str = DEFAULT_PROVIDER,
+                 flush_every: float = USAGE_FLUSH_SECONDS, max_keys: int = USAGE_MAX_KEYS,
+                 clock: Callable[[], float] = time.monotonic) -> None:
+        self._connect = connect
+        self._provider = provider
+        self._flush_every = flush_every
+        self._max_keys = max_keys
+        self._clock = clock
+        self._lock = threading.Lock()
+        self._pending: dict[UsageKey, int] = {}
+        self._last_flush = clock()
+        self.dropped = 0
+
+    @property
+    def pending_requests(self) -> int:
+        with self._lock:
+            return sum(self._pending.values())
+
+    def record(self, endpoint: str, calls: int = 1) -> None:
+        lane, job = current_usage_tags()
+        key = (now().date(), normalise_endpoint(endpoint), lane, job)
+        with self._lock:
+            if key in self._pending or len(self._pending) < self._max_keys:
+                self._pending[key] = self._pending.get(key, 0) + calls
+            else:
+                self.dropped += calls
+            due = self._clock() - self._last_flush >= self._flush_every
+        if due:
+            self.flush()
+
+    def _merge_back(self, batch: Mapping[UsageKey, int]) -> None:
+        with self._lock:
+            for key, n in batch.items():
+                if key in self._pending or len(self._pending) < self._max_keys:
+                    self._pending[key] = self._pending.get(key, 0) + n
+                else:
+                    self.dropped += n
+
+    def flush(self) -> int:
+        """Add what is pending to the table; returns the requests written (0 when nothing waited or the write failed)."""
+        with self._lock:
+            batch, self._pending = self._pending, {}
+            self._last_flush = self._clock()
+        if not batch:
+            return 0
+        keys = sorted(batch)
+        params = {"provider": self._provider, "at": now(), "days": [k[0] for k in keys], "endpoints": [k[1] for k in keys],
+                  "lanes": [k[2] for k in keys], "jobs": [k[3] for k in keys], "counts": [batch[k] for k in keys]}
+        try:
+            with self._connect() as conn, conn.cursor() as cur:
+                cur.execute(_USAGE_UPSERT, params)
+        except Exception as exc:  # the counts wait for the next flush; the request that triggered this one goes on
+            self._merge_back(batch)
+            log.warning("quota.endpoint_usage_not_kept", error=type(exc).__name__, pending=sum(batch.values()))
+            return 0
+        return sum(batch.values())

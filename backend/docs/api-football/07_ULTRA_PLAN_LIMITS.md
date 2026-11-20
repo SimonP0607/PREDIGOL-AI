@@ -20,6 +20,10 @@ subscription active  : True (ends 2026-10-29T04:31:07+00:00)
 | Suscripción | activa hasta **29 oct 2026** | `/status` |
 | Acceso a endpoints | **todos** | *"All our plans include all competitions and endpoints"* |
 
+*Nota del 20-nov-2026 (PM-00-03):* la página de precios leída el 19-nov-2026 muestra Free 0, Pro 16, Ultra **26** y Mega 36 USD al
+mes (sin IVA), prepago sin renovación automática y vuelta al plan gratuito al vencer. Si 26 es un precio nuevo o un descuento por
+duración solo lo dice el panel de la cuenta: discrepancia abierta, la decide el dueño (DM-09). Tabla viva en `config/api_plans.yaml`.
+
 ## 2. Restricciones que **desaparecen** al salir de Free
 
 | Restricción en Free | Estado en Ultra |

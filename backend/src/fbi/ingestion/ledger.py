@@ -23,6 +23,7 @@ from fbi.core.clock import now
 from fbi.core.logging import bind_run_id
 from fbi.ops import memwatch
 from fbi.providers.base import RawResponse
+from fbi.providers.quota import bind_usage_job
 
 log = structlog.get_logger(__name__)
 
@@ -126,6 +127,8 @@ class RunLedger:
             run_id: int = row[0]
         self._conn.commit()
         bind_run_id(str(run_id))
+        # The requests to the provider that follow in this task count under this job (plan PM, PM-01-02).
+        bind_usage_job(job_type)
         memwatch.WATCH.begin(f"run:{run_id}", job_type)  # PM-13-05: a no-op outside the worker
         log.info("run.opened", job_type=job_type, attempt=attempt, scheduled_for=scheduled_for)
         return run_id
