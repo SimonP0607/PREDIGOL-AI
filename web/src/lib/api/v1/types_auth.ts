@@ -92,6 +92,8 @@ export interface Me {
   availability?: boolean;
   /** The owner's console of the provider's requests by lane, endpoint and competition (plan PM, PM-04-05; FBI_USAGE_CONSOLE). */
   usage_console?: boolean;
+  /** The Match Center's shot funnel and its two zones (plan PM, PM-10-01, lámina I01; FBI_MATCH_SHOT_FUNNEL, off by default). */
+  match_shot_funnel?: boolean;
   /** A competition's page: tables, calendar, leaders and coverage (plan PM, PM-09-04; FBI_COMPETITION_PAGE). */
   competition_page?: boolean;
   /** The season tables computed from the regulation (plan PM, PM-09-01; FBI_COMPETITION_TABLES, off until DOC-008 and DM-14). */

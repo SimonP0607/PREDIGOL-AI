@@ -280,13 +280,23 @@ export function TeamsLegend({
   );
 }
 
-/** Home against away, one row per figure; the larger side of each pair is emphasised. */
+/**
+ * Home against away, one row per figure; the larger side of each pair is emphasised. By default each bar is the side's share of
+ * the larger of the two; a piece may measure them otherwise (`widthOf`: the funnel against the side's own shots, PM-10-01), name
+ * its rows itself (`labelOf`) and write a note beside each value (`noteOf`: «38 %»).
+ */
 export function StatBars({
   rows,
   className,
+  widthOf,
+  labelOf,
+  noteOf,
 }: {
   rows: readonly StatRow[];
   className?: string | undefined;
+  widthOf?: ((row: StatRow, side: "home" | "away") => number) | undefined;
+  labelOf?: ((row: StatRow) => string) | undefined;
+  noteOf?: ((row: StatRow, side: "home" | "away") => string | null) | undefined;
 }) {
   return (
     <ul className={cn("space-y-4", className)}>
@@ -296,34 +306,44 @@ export function StatBars({
         const h = r.home ?? 0;
         const a = r.away ?? 0;
         const max = Math.max(h, a);
-        const hPct = max > 0 ? (h / max) * 100 : 0;
-        const aPct = max > 0 ? (a / max) * 100 : 0;
+        const hPct = widthOf ? widthOf(r, "home") : max > 0 ? (h / max) * 100 : 0;
+        const aPct = widthOf ? widthOf(r, "away") : max > 0 ? (a / max) * 100 : 0;
         const lead = missing || h === a ? null : h > a ? "home" : "away";
-        const label = t(`match.stats.label.${r.key}`);
+        const label = labelOf ? labelOf(r) : t(`match.stats.label.${r.key}`);
+        const homeNote = noteOf ? noteOf(r, "home") : null;
+        const awayNote = noteOf ? noteOf(r, "away") : null;
         return (
           <li key={r.key} data-stat={r.key}>
             <div className="flex items-baseline justify-between gap-2">
               <span
                 className={cn(
-                  "numeric w-14 shrink-0 text-[0.8125rem] leading-tight",
+                  "numeric shrink-0 text-[0.8125rem] leading-tight",
+                  noteOf ? "min-w-14 whitespace-nowrap" : "w-14",
                   lead === "home"
                     ? "font-bold text-foreground"
                     : "font-medium text-muted-foreground",
                 )}
               >
                 {fmtStat(r.home, r.format)}
+                {homeNote ? (
+                  <span className="font-normal text-muted-foreground"> · {homeNote}</span>
+                ) : null}
               </span>
               <span className="min-w-0 text-center text-[0.8125rem] leading-tight text-muted-foreground">
                 {label}
               </span>
               <span
                 className={cn(
-                  "numeric w-14 shrink-0 text-right text-[0.8125rem] leading-tight",
+                  "numeric shrink-0 text-right text-[0.8125rem] leading-tight",
+                  noteOf ? "min-w-14 whitespace-nowrap" : "w-14",
                   lead === "away"
                     ? "font-bold text-foreground"
                     : "font-medium text-muted-foreground",
                 )}
               >
+                {awayNote ? (
+                  <span className="font-normal text-muted-foreground">{awayNote} · </span>
+                ) : null}
                 {fmtStat(r.away, r.format)}
               </span>
             </div>

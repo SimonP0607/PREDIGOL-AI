@@ -115,6 +115,7 @@ Todos nacen apagados y se encienden en `app.env` sin desplegar; el mapa completo
 | `FBI_ODDS_BY_MATCH`, `FBI_NAV_V2`, `FBI_SEARCH`, `FBI_PROFILES` | Plan maestro unificado (BE-045): Cuotas «Por partido», las barras nuevas, el buscador y los perfiles |
 | `FBI_AVAILABILITY` | Plan PM (C-16): los estados «información no disponible» y la consola de la matriz (`availability` en `/auth/me`) |
 | `FBI_USAGE_CONSOLE` | Plan PM (PM-04-05): la vista «Consumo del proveedor» de `/admin/operation` (`usage_console` en `/auth/me`) |
+| `FBI_MATCH_SHOT_FUNNEL` | Plan PM (PM-10-01, lámina I01): «Embudo de remate» y «Zona de remate · 2 zonas» en Estadísticas del partido (`match_shot_funnel` en `/auth/me`) |
 | `FBI_COMPETITION_PAGE`, `FBI_COMPETITION_DIRECTORY` | Plan PM (PM-09-04, PM-09-05): la página de competición y el directorio mundial (`competition_page`, `competition_directory` en `/auth/me`) |
 | `FBI_PLAYER_PROFILE_EXTRAS`, `FBI_WHAT_IF` | Plan PM (PM-08-06, PM-09-03): el perfil de jugador con los datos nuevos y la calculadora «¿Qué pasa si…?» (firma DM-14) (`player_profile_extras`, `what_if`; `competition_tables` dice si `FBI_COMPETITION_TABLES` está encendido) |
 | `FBI_NEWS_V2`, `FBI_MATCH_INTELLIGENCE` | Plan maestro unificado: Noticias de las maquetas 08 a 10 (abogado y datos) y la pestaña «Intelligence» (el dueño) |

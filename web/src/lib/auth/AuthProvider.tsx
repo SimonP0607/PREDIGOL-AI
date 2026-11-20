@@ -276,6 +276,15 @@ export function useUsageConsoleOn(): boolean {
 }
 
 /**
+ * The Match Center's new pieces of plan PM, block 10, each behind its own switch (off by default and outside the provider):
+ * the shot funnel and its two zones (PM-10-01; FBI_MATCH_SHOT_FUNNEL).
+ */
+export function useMatchVizSwitches(): { shotFunnel: boolean } {
+  const u = useContext(AuthContext)?.user;
+  return { shotFunnel: u?.match_shot_funnel === true };
+}
+
+/**
  * The readers' pages of plan PM, wave 4 (PM-09-04, PM-09-05, PM-08-06, PM-09-03), each behind its switch: off outside the provider
  * and while the API says nothing.
  */

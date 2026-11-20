@@ -117,6 +117,8 @@ class Me(Contract):
                                                                "EA-501; FBI_PARLAY_MARKETS_V2, off by default).")
     player_markets: bool = Field(default=False, description="The players' markets of a match (plan EA, C-15; "
                                                             "FBI_PLAYER_MARKETS, off by default).")
+    match_shot_funnel: bool = Field(default=False, description="The Match Center's shot funnel and its two shot zones (plan PM, "
+                                                               "PM-10-01, lámina I01; FBI_MATCH_SHOT_FUNNEL, off by default).")
     availability: bool = Field(default=False, description="What PrediGol has per competition, datum and market (plan PM, C-16; "
                                                           "FBI_AVAILABILITY, off by default): the states «información no "
                                                           "disponible» and the owner's console of the matrix only then.")

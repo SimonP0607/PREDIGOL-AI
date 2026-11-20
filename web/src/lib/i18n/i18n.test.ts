@@ -13,6 +13,7 @@ import "@/product/shared/availabilityText";
 import "@/components/analytics/evidenceText";
 import "@/admin/usageText";
 import "@/product/competitions/text";
+import "@/product/match/stats/matchvizText";
 
 function keys(node: Catalog, prefix = ""): string[] {
   return Object.entries(node).flatMap(([k, v]) =>
