@@ -6,8 +6,8 @@ protocols that can be signed and the rules of a signature; ``fbi.protosign.store
 (revision 0166, append-only).
 
     the catalog      every LAB protocol of ``fbi.research.protocol`` (its fingerprint, pinned by ``tests/unit/test_research_protocols.py``)
-                     and the chronicle's own records of ``fbi.protosign.records`` (AD-F04, AD-F05, AD-F06), each with the fingerprint of
-                     its canonical record
+                     and the own records of ``fbi.protosign.records`` (the chronicle's AD-F04, AD-F05, AD-F06 and the retirement of
+                     ``review-v2``, AD-D11), each with the fingerprint of its canonical record
     a signature      ONE protocol in ONE fingerprint: key, version, the fingerprint signed, the owner's reason, ``decided_by = 'owner'``,
                      the hour, the code version
     in force         a signature counts only for the fingerprint the code has NOW: a protocol that changed (a new fingerprint) needs a new
@@ -32,7 +32,7 @@ VERSION: Final = "protocol-signatures-v1"
 LAB: Final = lab.VERSION
 """``lab-protocol-v1``: a protocol of ``fbi.research.protocol``."""
 OWN: Final = records.FRAMEWORK
-"""``own-record-v1``: a protocol that is the record of its own module (the chronicle's)."""
+"""``own-record-v1``: a protocol that is the record of its own module (the chronicle's, and the retirement of ``review-v2``)."""
 FRAMEWORKS: Final = (LAB, OWN)
 DECIDED_BY: Final = "owner"
 REASON_MIN: Final = 10
@@ -72,7 +72,7 @@ def _own(r: Mapping[str, Any]) -> Signable:
 
 
 def catalog() -> dict[str, Signable]:
-    """Every protocol that can be signed, by key: the LAB ones in their order of registration, then the chronicle's."""
+    """Every protocol that can be signed, by key: the LAB ones in their order of registration, then the own records."""
     out = {k: _lab(p) for k, p in lab.PROTOCOLS.items()}
     for r in records.RECORDS:
         if str(r["key"]) in out:

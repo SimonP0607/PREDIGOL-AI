@@ -56,6 +56,10 @@ EXPECTED = {
         "predigol-audits: the forced command of the read-only audits key (plan PICKS, F1/F2/F6)",
         37,
     ),
+    "test_restore_test.sh": (
+        "restore-test.sh: each key table between the smaller and the larger of its two counts (OPS-011)",
+        25,
+    ),
 }
 
 needs_tools = pytest.mark.skipif(

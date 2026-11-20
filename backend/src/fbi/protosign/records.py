@@ -1,11 +1,13 @@
-"""The chronicle's own protocols, as records that can be signed (IA-143): AD-F04, AD-F05 and AD-F06 of IA-117..IA-119.
+"""The own protocols, as records that can be signed (IA-143): AD-F04, AD-F05 and AD-F06 of IA-117..IA-119, and AD-D11 of IA-125 (IA-145).
 
 They are not ``fbi.research.protocol`` protocols: each is the record of the module that applies it - the thresholds of the stock phrases
 (``repeat-check-v1``, ``fbi.chronicle.repetition``), the preregistered comparison of the retirement of the duplicated texts
-(``retire-compare-v1``, ``fbi.chronicle.retire``) and the human review by sample (``chronicle-protocol-v1``, ``fbi.chronicle.protocol``).
-Their figures are written out HERE because a reader that may not import the chronicle (the console, through the import cycle of
-``tests/unit/test_architecture.py``) needs their fingerprint; ``tests/unit/test_protocol_signatures.py`` holds every figure equal to the
-constant the chronicle applies, and pins every fingerprint. Changing a threshold is therefore three visible changes: the module, this record
+(``retire-compare-v1``, ``fbi.chronicle.retire``), the human review by sample (``chronicle-protocol-v1``, ``fbi.chronicle.protocol``) and
+the preregistered non-inferiority comparison of the retirement of ``review-v2`` (``review-retire-v1``, ``fbi.ai.review_retirement``: its
+``PROTOCOL`` word for word and the control of its step ``sample``).
+Their figures are written out HERE because a reader that may not import the chronicle or the AI layer (the console, through the import
+cycle of ``tests/unit/test_architecture.py``) needs their fingerprint; ``tests/unit/test_protocol_signatures.py`` holds every figure equal
+to the constant its module applies, and pins every fingerprint. Changing a threshold is therefore three visible changes: the module, this record
 and its pinned fingerprint - and the owner's signature of the old fingerprint stops counting.
 
 The fingerprint is the SHA-256 of the record's canonical JSON (sorted keys, no spaces, UTF-8 kept), the same canonical form as
@@ -96,7 +98,48 @@ F06: Final[Mapping[str, Any]] = {
     ),
 }
 
-RECORDS: Final[tuple[Mapping[str, Any], ...]] = (F04, F05, F06)
+D11: Final[Mapping[str, Any]] = {
+    "key": "AD-D11",
+    "version": "review-retire-v1",
+    "framework": FRAMEWORK,
+    "piece": "IA-125",
+    "where": "fbi/ai/review_retirement.py",
+    "title": "Retirada de review-v2: comparación preregistrada de no inferioridad frente al cierre",
+    "registered_on": "2026-11-17",
+    "rule": {
+        "protocol": {
+            "version": "review-retire-v1",
+            "status": "propuesto: lo firma el dueño antes de mirar la ventana",
+            "population": "las selecciones que review-v2 revisó con modelo (ai.pick_reviews, engine llm, status ok) y que decision-v2 "
+                          "decidió en sombra antes del saque, con su evaluación eval-sel-v1 y un precio de cierre (clv-v1)",
+            "reference": "review-v2: la selección se queda cuando la revisión combinada más reciente antes del saque es APPROVE",
+            "new_path": "decision-v2 + reglas + Council reducido: la selección se queda cuando decision-v2 la toma (taken de eval-sel-v1)",
+            "metric": "diferencia pareada, por selección examinada, del valor frente al cierre de lo que cada camino deja pasar: "
+                      "clv x (se queda en el camino nuevo - se queda en review-v2)",
+            "interval": "IC95 bilateral por remuestreo de días enteros de Bogotá (2.000 réplicas, semilla fija)",
+            "margin": "0.005",
+            "rule": "NO_INFERIOR si el extremo inferior del IC95 es mayor o igual que -margen; INFERIOR si no; INSUFICIENTE bajo la muestra",
+            "min_selections": 300,
+            "min_days": 14,
+            "seed": 20261117,
+            "replicates": 2000,
+            "window": "las 4 semanas siguientes a la firma; nada anterior a la firma cuenta",
+        },
+        "control": {"share": "0.20", "salt": "review-v2-control-v1", "buckets": 10000},
+    },
+    "says": (
+        "Sobre las mismas selecciones (las que review-v2 revisó con modelo y decision-v2 decidió en sombra antes del saque, con su "
+        "evaluación y su precio de cierre) se compara lo que cada camino deja pasar: la diferencia pareada del CLV por selección "
+        "examinada entre el camino nuevo (decision-v2, reglas y Council reducido) y review-v2. Intervalo del 95 % por remuestreo de días "
+        "enteros de Bogotá (2.000 réplicas, semilla 20261117). NO_INFERIOR si su extremo inferior es mayor o igual que -0,005 (medio "
+        "punto de CLV); INFERIOR si no; con menos de 300 selecciones o de 14 días, INSUFICIENTE. Cuenta solo la ventana de las 4 semanas "
+        "siguientes a la firma. En el paso sample el modelo sigue revisando un 20 % fijo de las selecciones (sal review-v2-control-v1) "
+        "como grupo de control. Firmar el protocolo no retira nada ni mueve FBI_REVIEW_V2: cada paso (no_opus, sample, off) es un cambio "
+        "de interruptor que hace y firma el dueño, y no se borra ninguna fila de ai.pick_reviews."
+    ),
+}
+
+RECORDS: Final[tuple[Mapping[str, Any], ...]] = (F04, F05, F06, D11)
 
 
 def canonical(record: Mapping[str, Any]) -> str:
@@ -112,4 +155,4 @@ def stock_list_hash(patterns: Mapping[str, str]) -> str:
     return hashlib.sha256(canonical(dict(patterns)).encode("utf-8")).hexdigest()
 
 
-__all__ = ["F04", "F05", "F06", "FRAMEWORK", "RECORDS", "STOCK_LIST_SHA256", "canonical", "fingerprint", "stock_list_hash"]
+__all__ = ["D11", "F04", "F05", "F06", "FRAMEWORK", "RECORDS", "STOCK_LIST_SHA256", "canonical", "fingerprint", "stock_list_hash"]

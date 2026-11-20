@@ -32,6 +32,10 @@ from typing import Any, Final, Literal
 import numpy as np
 
 VERSION: Final = "review-retire-v1"
+KEY: Final = "AD-D11"
+"""Its key in the register of the owner's signatures (IA-145: ``fbi.protosign.records.D11``, ``python -m scripts.ia_protocols show --key
+AD-D11``). The record there is ``PROTOCOL`` word for word and the control of step ``sample``; ``tests/unit/test_protocol_signatures.py``
+holds them equal."""
 Step = Literal["on", "no_opus", "sample", "off"]
 STEPS: Final[tuple[Step, ...]] = ("on", "no_opus", "sample", "off")
 DEFAULT: Final[Step] = "on"
@@ -226,6 +230,6 @@ def effect_of_removal(reviews: Iterable[Review]) -> dict[str, Any]:
             "lowered": sum(k for (a, b), k in moves.items() if ORDER.get(b, 3) < ORDER.get(a, 3))}
 
 
-__all__ = ["BUCKETS", "DEFAULT", "MARGIN", "MIN_DAYS", "MIN_SELECTIONS", "PROTOCOL", "SAMPLE_SALT", "SAMPLE_SHARE", "STEPS", "VERDICTS",
+__all__ = ["BUCKETS", "DEFAULT", "KEY", "MARGIN", "MIN_DAYS", "MIN_SELECTIONS", "PROTOCOL", "SAMPLE_SALT", "SAMPLE_SHARE", "STEPS", "VERDICTS",
            "VERSION", "Pair", "Review", "Step", "bucket", "carries", "combined", "compare", "effect_of_removal", "escalates", "in_sample",
            "model_reviews", "step_of", "tier_for"]

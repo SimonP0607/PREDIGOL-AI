@@ -50,6 +50,10 @@ El fichero de reglas no se corrige a mano: sus versiones se añaden, no se reesc
 del 25-ago-2026 (V1: octavos y cuartos a partido único) que sustituye a la del 17-mar-2026 (V5: a ida y vuelta); la Copa no está
 codificada, así que hoy no cambia ninguna regla. Fuente: verificación del 19-nov-2026 del Plan Maestro PM.
 
+*Nota del 20-nov-2026 (PM-09-02, DOC-008).* Antes de publicar una tabla de reclasificación, de cupos o de descenso de la Liga
+BetPlay 2026, una persona coteja los artículos 27 a 34 con el PDF oficial (huella SHA-256 `8b377600…b5b0c2`): paquete y acta en
+[`DOC_008_COTEJO_REGLAMENTO_DIMAYOR_2026.md`](DOC_008_COTEJO_REGLAMENTO_DIMAYOR_2026.md). Pendiente del dueño.
+
 **No codificado, con motivo**: Copa Libertadores (el CDN oficial de CONMEBOL rechazó la descarga, HTTP 403; el cambio de desempate
 de 2026 solo se conoce por prensa y la prensa no es fuente de una regla), las otras 71 ligas y las 54 copas restantes (pendientes,
 sin reglamento leído). Temporadas no cubiertas responden también «no codificado»: Ligue 1 2026/27 (reglamento no localizado),

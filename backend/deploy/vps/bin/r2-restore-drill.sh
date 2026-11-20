@@ -115,7 +115,9 @@ counts_json='{}'
 while read -r t; do
   n="$(q "SELECT count(*) FROM $t")" || n=-1
   lo="$(jq -r --arg t "$t" '.counts_before[$t]' "$work/$name.json")"; hi="$(jq -r --arg t "$t" '.counts_after[$t]' "$work/$name.json")"
-  if (( n < lo || n > hi )); then echo "  $t: $n outside [$lo, $hi]"; fail_counts=1; else echo "  $t: $n ok"; fi
+  # OPS-011: between the smaller and the larger of the two (a table can lose rows while the dump runs), as in restore-test.sh.
+  mn=$lo; mx=$hi; if [[ "$lo" =~ ^[0-9]+$ && "$hi" =~ ^[0-9]+$ ]] && (( hi < lo )); then mn=$hi; mx=$lo; fi
+  if (( n < mn || n > mx )); then echo "  $t: $n outside [$mn, $mx]"; fail_counts=1; else echo "  $t: $n ok"; fi
   counts_json="$(jq -c --arg t "$t" --argjson n "$n" --argjson lo "$lo" --argjson hi "$hi" '. + {($t): {restored: $n, before: $lo, after: $hi}}' <<< "$counts_json")"
 done < <(jq -r '.counts_before | keys[]' "$work/$name.json")
 t_end="$(now)"
