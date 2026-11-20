@@ -262,6 +262,14 @@ export function useStatsSwitches(): {
   };
 }
 
+/**
+ * Whether C-16 «Disponibilidad» is on (plan PM, PM-14-01; FBI_AVAILABILITY): the states «información no disponible» and the
+ * owner's console of the matrix are drawn only then. Safe outside the provider (a component drawn alone in a test): off.
+ */
+export function useAvailabilityOn(): boolean {
+  return useContext(AuthContext)?.user?.availability === true;
+}
+
 /** The `preview` value for product queries: "shadow" only while a SUPER_ADMIN has the shadow preview on. */
 export function usePreviewParam(): "shadow" | undefined {
   return useAuth().shadowPreview ? "shadow" : undefined;

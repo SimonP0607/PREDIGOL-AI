@@ -8,6 +8,9 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { CATALOGS, type Catalog } from "./catalogs";
 import { hasKey, setLocale, translate } from "./index";
+// The namespaces added when their screen loads (`addCatalog`): imported here so every check below sees them.
+import "@/product/shared/availabilityText";
+import "@/components/analytics/evidenceText";
 
 function keys(node: Catalog, prefix = ""): string[] {
   return Object.entries(node).flatMap(([k, v]) =>

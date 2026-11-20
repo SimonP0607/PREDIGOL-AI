@@ -1,0 +1,235 @@
+# Prioridad editorial de cada competición (Plan Maestro PM, anexo A aprobado por el dueño el 19-nov-2026, columna
+# «prioridad_editorial»; 226 competiciones con id de API-Football: las 11 que el proveedor no tiene no entran). La lee
+# fbi.coverage.depth (PM-04-04, BE-063) para decidir la profundidad de la referencia de cada competición.
+# P0 Colombia · P1 internacionales · P2 países prioritarios · P3 resto actual · P4 pirámide inglesa 5-7.
+# Una competición que no está aquí no tiene prioridad y su profundidad la decide solo su nivel en la matriz.
+# Se cambia por PR: es una decisión editorial del dueño, no un dato medido. «seguida»: la seguía PrediGol el 19-nov-2026.
+version: 1
+fuente: anexo A del Plan Maestro PM (A_matriz_mundial_competiciones.csv, 19-nov-2026)
+competiciones:
+  239: {prioridad: P0, seguida: true, nombre: "Primera A · Colombia"}
+  240: {prioridad: P0, seguida: true, nombre: "Primera B · Colombia"}
+  241: {prioridad: P0, seguida: false, nombre: "Copa Colombia · Colombia"}
+  712: {prioridad: P0, seguida: false, nombre: "Liga Femenina · Colombia"}
+  713: {prioridad: P0, seguida: false, nombre: "Superliga · Colombia"}
+  1: {prioridad: P1, seguida: true, nombre: "World Cup · World"}
+  2: {prioridad: P1, seguida: true, nombre: "UEFA Champions League · World"}
+  3: {prioridad: P1, seguida: true, nombre: "UEFA Europa League · World"}
+  4: {prioridad: P1, seguida: true, nombre: "Euro Championship · World"}
+  5: {prioridad: P1, seguida: true, nombre: "UEFA Nations League · World"}
+  6: {prioridad: P1, seguida: true, nombre: "Africa Cup of Nations · World"}
+  7: {prioridad: P1, seguida: true, nombre: "Asian Cup · World"}
+  9: {prioridad: P1, seguida: true, nombre: "Copa America · World"}
+  10: {prioridad: P1, seguida: true, nombre: "Friendlies · World"}
+  11: {prioridad: P1, seguida: true, nombre: "CONMEBOL Sudamericana · World"}
+  12: {prioridad: P1, seguida: true, nombre: "CAF Champions League · World"}
+  13: {prioridad: P1, seguida: true, nombre: "CONMEBOL Libertadores · World"}
+  15: {prioridad: P1, seguida: true, nombre: "FIFA Club World Cup · World"}
+  16: {prioridad: P1, seguida: true, nombre: "CONCACAF Champions League · World"}
+  17: {prioridad: P1, seguida: true, nombre: "AFC Champions League Elite · World"}
+  18: {prioridad: P1, seguida: true, nombre: "AFC Champions League Two · World"}
+  20: {prioridad: P1, seguida: true, nombre: "CAF Confederation Cup · World"}
+  22: {prioridad: P1, seguida: true, nombre: "CONCACAF Gold Cup · World"}
+  27: {prioridad: P1, seguida: false, nombre: "OFC Champions League · World"}
+  29: {prioridad: P1, seguida: true, nombre: "World Cup - Qualification Africa · World"}
+  30: {prioridad: P1, seguida: true, nombre: "World Cup - Qualification Asia · World"}
+  31: {prioridad: P1, seguida: true, nombre: "World Cup - Qualification CONCACAF · World"}
+  32: {prioridad: P1, seguida: true, nombre: "World Cup - Qualification Europe · World"}
+  33: {prioridad: P1, seguida: true, nombre: "World Cup - Qualification Oceania · World"}
+  34: {prioridad: P1, seguida: true, nombre: "World Cup - Qualification South America · World"}
+  35: {prioridad: P1, seguida: false, nombre: "Asian Cup - Qualification · World"}
+  36: {prioridad: P1, seguida: false, nombre: "Africa Cup of Nations - Qualification · World"}
+  37: {prioridad: P1, seguida: true, nombre: "World Cup - Qualification Intercontinental Play-offs · World"}
+  531: {prioridad: P1, seguida: true, nombre: "UEFA Super Cup · World"}
+  533: {prioridad: P1, seguida: true, nombre: "CAF Super Cup · World"}
+  536: {prioridad: P1, seguida: true, nombre: "CONCACAF Nations League · World"}
+  541: {prioridad: P1, seguida: false, nombre: "CONMEBOL Recopa · World"}
+  806: {prioridad: P1, seguida: false, nombre: "OFC Nations Cup · World"}
+  808: {prioridad: P1, seguida: false, nombre: "CONCACAF Nations League - Qualification · World"}
+  848: {prioridad: P1, seguida: true, nombre: "UEFA Europa Conference League · World"}
+  858: {prioridad: P1, seguida: false, nombre: "CONCACAF Gold Cup - Qualification · World"}
+  960: {prioridad: P1, seguida: false, nombre: "Euro Championship - Qualification · World"}
+  1132: {prioridad: P1, seguida: false, nombre: "AFC Challenge League · World"}
+  1168: {prioridad: P1, seguida: true, nombre: "FIFA Intercontinental Cup · World"}
+  1186: {prioridad: P1, seguida: false, nombre: "FIFA Club World Cup - Play-In · World"}
+  1214: {prioridad: P1, seguida: false, nombre: "OFC Pro League · World"}
+  39: {prioridad: P2, seguida: true, nombre: "Premier League · England"}
+  40: {prioridad: P2, seguida: true, nombre: "Championship · England"}
+  41: {prioridad: P2, seguida: true, nombre: "League One · England"}
+  42: {prioridad: P2, seguida: true, nombre: "League Two · England"}
+  45: {prioridad: P2, seguida: true, nombre: "FA Cup · England"}
+  46: {prioridad: P2, seguida: true, nombre: "EFL Trophy · England"}
+  48: {prioridad: P2, seguida: true, nombre: "League Cup · England"}
+  61: {prioridad: P2, seguida: true, nombre: "Ligue 1 · France"}
+  62: {prioridad: P2, seguida: true, nombre: "Ligue 2 · France"}
+  65: {prioridad: P2, seguida: false, nombre: "Coupe de la Ligue · France"}
+  66: {prioridad: P2, seguida: true, nombre: "Coupe de France · France"}
+  71: {prioridad: P2, seguida: true, nombre: "Serie A · Brazil"}
+  72: {prioridad: P2, seguida: true, nombre: "Serie B · Brazil"}
+  73: {prioridad: P2, seguida: true, nombre: "Copa Do Brasil · Brazil"}
+  78: {prioridad: P2, seguida: true, nombre: "Bundesliga · Germany"}
+  79: {prioridad: P2, seguida: true, nombre: "2. Bundesliga · Germany"}
+  81: {prioridad: P2, seguida: true, nombre: "DFB Pokal · Germany"}
+  94: {prioridad: P2, seguida: true, nombre: "Primeira Liga · Portugal"}
+  95: {prioridad: P2, seguida: true, nombre: "Segunda Liga · Portugal"}
+  96: {prioridad: P2, seguida: true, nombre: "Taça de Portugal · Portugal"}
+  97: {prioridad: P2, seguida: true, nombre: "Taça da Liga · Portugal"}
+  98: {prioridad: P2, seguida: true, nombre: "J1 League · Japan"}
+  99: {prioridad: P2, seguida: true, nombre: "J2 League · Japan"}
+  101: {prioridad: P2, seguida: false, nombre: "J-League Cup · Japan"}
+  102: {prioridad: P2, seguida: false, nombre: "Emperor Cup · Japan"}
+  119: {prioridad: P2, seguida: true, nombre: "Superliga · Denmark"}
+  120: {prioridad: P2, seguida: false, nombre: "1. Division · Denmark"}
+  121: {prioridad: P2, seguida: false, nombre: "DBU Pokalen · Denmark"}
+  128: {prioridad: P2, seguida: true, nombre: "Liga Profesional Argentina · Argentina"}
+  129: {prioridad: P2, seguida: false, nombre: "Primera Nacional · Argentina"}
+  130: {prioridad: P2, seguida: false, nombre: "Copa Argentina · Argentina"}
+  135: {prioridad: P2, seguida: true, nombre: "Serie A · Italy"}
+  136: {prioridad: P2, seguida: true, nombre: "Serie B · Italy"}
+  137: {prioridad: P2, seguida: true, nombre: "Coppa Italia · Italy"}
+  140: {prioridad: P2, seguida: true, nombre: "La Liga · Spain"}
+  141: {prioridad: P2, seguida: true, nombre: "Segunda División · Spain"}
+  143: {prioridad: P2, seguida: true, nombre: "Copa del Rey · Spain"}
+  144: {prioridad: P2, seguida: true, nombre: "Jupiler Pro League · Belgium"}
+  145: {prioridad: P2, seguida: true, nombre: "Challenger Pro League · Belgium"}
+  147: {prioridad: P2, seguida: false, nombre: "Cup · Belgium"}
+  179: {prioridad: P2, seguida: true, nombre: "Premiership · Scotland"}
+  180: {prioridad: P2, seguida: true, nombre: "Championship · Scotland"}
+  181: {prioridad: P2, seguida: false, nombre: "FA Cup · Scotland"}
+  182: {prioridad: P2, seguida: false, nombre: "Challenge Cup · Scotland"}
+  185: {prioridad: P2, seguida: false, nombre: "League Cup · Scotland"}
+  188: {prioridad: P2, seguida: true, nombre: "A-League · Australia"}
+  203: {prioridad: P2, seguida: true, nombre: "Süper Lig · Turkey"}
+  204: {prioridad: P2, seguida: true, nombre: "1. Lig · Turkey"}
+  206: {prioridad: P2, seguida: true, nombre: "Türkiye Kupası · Turkey"}
+  218: {prioridad: P2, seguida: true, nombre: "Bundesliga · Austria"}
+  219: {prioridad: P2, seguida: true, nombre: "2. Liga · Austria"}
+  220: {prioridad: P2, seguida: false, nombre: "Cup · Austria"}
+  233: {prioridad: P2, seguida: true, nombre: "Premier League · Egypt"}
+  253: {prioridad: P2, seguida: true, nombre: "Major League Soccer · USA"}
+  255: {prioridad: P2, seguida: true, nombre: "USL Championship · USA"}
+  257: {prioridad: P2, seguida: false, nombre: "US Open Cup · USA"}
+  262: {prioridad: P2, seguida: true, nombre: "Liga MX · Mexico"}
+  263: {prioridad: P2, seguida: false, nombre: "Liga de Expansión MX · Mexico"}
+  264: {prioridad: P2, seguida: false, nombre: "Copa MX · Mexico"}
+  265: {prioridad: P2, seguida: true, nombre: "Primera División · Chile"}
+  266: {prioridad: P2, seguida: false, nombre: "Primera B · Chile"}
+  267: {prioridad: P2, seguida: false, nombre: "Copa Chile · Chile"}
+  268: {prioridad: P2, seguida: false, nombre: "Primera División · Uruguay"}
+  269: {prioridad: P2, seguida: false, nombre: "Segunda División · Uruguay"}
+  292: {prioridad: P2, seguida: true, nombre: "K League 1 · South-Korea"}
+  293: {prioridad: P2, seguida: false, nombre: "K League 2 · South-Korea"}
+  294: {prioridad: P2, seguida: false, nombre: "FA Cup · South-Korea"}
+  301: {prioridad: P2, seguida: true, nombre: "Pro League · United-Arab-Emirates"}
+  302: {prioridad: P2, seguida: false, nombre: "League Cup · United-Arab-Emirates"}
+  303: {prioridad: P2, seguida: false, nombre: "Division 1 · United-Arab-Emirates"}
+  304: {prioridad: P2, seguida: false, nombre: "Liga Panameña de Fútbol · Panama"}
+  305: {prioridad: P2, seguida: true, nombre: "Stars League · Qatar"}
+  306: {prioridad: P2, seguida: false, nombre: "Second Division · Qatar"}
+  307: {prioridad: P2, seguida: true, nombre: "Pro League · Saudi-Arabia"}
+  308: {prioridad: P2, seguida: false, nombre: "Division 1 · Saudi-Arabia"}
+  323: {prioridad: P2, seguida: true, nombre: "Indian Super League · India"}
+  324: {prioridad: P2, seguida: false, nombre: "I-League · India"}
+  504: {prioridad: P2, seguida: true, nombre: "King's Cup · Saudi-Arabia"}
+  517: {prioridad: P2, seguida: false, nombre: "Trofeo de Campeones de la Superliga · Argentina"}
+  519: {prioridad: P2, seguida: false, nombre: "Super Cup · Belgium"}
+  526: {prioridad: P2, seguida: true, nombre: "Trophée des Champions · France"}
+  527: {prioridad: P2, seguida: false, nombre: "Super Cup · Chile"}
+  528: {prioridad: P2, seguida: true, nombre: "Community Shield · England"}
+  529: {prioridad: P2, seguida: true, nombre: "Super Cup · Germany"}
+  539: {prioridad: P2, seguida: false, nombre: "Super Cup · Egypt"}
+  545: {prioridad: P2, seguida: false, nombre: "AIFF Super Cup · India"}
+  547: {prioridad: P2, seguida: true, nombre: "Super Cup · Italy"}
+  548: {prioridad: P2, seguida: false, nombre: "Super Cup · Japan"}
+  550: {prioridad: P2, seguida: false, nombre: "Super Cup · Portugal"}
+  551: {prioridad: P2, seguida: true, nombre: "Super Cup · Turkey"}
+  556: {prioridad: P2, seguida: true, nombre: "Super Cup · Spain"}
+  560: {prioridad: P2, seguida: false, nombre: "Presidents Cup · United-Arab-Emirates"}
+  632: {prioridad: P2, seguida: false, nombre: "Supercopa do Brasil · Brazil"}
+  677: {prioridad: P2, seguida: false, nombre: "QSL Cup · Qatar"}
+  714: {prioridad: P2, seguida: true, nombre: "Cup · Egypt"}
+  810: {prioridad: P2, seguida: false, nombre: "Super Copa · Argentina"}
+  824: {prioridad: P2, seguida: false, nombre: "Emir Cup · Qatar"}
+  825: {prioridad: P2, seguida: false, nombre: "Qatar Cup · Qatar"}
+  826: {prioridad: P2, seguida: false, nombre: "Super Cup · Saudi-Arabia"}
+  842: {prioridad: P2, seguida: false, nombre: "Super Copa · Uruguay"}
+  857: {prioridad: P2, seguida: false, nombre: "Campeón de Campeones · Mexico"}
+  874: {prioridad: P2, seguida: false, nombre: "Australia Cup · Australia"}
+  887: {prioridad: P2, seguida: false, nombre: "Second League · Egypt"}
+  895: {prioridad: P2, seguida: false, nombre: "League Cup · Egypt"}
+  896: {prioridad: P2, seguida: false, nombre: "Super Cup · United-Arab-Emirates"}
+  930: {prioridad: P2, seguida: false, nombre: "Copa Uruguay · Uruguay"}
+  1032: {prioridad: P2, seguida: false, nombre: "Copa de la Liga Profesional · Argentina"}
+  1178: {prioridad: P2, seguida: false, nombre: "Super Copa International · Argentina"}
+  1202: {prioridad: P2, seguida: false, nombre: "Australian Championship · Australia"}
+  38: {prioridad: P3, seguida: true, nombre: "UEFA U21 Championship · World"}
+  44: {prioridad: P3, seguida: true, nombre: "FA WSL · England"}
+  63: {prioridad: P3, seguida: false, nombre: "Ligue 3 · France"}
+  64: {prioridad: P3, seguida: true, nombre: "Feminine Division 1 · France"}
+  80: {prioridad: P3, seguida: true, nombre: "3. Liga · Germany"}
+  82: {prioridad: P3, seguida: true, nombre: "Frauen Bundesliga · Germany"}
+  88: {prioridad: P3, seguida: true, nombre: "Eredivisie · Netherlands"}
+  89: {prioridad: P3, seguida: true, nombre: "Eerste Divisie · Netherlands"}
+  90: {prioridad: P3, seguida: true, nombre: "KNVB Beker · Netherlands"}
+  100: {prioridad: P3, seguida: true, nombre: "J3 League · Japan"}
+  103: {prioridad: P3, seguida: true, nombre: "Eliteserien · Norway"}
+  104: {prioridad: P3, seguida: false, nombre: "1. Division · Norway"}
+  105: {prioridad: P3, seguida: false, nombre: "NM Cupen · Norway"}
+  106: {prioridad: P3, seguida: true, nombre: "Ekstraklasa · Poland"}
+  107: {prioridad: P3, seguida: false, nombre: "I Liga · Poland"}
+  108: {prioridad: P3, seguida: false, nombre: "Cup · Poland"}
+  113: {prioridad: P3, seguida: true, nombre: "Allsvenskan · Sweden"}
+  114: {prioridad: P3, seguida: true, nombre: "Superettan · Sweden"}
+  115: {prioridad: P3, seguida: false, nombre: "Svenska Cupen · Sweden"}
+  122: {prioridad: P3, seguida: false, nombre: "2. Division · Denmark"}
+  139: {prioridad: P3, seguida: true, nombre: "Serie A Women · Italy"}
+  169: {prioridad: P3, seguida: true, nombre: "Super League · China"}
+  172: {prioridad: P3, seguida: true, nombre: "First League · Bulgaria"}
+  183: {prioridad: P3, seguida: true, nombre: "League One · Scotland"}
+  197: {prioridad: P3, seguida: true, nombre: "Super League 1 · Greece"}
+  207: {prioridad: P3, seguida: true, nombre: "Super League · Switzerland"}
+  210: {prioridad: P3, seguida: true, nombre: "HNL · Croatia"}
+  235: {prioridad: P3, seguida: true, nombre: "Premier League · Russia"}
+  242: {prioridad: P3, seguida: true, nombre: "Liga Pro · Ecuador"}
+  244: {prioridad: P3, seguida: true, nombre: "Veikkausliiga · Finland"}
+  250: {prioridad: P3, seguida: true, nombre: "Division Profesional - Apertura · Paraguay"}
+  252: {prioridad: P3, seguida: true, nombre: "Division Profesional - Clausura · Paraguay"}
+  254: {prioridad: P3, seguida: true, nombre: "NWSL Women · USA"}
+  271: {prioridad: P3, seguida: true, nombre: "NB I · Hungary"}
+  281: {prioridad: P3, seguida: true, nombre: "Primera División · Peru"}
+  282: {prioridad: P3, seguida: false, nombre: "Segunda División · Peru"}
+  283: {prioridad: P3, seguida: true, nombre: "Liga I · Romania"}
+  284: {prioridad: P3, seguida: false, nombre: "Liga II · Romania"}
+  286: {prioridad: P3, seguida: true, nombre: "Super Liga · Serbia"}
+  287: {prioridad: P3, seguida: false, nombre: "Prva Liga · Serbia"}
+  288: {prioridad: P3, seguida: true, nombre: "Premier Soccer League · South-Africa"}
+  289: {prioridad: P3, seguida: false, nombre: "1st Division · South-Africa"}
+  295: {prioridad: P3, seguida: false, nombre: "K3 League · South-Korea"}
+  296: {prioridad: P3, seguida: true, nombre: "Thai League 1 · Thailand"}
+  297: {prioridad: P3, seguida: false, nombre: "Thai League 2 · Thailand"}
+  298: {prioridad: P3, seguida: false, nombre: "FA Cup · Thailand"}
+  299: {prioridad: P3, seguida: true, nombre: "Primera División · Venezuela"}
+  300: {prioridad: P3, seguida: false, nombre: "Segunda División · Venezuela"}
+  318: {prioridad: P3, seguida: true, nombre: "1. Division · Cyprus"}
+  332: {prioridad: P3, seguida: true, nombre: "Super Liga · Slovakia"}
+  333: {prioridad: P3, seguida: true, nombre: "Premier League · Ukraine"}
+  344: {prioridad: P3, seguida: true, nombre: "Primera División · Bolivia"}
+  345: {prioridad: P3, seguida: true, nombre: "Czech Liga · Czech-Republic"}
+  357: {prioridad: P3, seguida: true, nombre: "Premier Division · Ireland"}
+  383: {prioridad: P3, seguida: true, nombre: "Ligat Ha'al · Israel"}
+  475: {prioridad: P3, seguida: true, nombre: "Paulista - A1 · Brazil"}
+  479: {prioridad: P3, seguida: true, nombre: "Canadian Premier League · Canada"}
+  506: {prioridad: P3, seguida: true, nombre: "2. liga · Slovakia"}
+  525: {prioridad: P3, seguida: true, nombre: "UEFA Champions League Women · World"}
+  543: {prioridad: P3, seguida: true, nombre: "Super Cup · Netherlands"}
+  549: {prioridad: P3, seguida: true, nombre: "Damallsvenskan · Sweden"}
+  667: {prioridad: P3, seguida: true, nombre: "Friendlies Clubs · World"}
+  772: {prioridad: P3, seguida: true, nombre: "Leagues Cup · World"}
+  43: {prioridad: P4, seguida: false, nombre: "National League · England"}
+  47: {prioridad: P4, seguida: false, nombre: "FA Trophy · England"}
+  50: {prioridad: P4, seguida: false, nombre: "National League - North · England"}
+  51: {prioridad: P4, seguida: false, nombre: "National League - South · England"}
+  58: {prioridad: P4, seguida: false, nombre: "Non League Premier - Isthmian · England"}
+  59: {prioridad: P4, seguida: false, nombre: "Non League Premier - Northern · England"}
+  60: {prioridad: P4, seguida: false, nombre: "Non League Premier - Southern South · England"}
+  931: {prioridad: P4, seguida: false, nombre: "Non League Premier - Southern Central · England"}
