@@ -5,8 +5,8 @@
 #   bin/restore-test.sh [DUMP_NAME]          (default: the newest predigol-*.dump)
 #
 # Checks: the file's sha256 is the one recorded at backup time; pg_restore succeeds; the schema revision comes
-# back; every key table holds at least what it held when the dump started and at most what it held when the
-# dump ended; every schema and every append-only trigger the backup named came back (AD-A07). The result goes to $PREDIGOL_DATA/state/restore-test.json. Exit 0 passed, 1 failed.
+# back; every key table holds between the smaller and the larger of what it held when the dump started and when it
+# ended (OPS-011); every schema and every append-only trigger the backup named came back (AD-A07). The result goes to $PREDIGOL_DATA/state/restore-test.json. Exit 0 passed, 1 failed.
 set -Eeuo pipefail
 # shellcheck source=bin/lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -70,6 +70,9 @@ if [[ ${#failures[@]} -eq 0 ]]; then
   got_rev="$(q "SELECT version_num FROM public.alembic_version")"
   if [[ "$want_rev" == "$got_rev" ]]; then log "  revision $got_rev"; else fail "revision $got_rev, expected $want_rev"; fi
   while IFS=$'\t' read -r table lo hi; do
+    # OPS-011: the bounds are the smaller and the larger of the two counts. A table can LOSE rows while the dump runs (a purge, a
+    # prune: core.fixture_events went 3279639 -> 3279638 on 19 Nov 2026) and "between 3279639 and 3279638" failed a good restore.
+    if [[ "$lo" =~ ^[0-9]+$ && "$hi" =~ ^[0-9]+$ ]] && (( hi < lo )); then swap=$lo; lo=$hi; hi=$swap; fi
     n="$(q "SELECT count(*) FROM $table")"
     if (( n < lo || n > hi )); then fail "$table: $n rows, expected between $lo and $hi"; else log "  $table: $n rows"; fi
   done < <(jq -r '.counts_before | to_entries[] | [.key, .value] | @tsv' "$MANIFEST" |
