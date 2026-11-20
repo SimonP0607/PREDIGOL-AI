@@ -65,7 +65,8 @@ def test_no_word_an_attacker_wrote_reaches_the_isolated_request() -> None:
 
 
 def test_a_case_whose_attack_is_only_text_asks_exactly_what_its_clean_base_asks() -> None:
-    same, typed = [], []
+    same: list[str] = []
+    typed: list[str] = []
     with aw.match_view("isolated"):
         for case in v4.cases_of("match"):
             a, b = v4.request_for("match", case.base, case), v4.request_for("match", case.base)
