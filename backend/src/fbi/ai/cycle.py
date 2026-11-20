@@ -58,7 +58,7 @@ from fbi.ai.collectors import SearchFn, collect_provider, collect_web
 from fbi.ai.config import AiSettings, Tier
 from fbi.ai.day import Due, due_passes, open_day, universe
 from fbi.ai.evidence import seed_sources
-from fbi.ai.packet import CORE_KEYS, Packet, PacketBuilder, store_packet
+from fbi.ai.packet import CORE_KEYS, Packet, PacketBuilder, last_built, store_packet
 from fbi.ai.prompts import REVIEW_VERSION
 from fbi.ai.providers.base import LlmProvider
 from fbi.ai.review import (
@@ -593,7 +593,7 @@ def _free(conn: psycopg.Connection[Any], settings: AiSettings, report: CycleRepo
           options: list[Ranked], builder: PacketBuilder, newest: dict[int, datetime], *, at: datetime) -> None:
     """A match outside its passes: the packet on its cadence, the rules (and a model review still in force), the
     cards. No model call, no search."""
-    last_packet = newest.get(fid)
+    last_packet = last_built(fid, newest.get(fid))  # PM-13-03: a reused packet counts as built (off: the stored as_of)
     every = FAR_REFRESH if kickoff - at > timedelta(hours=24) else NEAR_REFRESH
     if not options and last_packet is not None and timedelta(0) <= at - last_packet < every:
         report.counts["packets_not_due"] += 1
