@@ -1,0 +1,49 @@
+{
+  "level": {
+    "E0": {
+      "tag": "E0 · anecdote",
+      "text": "Sample under the minimum: not a trend."
+    },
+    "E1": {
+      "tag": "E1 · descriptive",
+      "text": "What happened, with its sample and its interval."
+    },
+    "E2": {
+      "tag": "E2 · association",
+      "text": "A relation that survived the tests of chance, not yet replicated."
+    },
+    "E3": {
+      "tag": "E3 · replicated",
+      "text": "The relation held on later data."
+    },
+    "E4": {
+      "tag": "E4 · validated",
+      "text": "Improvement proven against the market, signed by the owner."
+    }
+  },
+  "badgeLabel": "Evidence level {tag}: {text}",
+  "sentence": {
+    "rate": "{subject}: {k} of {n} matches ({pct} %). With this sample, the true value may lie between {lo} % and {hi} %.",
+    "rateLeague": "{subject}: {k} of {n} matches ({pct} %). With this sample, the true value may lie between {lo} % and {hi} %; in the league, {league} %.",
+    "rateThin": "{subject}: {k} of {n} matches. Small sample: not a trend.",
+    "mean": "{subject}: {value} per match over {n} matches.",
+    "meanLeague": "{subject}: {value} per match over {n} matches; in the league, {league}.",
+    "meanThin": "{subject}: {value} per match over only {n} matches. Small sample: not a trend."
+  },
+  "check": {
+    "contraste": "Contrast: text at 4.5:1 and marks at 3:1 on their ground",
+    "alternativa_textual": "Not only visual: the reading sentence says what it shows",
+    "texto_minimo": "No text under 12 px",
+    "sin_parpadeo": "No flashing; honours «reduce motion»",
+    "color_no_unico": "Colour is not the only signal",
+    "teclado": "Everything interactive is reachable by keyboard",
+    "foco_visible": "Focus visible and not hidden",
+    "instrucciones": "If interactive, it says how to use it",
+    "titulo_y_resumen": "Title and reading sentence",
+    "incertidumbre": "Sample and interval said",
+    "lenguaje_llano": "Plain language, no unexplained jargon",
+    "tabla_equivalente": "Equivalent table or readable data",
+    "zoom_y_espaciado": "Readable at 200 % zoom and with increased text spacing",
+    "lector_de_pantalla": "Accessible name and logical order for a screen reader"
+  }
+}
