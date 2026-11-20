@@ -1,0 +1,745 @@
+{
+  "contract": "C-16",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T08:04:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "rules_version": "coverage-levels-v1",
+  "scope": "competicion",
+  "competitions": [
+    {
+      "competition_id": 41,
+      "name": "Liga Ficticia Uno",
+      "country": "Ficticia",
+      "tier": 1,
+      "summary": "A",
+      "summary_label": "A",
+      "families": [
+        {
+          "family": "base",
+          "level": "A"
+        },
+        {
+          "family": "team_stats",
+          "level": "A"
+        },
+        {
+          "family": "xg",
+          "level": "D"
+        },
+        {
+          "family": "player_stats",
+          "level": "B"
+        },
+        {
+          "family": "referee",
+          "level": "A"
+        },
+        {
+          "family": "main_odds",
+          "level": "A"
+        },
+        {
+          "family": "stat_odds",
+          "level": "B"
+        }
+      ],
+      "seasons": [
+        {
+          "competition_season_id": 901,
+          "season": 2026,
+          "phase": "todas",
+          "summary": "A",
+          "summary_label": "A",
+          "families": [
+            {
+              "family": "base",
+              "level": "A"
+            },
+            {
+              "family": "team_stats",
+              "level": "A"
+            },
+            {
+              "family": "xg",
+              "level": "D"
+            },
+            {
+              "family": "player_stats",
+              "level": "B"
+            },
+            {
+              "family": "referee",
+              "level": "A"
+            },
+            {
+              "family": "main_odds",
+              "level": "A"
+            },
+            {
+              "family": "stat_odds",
+              "level": "B"
+            }
+          ],
+          "data": [
+            {
+              "key": "events",
+              "level": "A",
+              "n": 120,
+              "with_data": 120,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "lineups",
+              "level": "A",
+              "n": 120,
+              "with_data": 119,
+              "pct": 99.2,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "corners",
+              "level": "A",
+              "n": 120,
+              "with_data": 118,
+              "pct": 98.3,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "yellow_cards",
+              "level": "A",
+              "n": 120,
+              "with_data": 117,
+              "pct": 97.5,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "shots",
+              "level": "A",
+              "n": 120,
+              "with_data": 118,
+              "pct": 98.3,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "shots_on_target",
+              "level": "A",
+              "n": 120,
+              "with_data": 118,
+              "pct": 98.3,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "fouls",
+              "level": "A",
+              "n": 120,
+              "with_data": 118,
+              "pct": 98.3,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "xg",
+              "level": "D",
+              "n": 120,
+              "with_data": 0,
+              "pct": 0.0,
+              "provisional": false,
+              "reason": "no_entregado",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "D",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "no"
+            },
+            {
+              "key": "player_stats",
+              "level": "B",
+              "n": 120,
+              "with_data": 104,
+              "pct": 86.7,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "B",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "referee",
+              "level": "A",
+              "n": 120,
+              "with_data": 120,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            }
+          ],
+          "markets": [
+            {
+              "key": "1X2",
+              "level": "A",
+              "n": 46,
+              "with_data": 46,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 10.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "evaluable"
+            },
+            {
+              "key": "OU",
+              "level": "A",
+              "n": 46,
+              "with_data": 46,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 9.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "evaluable"
+            },
+            {
+              "key": "BTTS",
+              "level": "A",
+              "n": 46,
+              "with_data": 45,
+              "pct": 97.8,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 8.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "evaluable"
+            },
+            {
+              "key": "AH",
+              "level": "A",
+              "n": 46,
+              "with_data": 44,
+              "pct": 95.7,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 8.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "evaluable"
+            },
+            {
+              "key": "goals_half",
+              "level": "A",
+              "n": 46,
+              "with_data": 44,
+              "pct": 95.7,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 6.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "necesita_datos"
+            },
+            {
+              "key": "corners",
+              "level": "A",
+              "n": 46,
+              "with_data": 46,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 5.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "en_calibracion"
+            },
+            {
+              "key": "cards",
+              "level": "B",
+              "n": 46,
+              "with_data": 41,
+              "pct": 89.1,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 3.0,
+              "settle_pct": 98.3,
+              "measured_level": "B",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "en_calibracion"
+            },
+            {
+              "key": "shots",
+              "level": "D",
+              "n": 46,
+              "with_data": 12,
+              "pct": 26.1,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 2.0,
+              "settle_pct": 98.3,
+              "measured_level": "D",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "necesita_datos"
+            },
+            {
+              "key": "players",
+              "level": "D",
+              "n": 46,
+              "with_data": 0,
+              "pct": 0.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": {
+                "missing_reason": "sin_datos"
+              },
+              "settle_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "measured_level": "D",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": {
+                "missing_reason": "sin_datos"
+              }
+            }
+          ]
+        },
+        {
+          "competition_season_id": 900,
+          "season": 2025,
+          "phase": "todas",
+          "summary": "A",
+          "summary_label": "A",
+          "families": [
+            {
+              "family": "base",
+              "level": "A"
+            },
+            {
+              "family": "team_stats",
+              "level": "A"
+            },
+            {
+              "family": "xg",
+              "level": "D"
+            },
+            {
+              "family": "player_stats",
+              "level": "B"
+            },
+            {
+              "family": "referee",
+              "level": "A"
+            },
+            {
+              "family": "main_odds",
+              "level": "A"
+            },
+            {
+              "family": "stat_odds",
+              "level": "B"
+            }
+          ],
+          "data": [
+            {
+              "key": "events",
+              "level": "A",
+              "n": 120,
+              "with_data": 120,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "lineups",
+              "level": "A",
+              "n": 120,
+              "with_data": 119,
+              "pct": 99.2,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "corners",
+              "level": "A",
+              "n": 120,
+              "with_data": 118,
+              "pct": 98.3,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "yellow_cards",
+              "level": "A",
+              "n": 120,
+              "with_data": 117,
+              "pct": 97.5,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "shots",
+              "level": "A",
+              "n": 120,
+              "with_data": 118,
+              "pct": 98.3,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "shots_on_target",
+              "level": "A",
+              "n": 120,
+              "with_data": 118,
+              "pct": 98.3,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "fouls",
+              "level": "A",
+              "n": 120,
+              "with_data": 118,
+              "pct": 98.3,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "xg",
+              "level": "D",
+              "n": 120,
+              "with_data": 0,
+              "pct": 0.0,
+              "provisional": false,
+              "reason": "no_entregado",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "D",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "no"
+            },
+            {
+              "key": "player_stats",
+              "level": "B",
+              "n": 120,
+              "with_data": 104,
+              "pct": 86.7,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "B",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            },
+            {
+              "key": "referee",
+              "level": "A",
+              "n": 120,
+              "with_data": 120,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "si"
+            }
+          ],
+          "markets": [
+            {
+              "key": "1X2",
+              "level": "A",
+              "n": 46,
+              "with_data": 46,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 10.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "evaluable"
+            },
+            {
+              "key": "OU",
+              "level": "A",
+              "n": 46,
+              "with_data": 46,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 9.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "evaluable"
+            },
+            {
+              "key": "BTTS",
+              "level": "A",
+              "n": 46,
+              "with_data": 45,
+              "pct": 97.8,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 8.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "evaluable"
+            },
+            {
+              "key": "AH",
+              "level": "A",
+              "n": 46,
+              "with_data": 44,
+              "pct": 95.7,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 8.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "evaluable"
+            },
+            {
+              "key": "goals_half",
+              "level": "A",
+              "n": 46,
+              "with_data": 44,
+              "pct": 95.7,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 6.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "necesita_datos"
+            },
+            {
+              "key": "corners",
+              "level": "A",
+              "n": 46,
+              "with_data": 46,
+              "pct": 100.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 5.0,
+              "settle_pct": 98.3,
+              "measured_level": "A",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "en_calibracion"
+            },
+            {
+              "key": "cards",
+              "level": "B",
+              "n": 46,
+              "with_data": 41,
+              "pct": 89.1,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 3.0,
+              "settle_pct": 98.3,
+              "measured_level": "B",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "en_calibracion"
+            },
+            {
+              "key": "shots",
+              "level": "D",
+              "n": 46,
+              "with_data": 12,
+              "pct": 26.1,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": 2.0,
+              "settle_pct": 98.3,
+              "measured_level": "D",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": "necesita_datos"
+            },
+            {
+              "key": "players",
+              "level": "D",
+              "n": 46,
+              "with_data": 0,
+              "pct": 0.0,
+              "provisional": false,
+              "reason": "ninguno",
+              "measured_at": "2026-11-21T08:04:00Z",
+              "median_books": {
+                "missing_reason": "sin_datos"
+              },
+              "settle_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "measured_level": "D",
+              "missed": false,
+              "pooled_seasons": 1,
+              "declared": "sin_bandera",
+              "catalogue_state": {
+                "missing_reason": "sin_datos"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "match": {
+    "missing_reason": "sin_datos"
+  },
+  "changes": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "discrepancies": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  }
+}

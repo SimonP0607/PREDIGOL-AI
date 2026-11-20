@@ -1,0 +1,222 @@
+{
+  "kind": {
+    "no_existe": "Not offered in this competition",
+    "cobertura_parcial": "Partial coverage",
+    "muestra_insuficiente": "Sample too small",
+    "pendiente": "Not available yet",
+    "en_revision": "Under review"
+  },
+  "step": {
+    "existe": "Exists",
+    "cobertura": "Enough coverage",
+    "cuota": "Price in force",
+    "probabilidad": "Probability computed",
+    "autorizada": "Calibrated and authorised",
+    "liquidable": "Settleable",
+    "reglas": "Meets the rules"
+  },
+  "result": {
+    "si": "Yes",
+    "no": "No",
+    "sin_evaluar": "Not evaluated"
+  },
+  "module": {
+    "mi_parlay": "My parlay",
+    "picks": "Picks",
+    "cuotas": "Odds"
+  },
+  "list": {
+    "sep": ", ",
+    "lastNegative": " or ",
+    "last": " and "
+  },
+  "notOffered": "This competition does not offer {subjects}.",
+  "notSettled": "PrediGol cannot settle {subject} in this competition: it cannot be added to My parlay. The price stays informative.",
+  "partial": {
+    "pct": "Partial coverage of {subjects}: the data arrive for {pct} % of this competition's matches. Figures use only the matches that have them.",
+    "plain": "Partial coverage of {subjects} in this competition. Figures use only the matches that have them."
+  },
+  "thin": {
+    "badge": "Few data",
+    "body": "We show {subject} from {min} matches. With {n}, the figure says nothing.",
+    "bodyCount": "There are {n} matches with {subject}: too few for a figure. The count is shown, not a rate.",
+    "progress": "{n} of {min} matches",
+    "left": "{k} to go",
+    "group": "Few data for {subjects}: the count is shown, not a rate."
+  },
+  "pending": {
+    "title": "{subject}: not available yet",
+    "when": "Usually published {when}.",
+    "existe": "The data will come when the provider publishes them.",
+    "cobertura": "This competition is not measured yet; it is measured every night.",
+    "cuota": "There is no price in force from at least 3 bookmakers yet. It will appear in Odds and My parlay when there is.",
+    "probabilidad": "PrediGol has not computed this probability yet. The market's price still holds.",
+    "reglas": "There is no price this module can use yet. The rest of the match still holds.",
+    "group": "Not available yet: {subjects}. They will come when published."
+  },
+  "review": {
+    "title": "We are reviewing {subject}.",
+    "autorizada": "PrediGol's probability is withdrawn while the model is under evaluation; the market's implied probability still holds.",
+    "reglas": "It is not in {module} while we review it; the price still holds.",
+    "other": "The data exist but are not reliable now. The rest of this screen still holds.",
+    "report": "Report a data issue",
+    "group": "Under review: {subjects}. The rest of this screen still holds."
+  },
+  "notesLabel": "Information not available on this screen",
+  "family": {
+    "base": "Base",
+    "team_stats": "Team statistics",
+    "xg": "xG",
+    "player_stats": "Players",
+    "referee": "Referee",
+    "main_odds": "Main odds",
+    "stat_odds": "Statistics odds"
+  },
+  "datum": {
+    "events": "Events",
+    "lineups": "Line-ups",
+    "corners": "Corners",
+    "yellow_cards": "Yellow cards",
+    "shots": "Shots",
+    "shots_on_target": "Shots on target",
+    "fouls": "Fouls",
+    "xg": "Provider's xG",
+    "player_stats": "Player statistics",
+    "referee": "Referee"
+  },
+  "market": {
+    "1X2": "1X2 result",
+    "OU": "Goals over/under",
+    "BTTS": "Both teams to score",
+    "AH": "Asian handicap",
+    "goals_half": "Goals by half",
+    "corners": "Corners",
+    "cards": "Cards",
+    "shots": "Shots",
+    "players": "Player markets"
+  },
+  "reason": {
+    "ninguno": "No reason",
+    "heredado": "Inherited (provisional)",
+    "muestra_insuficiente": "Sample too small",
+    "menos_de_3_casas": "Fewer than 3 bookmakers",
+    "menos_de_5_casas": "Fewer than 5 bookmakers",
+    "no_entregado": "The provider does not deliver it",
+    "sin_ventana": "No odds window",
+    "sin_medir": "Not measured",
+    "sin_regla": "No settlement rule",
+    "sin_cobertura": "No coverage",
+    "nivel_A": "Level A",
+    "nivel_B": "Level B",
+    "nivel_C": "Level C (partial coverage)",
+    "nivel_D": "Level D",
+    "nivel_MI": "Sample too small"
+  },
+  "change": {
+    "primera_medida": "First measure",
+    "sube": "Up",
+    "baja": "Down",
+    "incumple_una_vez": "Missed once"
+  },
+  "level": {
+    "label": "Level {level}: {meaning}",
+    "A": "full coverage",
+    "B": "enough coverage",
+    "C": "partial coverage",
+    "D": "scarce coverage",
+    "MI": "sample too small"
+  },
+  "console": {
+    "tab": "Availability",
+    "catalogTab": "Catalogue",
+    "tabsLabel": "Competitions view",
+    "title": "Availability",
+    "description": "Which data or market can be shown in each competition. Recomputed every night at 08:00 UTC; this console only reads.",
+    "private": "Private · owner only",
+    "kpi": {
+      "competitions": "Competitions graded",
+      "competitionsHint": "{n} with level A coverage",
+      "visible": "Visible cells",
+      "visibleValue": "{v} of {t}",
+      "visibleHint": "Data or market at level A or B in the latest season",
+      "blocker": "Most frequent blocker",
+      "blockerHint": "{n} cells under B",
+      "blockerNone": "None",
+      "changes": "Changes in 7 days",
+      "changesHint": "{up} up · {down} down"
+    },
+    "matrix": {
+      "title": "Competition × family",
+      "subtitle": "Level of each family in the latest season with a sample. Pick a row to see its data and markets.",
+      "shown": "{shown} of {total} competitions",
+      "empty": "No competition matches the filter.",
+      "none": "The recalculation has not graded any competition yet.",
+      "competition": "Competition",
+      "summary": "Summary",
+      "sample": "Sample",
+      "measured": "Measured",
+      "search": "Search competition or country",
+      "level": "Level",
+      "levelAll": "All",
+      "country": "Country",
+      "countryAll": "All countries",
+      "blockedOnly": "Blocked only",
+      "matches": "{n} matches"
+    },
+    "detail": {
+      "title": "{name} · season {season}",
+      "subtitle": "Each datum and market with its level, its sample and the date it was measured.",
+      "pick": "Pick a competition in the table.",
+      "key": "Datum or market",
+      "level": "Level",
+      "sample": "Sample",
+      "pct": "With data",
+      "reason": "Reason",
+      "inApp": "In the app",
+      "measured": "Measured",
+      "visible": "Visible",
+      "provisional": "provisional",
+      "data": "Data",
+      "markets": "Markets",
+      "note": "This matrix is not edited by hand: it is recomputed every night. A threshold or a rule changes in `coverage-levels-v1` with its PR."
+    },
+    "changes": {
+      "title": "Changes in the last week",
+      "subtitle": "Level rises and falls in the last 7 days.",
+      "empty": "No level changes in the last 7 days.",
+      "when": "Date",
+      "competition": "Competition",
+      "key": "Datum or market",
+      "from": "Before",
+      "to": "Now",
+      "reason": "Reason",
+      "n": "Sample",
+      "unknown": "Season {id}"
+    },
+    "shadow": {
+      "title": "Shadow discrepancies",
+      "subtitle": "What a module shows and the matrix would not have shown, or the other way round (7 days).",
+      "empty": "No discrepancies in the last 7 days.",
+      "day": "Day",
+      "fixture": "Match",
+      "module": "Module",
+      "key": "Subject",
+      "shown": "The module",
+      "matrix": "The matrix",
+      "reason": "Reason",
+      "yes": "shows",
+      "no": "does not show"
+    },
+    "match": {
+      "title": "One match · the seven states",
+      "subtitle": "Evaluated in order; after the first «No» the next ones are not evaluated.",
+      "label": "Match id",
+      "go": "Show",
+      "empty": "Type a match id.",
+      "market": "Market",
+      "blocks": "How a reader would see it:",
+      "allVisible": "Everything in this match can be shown."
+    },
+    "off": "The matrix answers only with FBI_AVAILABILITY on."
+  }
+}

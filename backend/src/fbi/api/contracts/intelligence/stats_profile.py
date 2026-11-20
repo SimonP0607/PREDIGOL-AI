@@ -14,6 +14,10 @@ Routes (all 404 while ``FBI_STATS_V2`` is off; the private ones answer the owner
   calculation (its run, its version, the coverage of every metric).
 
 Nothing here is a forecast: the pulse, the intervals, the survival and the trends are history, and they say so. Formulas: ``fbi.stats``.
+
+1.1.0 (plan PM, PM-05-05): a team and a player carry ``provider_extras`` - what PrediGol keeps from API-Football and no page showed
+(a player's offsides, dribbled past, penalties won, committed and saved; a team's offsides and, once its quality probe passes, goals
+prevented), each with its sample, its coverage and its origin («dato de API-Football»). Empty while ``FBI_STATS_PROVIDER_EXTRAS`` is off.
 """
 
 from __future__ import annotations
@@ -87,6 +91,21 @@ class StatFigure(IntelligenceModel):
     percentile: int | Missing = Field(description="0-100: the share of the league's teams (the position's players) below it.")
     league_value: float | Missing = Field(description="The league's mean per team (the position's median per player).")
     distribution: Quantiles | Missing
+
+
+class ProviderFigure(IntelligenceModel):
+    """A figure as the provider measured it (1.1.0, PM-05-05): not recalculated, no percentile; the page labels it «dato de
+    API-Football». ``coverage``: the share of the competition season's appearances (team-matches) that report it; under 0.8 the value
+    is ``sin_cobertura``."""
+
+    key: str = Field(pattern=CODE_PATTERN, description="offsides, dribbled_past, penalties_won, penalties_committed, penalties_saved, "
+                                                       "goals_prevented.")
+    unit: Literal["por_90", "total", "por_partido"]
+    better: Better
+    value: float | Missing
+    matches_with_data: int = Field(ge=0)
+    coverage: float = Field(ge=0, le=1)
+    origin: Literal["api_football"]
 
 
 class Record(IntelligenceModel):
@@ -257,6 +276,8 @@ class TeamBody(IntelligenceModel):
     trends: ItemList[TrendRow]
     matrix: list[TrendColumn] | Missing = Field(description="The market x context matrix, carried by the documents of context "
                                                             "«all» (the others say sin_datos: they are one of its columns).")
+    provider_extras: list[ProviderFigure] = Field(default_factory=list, description=(
+        "1.1.0: the team's offsides and goals prevented as API-Football measured them; empty while FBI_STATS_PROVIDER_EXTRAS is off."))
 
 
 class StripItem(IntelligenceModel):
@@ -291,6 +312,9 @@ class PlayerBody(IntelligenceModel):
     figures: list[StatFigure]
     last5: list[StripItem]
     recent_minutes: list[MinutesItem] = Field(description="His last ten appearances, oldest first.")
+    provider_extras: list[ProviderFigure] = Field(default_factory=list, description=(
+        "1.1.0: offsides, dribbled past and penalties won, committed and saved as API-Football measured them; empty while "
+        "FBI_STATS_PROVIDER_EXTRAS is off."))
 
 
 class ScatterPoint(IntelligenceModel):
@@ -344,7 +368,7 @@ class StatsEntityPrivate(StatsEntity):
 
 class StatsProfile(IntelligenceContract):
     CONTRACT_ID: ClassVar[str] = "C-13"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     entities: list[StatsEntity] = Field(min_length=1, max_length=2)
 

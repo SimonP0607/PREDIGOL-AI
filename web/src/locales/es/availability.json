@@ -1,0 +1,222 @@
+{
+  "kind": {
+    "no_existe": "No existe en esta competición",
+    "cobertura_parcial": "Cobertura parcial",
+    "muestra_insuficiente": "Muestra insuficiente",
+    "pendiente": "Aún no disponible",
+    "en_revision": "En revisión"
+  },
+  "step": {
+    "existe": "Existe",
+    "cobertura": "Cobertura suficiente",
+    "cuota": "Cuota vigente",
+    "probabilidad": "Probabilidad calculada",
+    "autorizada": "Calibrada y autorizada",
+    "liquidable": "Liquidable",
+    "reglas": "Cumple reglas"
+  },
+  "result": {
+    "si": "Sí",
+    "no": "No",
+    "sin_evaluar": "Sin evaluar"
+  },
+  "module": {
+    "mi_parlay": "Mi parlay",
+    "picks": "Picks",
+    "cuotas": "Cuotas"
+  },
+  "list": {
+    "sep": ", ",
+    "lastNegative": " ni ",
+    "last": " y "
+  },
+  "notOffered": "Esta competición no ofrece {subjects}.",
+  "notSettled": "PrediGol no puede liquidar {subject} en esta competición: no se puede añadir a Mi parlay. La cuota sigue siendo informativa.",
+  "partial": {
+    "pct": "Cobertura parcial de {subjects}: el dato llega en el {pct} % de los partidos de esta competición. Las cifras usan solo los partidos que lo tienen.",
+    "plain": "Cobertura parcial de {subjects} en esta competición. Las cifras usan solo los partidos que lo tienen."
+  },
+  "thin": {
+    "badge": "Pocos datos",
+    "body": "Mostramos {subject} desde {min} partidos. Con {n}, la cifra no dice nada.",
+    "bodyCount": "Hay {n} partidos con {subject}: pocos para una cifra. Se enseña el recuento, no una tasa.",
+    "progress": "{n} de {min} partidos",
+    "left": "faltan {k}",
+    "group": "Pocos datos de {subjects}: se enseña el recuento, no una tasa."
+  },
+  "pending": {
+    "title": "{subject}: aún no disponible",
+    "when": "Suele publicarse {when}.",
+    "existe": "El dato llegará cuando el proveedor lo publique.",
+    "cobertura": "Esta competición aún no está medida; se mide cada noche.",
+    "cuota": "Todavía no hay una cuota vigente con al menos 3 casas. Aparecerá en Cuotas y en Mi parlay cuando la haya.",
+    "probabilidad": "PrediGol aún no calculó esta probabilidad. La cuota del mercado sigue valiendo.",
+    "reglas": "Todavía no hay un precio que este módulo pueda usar. Lo demás del partido sigue valiendo.",
+    "group": "Aún no disponible: {subjects}. Llegará cuando se publique."
+  },
+  "review": {
+    "title": "Estamos revisando {subject}.",
+    "autorizada": "La probabilidad de PrediGol se retira mientras el modelo está en evaluación; la probabilidad implícita del mercado sigue valiendo.",
+    "reglas": "No entra en {module} mientras lo revisamos; la cuota sigue valiendo.",
+    "other": "El dato existe, pero ahora no es fiable. Lo demás de esta pantalla sigue valiendo.",
+    "report": "Reportar un dato",
+    "group": "En revisión: {subjects}. Lo demás de esta pantalla sigue valiendo."
+  },
+  "notesLabel": "Información no disponible en esta pantalla",
+  "family": {
+    "base": "Base",
+    "team_stats": "Estadísticas de equipo",
+    "xg": "xG",
+    "player_stats": "Jugadores",
+    "referee": "Árbitro",
+    "main_odds": "Cuotas principales",
+    "stat_odds": "Cuotas de estadísticas"
+  },
+  "datum": {
+    "events": "Eventos",
+    "lineups": "Alineaciones",
+    "corners": "Córners",
+    "yellow_cards": "Tarjetas amarillas",
+    "shots": "Remates",
+    "shots_on_target": "Remates a puerta",
+    "fouls": "Faltas",
+    "xg": "xG del proveedor",
+    "player_stats": "Estadísticas de jugador",
+    "referee": "Árbitro"
+  },
+  "market": {
+    "1X2": "Resultado 1X2",
+    "OU": "Goles más/menos",
+    "BTTS": "Ambos marcan",
+    "AH": "Hándicap asiático",
+    "goals_half": "Goles por mitad",
+    "corners": "Córners",
+    "cards": "Tarjetas",
+    "shots": "Remates",
+    "players": "Mercados de jugador"
+  },
+  "reason": {
+    "ninguno": "Sin motivo",
+    "heredado": "Heredado (provisional)",
+    "muestra_insuficiente": "Muestra insuficiente",
+    "menos_de_3_casas": "Menos de 3 casas",
+    "menos_de_5_casas": "Menos de 5 casas",
+    "no_entregado": "El proveedor no lo entrega",
+    "sin_ventana": "Sin ventana de cuotas",
+    "sin_medir": "Sin medir",
+    "sin_regla": "Sin regla de liquidación",
+    "sin_cobertura": "Sin cobertura",
+    "nivel_A": "Nivel A",
+    "nivel_B": "Nivel B",
+    "nivel_C": "Nivel C (cobertura parcial)",
+    "nivel_D": "Nivel D",
+    "nivel_MI": "Muestra insuficiente"
+  },
+  "change": {
+    "primera_medida": "Primera medida",
+    "sube": "Sube",
+    "baja": "Baja",
+    "incumple_una_vez": "Incumple una vez"
+  },
+  "level": {
+    "label": "Nivel {level}: {meaning}",
+    "A": "cobertura completa",
+    "B": "cobertura suficiente",
+    "C": "cobertura parcial",
+    "D": "cobertura escasa",
+    "MI": "muestra insuficiente"
+  },
+  "console": {
+    "tab": "Disponibilidad",
+    "catalogTab": "Catálogo",
+    "tabsLabel": "Vista de competiciones",
+    "title": "Disponibilidad",
+    "description": "Qué dato o mercado puede verse en cada competición. Se recalcula cada noche a las 08:00 UTC; esta consola solo lee.",
+    "private": "Privado · solo el dueño",
+    "kpi": {
+      "competitions": "Competiciones evaluadas",
+      "competitionsHint": "{n} con cobertura A",
+      "visible": "Celdas visibles",
+      "visibleValue": "{v} de {t}",
+      "visibleHint": "Dato o mercado en nivel A o B en la última temporada",
+      "blocker": "Bloqueo más frecuente",
+      "blockerHint": "{n} celdas por debajo de B",
+      "blockerNone": "Ninguno",
+      "changes": "Cambios en 7 días",
+      "changesHint": "{up} suben · {down} bajan"
+    },
+    "matrix": {
+      "title": "Competición × familia",
+      "subtitle": "Nivel de cada familia en la última temporada con muestra. Elige una fila para ver sus datos y mercados.",
+      "shown": "{shown} de {total} competiciones",
+      "empty": "Ninguna competición cumple el filtro.",
+      "none": "El recálculo aún no ha graduado ninguna competición.",
+      "competition": "Competición",
+      "summary": "Resumen",
+      "sample": "Muestra",
+      "measured": "Medido",
+      "search": "Buscar competición o país",
+      "level": "Nivel",
+      "levelAll": "Todos",
+      "country": "País",
+      "countryAll": "Todos los países",
+      "blockedOnly": "Solo bloqueadas",
+      "matches": "{n} partidos"
+    },
+    "detail": {
+      "title": "{name} · temporada {season}",
+      "subtitle": "Cada dato y mercado con su nivel, su muestra y la fecha de la medida.",
+      "pick": "Elige una competición de la tabla.",
+      "key": "Dato o mercado",
+      "level": "Nivel",
+      "sample": "Muestra",
+      "pct": "Con dato",
+      "reason": "Motivo",
+      "inApp": "En la app",
+      "measured": "Medido",
+      "visible": "Visible",
+      "provisional": "provisional",
+      "data": "Datos",
+      "markets": "Mercados",
+      "note": "Esta matriz no se edita a mano: se recalcula cada noche. Para cambiar un umbral o una regla se hace en `coverage-levels-v1` con su PR."
+    },
+    "changes": {
+      "title": "Cambios de la última semana",
+      "subtitle": "Subidas y bajadas de nivel de los últimos 7 días.",
+      "empty": "Sin cambios de nivel en los últimos 7 días.",
+      "when": "Fecha",
+      "competition": "Competición",
+      "key": "Dato o mercado",
+      "from": "Antes",
+      "to": "Ahora",
+      "reason": "Motivo",
+      "n": "Muestra",
+      "unknown": "Temporada {id}"
+    },
+    "shadow": {
+      "title": "Discrepancias de la sombra",
+      "subtitle": "Lo que un módulo enseña y la matriz no habría enseñado, o al revés (7 días).",
+      "empty": "Sin discrepancias en los últimos 7 días.",
+      "day": "Día",
+      "fixture": "Partido",
+      "module": "Módulo",
+      "key": "Sujeto",
+      "shown": "El módulo",
+      "matrix": "La matriz",
+      "reason": "Motivo",
+      "yes": "enseña",
+      "no": "no enseña"
+    },
+    "match": {
+      "title": "Un partido · los siete estados",
+      "subtitle": "Se evalúan en orden; tras el primer «No», los siguientes no se evalúan.",
+      "label": "Id del partido",
+      "go": "Ver",
+      "empty": "Escribe el id de un partido.",
+      "market": "Mercado",
+      "blocks": "Así lo vería un lector:",
+      "allVisible": "Todo lo de este partido se puede enseñar."
+    },
+    "off": "La matriz responde solo con FBI_AVAILABILITY encendido."
+  }
+}

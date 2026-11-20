@@ -27,6 +27,17 @@ export function setLocale(locale: Locale): void {
   current = locale;
 }
 
+/**
+ * A namespace that is not in the first visit's JS (plan PM, PM-14-01: the boot cannot grow, UX-139): the module that uses it
+ * imports its JSON and adds it here when it loads, so its words travel in that screen's own chunk. Adding a namespace twice, or one
+ * that `catalogs.ts` already has, changes nothing. The i18n test imports every such module.
+ */
+export function addCatalog(namespace: string, byLocale: Record<Locale, Catalog>): void {
+  for (const locale of LOCALES) {
+    if (CATALOGS[locale][namespace] === undefined) CATALOGS[locale][namespace] = byLocale[locale];
+  }
+}
+
 export function getLocale(): Locale {
   return current;
 }
