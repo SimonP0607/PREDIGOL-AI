@@ -1,0 +1,161 @@
+# Torneo BetPlay DIMAYOR I and II 2026 (provider league 240 «Primera B», season 2026). DIMAYOR regulation of the Torneo 2026,
+# edition «V0 - 21/01/26» (file created 16-04-2026; downloaded 20-nov-2026 21:06 UTC, SHA-256 abe959c6...d319, 55 pages).
+# IA-149 (plan PM, PM-03-09, 20-nov-2026): CODED IN SHADOW. Read from the official PDF with OCR (Tesseract, Spanish, 200 dpi;
+# arts. 4-25 on pages 8-17 of the file). rules_for answers «reglamento no codificado» (pending_review) to every reader until a
+# person compares it with the PDF article by article (backend/docs/owner/IA_149_COTEJO_REGLAMENTOS_COPA_TORNEO_2026.md) and the
+# owner signs it; then a PR turns it into `coded` and `ia_rules load` records it.
+# The year is two tournaments of the same three phases (art. 6): Fase I of 15 rounds, two groups of four (cuadrangulares) and a
+# two-legged final. The provider's labels: "Apertura - N" and "Clausura - N" for Fase I; "Apertura Quadrangular - N" in
+# tournament I but "Clausura - Quadrangular - N" in tournament II (both seen in production on 20-nov-2026); "Apertura - Final".
+# Promotion to the Liga 2027 (arts. 19-25: Gran Final and Repechaje) depends on who the champions are and where they stand in
+# the reclasificación: it is a gap, never computed.
+schema: competition-rules/1
+league_id: 240
+competition: Primera B
+country: Colombia
+version: 1
+state: shadow
+pending: "Cotejo of arts. 4-25 of the Torneo 2026 regulation V0 against the official PDF by a person, signed by the owner (IA-149, table of backend/docs/owner/IA_149_COTEJO_REGLAMENTOS_COPA_TORNEO_2026.md)."
+seasons: [2026]
+points: {win: 3, draw: 1, loss: 0}
+sources:
+  - publisher: División Mayor del Fútbol Profesional Colombiano (DIMAYOR)
+    title: Reglamento Torneo BetPlay DIMAYOR 2026 (V0)
+    url: https://dimayor.com.co/wp-content/uploads/2026/04/REGLAMENTO-TORNEO-2026-V0.pdf
+    published: 2026-01-21
+    checked_at: 2026-11-20
+    applies_to: Torneo BetPlay DIMAYOR I and II 2026
+    articles: arts. 4-25
+    edition: V0 - 21/01/26
+    sha256: abe959c6811bcc989b8ba97f09a3281864a50b8c19a864162c557b993c32d319
+tournaments:
+  - key: torneo_i
+    name: Torneo BetPlay DIMAYOR I 2026
+    phases:
+      - key: fase_1
+        name: Fase I - Todos contra todos
+        format: league
+        rounds: ["Apertura - [0-9]*"]
+        teams: 16
+        schedule: single_round_robin
+        matches_per_team: 15
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - goals_against_fewer
+            - away_goals_against_fewer
+            - {criterion: lots, note: "art. 9; for the last place into the next phase, a tie still open after criterion 5 is settled by the match or matches DIMAYOR sets"}
+        zones:
+          - {kind: next_phase, from: 1, to: 8, target: cuadrangulares semifinales}
+      - key: cuadrangulares
+        name: Fase II - Cuadrangulares semifinales
+        format: groups
+        rounds: ["Apertura Quadrangular - *", "Apertura - Quadrangular - *"]
+        groups: 2
+        group_size: 4
+        schedule: double_round_robin
+        matches_per_team: 6
+        ranking:
+          tiebreakers:
+            - {criterion: seed_priority, note: "art. 11: in a tie with the other clubs, the 1st and 2nd of Fase I go to the final"}
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - goals_against_fewer
+            - away_goals_against_fewer
+            - {criterion: prior_phase_rank, note: "art. 11, criterion 6: the better placed in the Fase I table"}
+          note: "Art. 10: groups A and B drawn; the 1st and 2nd of Fase I head them and are at home in the last round."
+        zones:
+          - {kind: next_phase, from: 1, to: 1, per_group: true, target: final}
+      - key: final
+        name: Fase III - Final
+        format: knockout
+        rounds: ["Apertura - Final"]
+        schedule: ties
+        knockout:
+          legs: 2
+          level: [points_over_legs, aggregate, penalties]
+          seeding: "art. 12 par. 1-2: away in the first leg the club with more points over Fases I and II; level, the criteria of the cuadrangulares and lots"
+  - key: torneo_ii
+    name: Torneo BetPlay DIMAYOR II 2026
+    phases:
+      - key: fase_1
+        name: Fase I - Todos contra todos
+        format: league
+        rounds: ["Clausura - [0-9]*"]
+        teams: 16
+        schedule: single_round_robin
+        matches_per_team: 15
+        ranking:
+          tiebreakers:
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - goals_against_fewer
+            - away_goals_against_fewer
+            - {criterion: lots, note: "art. 9 (applied to tournament II); the last place into the next phase as in tournament I"}
+          note: "Art. 7 B: the fixture of tournament I with home and away reversed."
+        zones:
+          - {kind: next_phase, from: 1, to: 8, target: cuadrangulares semifinales}
+      - key: cuadrangulares
+        name: Fase II - Cuadrangulares semifinales
+        format: groups
+        rounds: ["Clausura Quadrangular - *", "Clausura - Quadrangular - *"]
+        groups: 2
+        group_size: 4
+        schedule: double_round_robin
+        matches_per_team: 6
+        ranking:
+          tiebreakers:
+            - {criterion: seed_priority, note: "art. 11: in a tie with the other clubs, the 1st and 2nd of Fase I go to the final"}
+            - goal_difference
+            - goals_for
+            - away_goals_for
+            - goals_against_fewer
+            - away_goals_against_fewer
+            - {criterion: prior_phase_rank, note: "art. 11, criterion 6: the better placed in the Fase I table"}
+        zones:
+          - {kind: next_phase, from: 1, to: 1, per_group: true, target: final}
+      - key: final
+        name: Fase III - Final
+        format: knockout
+        rounds: ["Clausura - Final"]
+        schedule: ties
+        knockout:
+          legs: 2
+          level: [points_over_legs, aggregate, penalties]
+          seeding: "art. 12 par. 1-2, as in tournament I"
+        note: "Not on the provider's calendar on 20-nov-2026: the label is the one of tournament I's final with Clausura, to be confirmed when it appears."
+tables:
+  - key: tabla_torneo_i
+    name: Tabla de posiciones Torneo I 2026
+    kind: aggregate
+    counts: ["torneo_i.*"]
+    ranking:
+      tiebreakers: [goal_difference, goals_for, away_goals_for, goals_against_fewer, away_goals_against_fewer, lots]
+    note: "arts. 14-15: the points of the three phases of tournament I."
+  - key: tabla_torneo_ii
+    name: Tabla de posiciones Torneo II 2026
+    kind: aggregate
+    counts: ["torneo_ii.*"]
+    ranking:
+      tiebreakers: [goal_difference, goals_for, away_goals_for, goals_against_fewer, away_goals_against_fewer, lots]
+    note: "arts. 14-15 (applied to tournament II): the points of the three phases of tournament II."
+  - key: reclasificacion
+    name: Tabla de reclasificación total del Torneo 2026
+    kind: aggregate
+    counts: ["torneo_i.*", "torneo_ii.*"]
+    ranking:
+      tiebreakers: [goal_difference, goals_for, away_goals_for, goals_against_fewer, away_goals_against_fewer, lots]
+      note: "art. 17: over all the phases of tournaments I and II."
+    zones:
+      - {kind: promotion, from: 1, to: 2, conditional: true, target: Liga BetPlay DIMAYOR 2027, note: "arts. 19-25: who goes up depends on the two champions and their places here (Gran Final, Repechaje); see the gap"}
+    note: "art. 16: the points of every match of the three phases of both tournaments; its paragraph: a Gran Final or Repechaje does not count. The provider's «Tabla Anual»."
+gaps:
+  - {topic: promotion, reason: "Arts. 19-25 are not computed: the same champion twice goes up and the 1st and 2nd of the reclasificación play the Repechaje (art. 20); two champions both 1st-2nd go up (art. 21 A); one of them 1st-2nd goes up and the other plays the Repechaje against the best placed (21 B); neither, a Gran Final, whose loser plays the Repechaje (21 C, 22, 24). Gran Final and Repechaje: two legs, points, goal difference, penalties (arts. 23, 25); their provider labels are not known yet."}
+  - {topic: seeding, reason: "Art. 10: the groups of the cuadrangulares (3rd to 8th) are drawn; art. 12 par. 1-2: who is at home in each leg of a final. Recorded as notes, not computed."}
+notes:
+  - "Art. 4: a phase decided on penalties gives no extra points and the shoot-out's goals are not goals."
+  - "Art. 5: 16 clubs; art. 7 A b: Envigado and Unión Magdalena, relegated from the Liga 2025, play it."

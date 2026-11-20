@@ -59,6 +59,11 @@ fuentes se corrigen según el §4 a, c y d de DOC-008; `v1.yaml` queda `retired`
 reclasificación, cupos y descenso (`past`, `windows`, `ties_on`, `places`) y dos huecos (parágrafos de los arts. 30-31; redondeo).
 Cálculo en sombra y apagado: [`PM_09_01_TABLAS_COLOMBIANAS.md`](PM_09_01_TABLAS_COLOMBIANAS.md).
 
+*Nota del 20-nov-2026 (PM-03-09, IA-149).* El Torneo (240, V0 del 21-ene-2026) y la Copa (241, V1 del 25-ago-2026: octavos y
+cuartos a partido único) quedan codificados **en sombra** (`state: shadow`, con la huella SHA-256 del PDF en `sources`):
+`rules_for` les sigue respondiendo «no codificado» con el motivo `pending_review` hasta que el dueño firme su cotejo, y `load` no
+los registra. Paquete y paso a `coded`: [`IA_149_COTEJO_REGLAMENTOS_COPA_TORNEO_2026.md`](IA_149_COTEJO_REGLAMENTOS_COPA_TORNEO_2026.md).
+
 **No codificado, con motivo**: Copa Libertadores (el CDN oficial de CONMEBOL rechazó la descarga, HTTP 403; el cambio de desempate
 de 2026 solo se conoce por prensa y la prensa no es fuente de una regla), las otras 71 ligas y las 54 copas restantes (pendientes,
 sin reglamento leído). Temporadas no cubiertas responden también «no codificado»: Ligue 1 2026/27 (reglamento no localizado),

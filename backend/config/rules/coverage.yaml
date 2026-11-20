@@ -1,8 +1,9 @@
-# Every competition production tracks (core.competitions.is_tracked, 19-nov-2026 22:07 UTC: 83 leagues and 55 cups), coded or not.
+# Every competition production tracks (core.competitions.is_tracked, 19-nov-2026 22:07 UTC: 83 leagues and 55 cups; 20-nov-2026 after
+# batch 4, OPS-014: 84 and 56), coded or not.
 # A competition not coded says why; rules_for answers «reglamento no codificado» for it and nothing is assumed about its rules.
 schema: competition-rules-coverage/1
-measured_at: 2026-11-19
-measured_from: "production, read-only: core.competitions WHERE is_tracked (provider_league_id, name, country, type), 138 rows on 19-nov-2026 22:07 UTC (PM-00-02); 136 on 16-nov-2026"
+measured_at: 2026-11-20
+measured_from: "production, read-only: core.competitions WHERE is_tracked (provider_league_id, name, country, type), 140 rows on 20-nov-2026 21:09 UTC (IA-149; batch 4 added 268 and 241); 138 on 19-nov-2026 (PM-00-02); 136 on 16-nov-2026"
 competitions:
   - {league_id: 128, name: Liga Profesional Argentina, country: Argentina, type: league, status: coded, detail: "Season 2026 coded; relegation (AFA Statute art. 93) is a listed gap."}
   - {league_id: 188, name: A-League, country: Australia, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
@@ -19,7 +20,7 @@ competitions:
   - {league_id: 265, name: Primera División, country: Chile, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
   - {league_id: 169, name: Super League, country: China, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
   - {league_id: 239, name: Primera A, country: Colombia, type: league, status: coded, detail: "Season 2026 coded (both tournaments). The 2025 regulation was not read: season 2025 answers not coded."}
-  - {league_id: 240, name: Primera B, country: Colombia, type: league, status: not_coded, reason: not_yet_coded, detail: "Tracked since 17-nov-2026 (batch 3). No official regulation read and linked yet (19-nov-2026)."}
+  - {league_id: 240, name: Primera B, country: Colombia, type: league, status: not_coded, reason: pending_review, detail: "Tracked since 17-nov-2026 (batch 3). Season 2026 coded in shadow from the Torneo regulation V0 of 21-01-2026 (IA-149, 20-nov-2026): it answers no reader until the owner signs the cotejo of arts. 4-25."}
   - {league_id: 210, name: HNL, country: Croatia, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
   - {league_id: 318, name: 1. Division, country: Cyprus, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
   - {league_id: 345, name: Czech Liga, country: Czech-Republic, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
@@ -86,7 +87,9 @@ competitions:
   - {league_id: 255, name: USL Championship, country: USA, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
   - {league_id: 333, name: Premier League, country: Ukraine, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
   - {league_id: 301, name: Pro League, country: United-Arab-Emirates, type: league, status: not_coded, reason: not_yet_coded, detail: "No official regulation read and linked yet (16-nov-2026)."}
+  - {league_id: 268, name: Primera División, country: Uruguay, type: league, status: not_coded, reason: not_yet_coded, detail: "Tracked since 20-nov-2026 (batch 4, OPS-014). No official regulation read and linked yet (20-nov-2026)."}
   - {league_id: 299, name: Primera División, country: Venezuela, type: league, status: not_coded, reason: not_yet_coded, detail: "Tracked since 17-nov-2026 (batch 3). No official regulation read and linked yet (19-nov-2026)."}
+  - {league_id: 241, name: Copa Colombia, country: Colombia, type: cup, status: not_coded, reason: pending_review, detail: "Tracked since 20-nov-2026 (batch 4, OPS-014). Season 2026 coded in shadow from the Copa regulation V1 of 25-08-2026 (IA-149): it answers no reader until the owner signs the cotejo of arts. 4-18."}
   - {league_id: 73, name: Copa Do Brasil, country: Brazil, type: cup, status: not_coded, reason: not_yet_coded, detail: "Cups and international competitions come after the 81 leagues (plan AD-B01); no official regulation read yet (16-nov-2026)."}
   - {league_id: 714, name: Cup, country: Egypt, type: cup, status: not_coded, reason: not_yet_coded, detail: "Cups and international competitions come after the 81 leagues (plan AD-B01); no official regulation read yet (16-nov-2026)."}
   - {league_id: 528, name: Community Shield, country: England, type: cup, status: not_coded, reason: not_yet_coded, detail: "Cups and international competitions come after the 81 leagues (plan AD-B01); no official regulation read yet (16-nov-2026)."}

@@ -21,6 +21,12 @@ WHAT IT GUARANTEES
 * Only parameters and links are kept, never the text of a regulation.
 * Versions are added, never rewritten: a correction is a new version (or the old one ``state: retired`` with its reason), and
   ``core.competition_rules`` (migration 0143) records every version loaded, append-only.
+* IA-149 (plan PM, PM-03-09): a version can be coded IN SHADOW (``state: shadow``) while a person has not compared it with the
+  official PDF article by article. It validates like any other and carries the PDF's SHA-256, but ``rules_for`` keeps answering
+  «reglamento no codificado» (reason ``pending_review``, with what it waits for) to every reader; only the shadow tools ask for it
+  (``include_shadow=True``: ``scripts.ia_rules show --shadow``, ``scripts.competition_tables``, both read-only). A shadow version
+  is not recorded in ``core.competition_rules`` (its ``state`` admits ``coded`` and ``retired`` only): it is recorded when the
+  owner's cotejo turns it into ``coded``, so nothing loaded is ever rewritten.
 
 Pure: reading the files touches no database, no network and no model. The arithmetic that applies the tie-breakers to results
 is ``fbi.competitions.ranking``.
@@ -86,6 +92,10 @@ class Source(_Model):
     checked_at: date
     applies_to: str = Field(min_length=2, max_length=120)
     articles: str | None = Field(default=None, max_length=300)
+    edition: str | None = Field(default=None, max_length=60)
+    """IA-149: the edition the document states on its pages (``V1 - 25/08/26``), when it states one."""
+    sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    """IA-149: the SHA-256 of the file read (the «huella» the cotejo compares), when it was downloaded."""
 
 
 class Points(_Model):
@@ -333,8 +343,10 @@ class CompetitionRules(_Model):
     competition: str = Field(min_length=2, max_length=120)
     country: str = Field(min_length=2, max_length=60)
     version: int = Field(ge=1)
-    state: Literal["coded", "retired"] = "coded"
+    state: Literal["coded", "retired", "shadow"] = "coded"
     retired_reason: str | None = Field(default=None, max_length=600)
+    pending: str | None = Field(default=None, max_length=600)
+    """IA-149: on a ``shadow`` version, what it waits for before it answers a reader (the owner's cotejo of the PDF)."""
     seasons: tuple[int, ...] = Field(min_length=1)
     """The provider's season keys (``core.competition_seasons.season``) this version applies to."""
     valid_from: date | None = None
@@ -357,8 +369,10 @@ class CompetitionRules(_Model):
     def _coherent(self) -> CompetitionRules:
         if self.state == "retired" and not (self.retired_reason or "").strip():
             raise ValueError("a retired version says why")
-        if self.state == "coded" and self.retired_reason:
+        if self.state != "retired" and self.retired_reason:
             raise ValueError("retired_reason only on a retired version")
+        if (self.state == "shadow") != bool((self.pending or "").strip()):
+            raise ValueError("a shadow version says what it waits for (pending), and only a shadow version")
         if self.valid_from and self.valid_to and self.valid_to < self.valid_from:
             raise ValueError("valid_to before valid_from")
         keys = [t.key for t in self.tournaments]
@@ -414,7 +428,8 @@ class CompetitionRules(_Model):
 
 
 NotCodedReason = Literal["no_official_source_read", "source_unreachable", "not_yet_coded", "season_not_covered",
-                         "version_retired", "outside_scope"]
+                         "version_retired", "outside_scope", "pending_review"]
+"""``pending_review`` (IA-149): coded in shadow, waiting for the owner's cotejo of the official PDF."""
 
 
 class CoverageEntry(_Model):
@@ -519,12 +534,15 @@ def validate(root: Path = RULES_DIR) -> list[str]:
     except RulesError as exc:
         return [str(exc)]
     coded = {f.rules.league_id for f in files if f.rules.state == "coded"}
+    shadow = {f.rules.league_id for f in files if f.rules.state == "shadow"}
     for f in files:
         entry = coverage.entry(f.rules.league_id)
         if entry is None:
             problems.append(f"{f.path}: league {f.rules.league_id} is not in {COVERAGE_FILE}")
         elif entry.status != "coded" and f.rules.state == "coded":
             problems.append(f"{f.path}: {COVERAGE_FILE} says league {f.rules.league_id} is not coded")
+        elif f.rules.state == "shadow" and f.rules.league_id not in coded and entry.reason != "pending_review":
+            problems.append(f"{f.path}: a shadow version is listed in {COVERAGE_FILE} as not_coded with reason pending_review")
         if not Path(f.path).parent.name.startswith(f"{f.rules.league_id}_"):
             problems.append(f"{f.path}: the directory is named <league_id>_<name>")
         if Path(f.path).name != f"v{f.rules.version}.yaml":
@@ -532,16 +550,19 @@ def validate(root: Path = RULES_DIR) -> list[str]:
     for entry in coverage.competitions:
         if entry.status == "coded" and entry.league_id not in coded:
             problems.append(f"{COVERAGE_FILE}: league {entry.league_id} is marked coded and has no coded file")
-    by_league: dict[int, list[RulesFile]] = {}
-    for f in files:
-        if f.rules.state == "coded":
-            by_league.setdefault(f.rules.league_id, []).append(f)
-    for league, versions in by_league.items():
-        for i, a in enumerate(versions):
-            for b in versions[i + 1:]:
-                if set(a.rules.seasons) & set(b.rules.seasons) and _windows_overlap(a.rules, b.rules):
-                    problems.append(f"league {league}: versions {a.rules.version} and {b.rules.version} both answer "
-                                    f"for seasons {sorted(set(a.rules.seasons) & set(b.rules.seasons))} on the same days")
+        if entry.reason == "pending_review" and entry.league_id not in shadow:
+            problems.append(f"{COVERAGE_FILE}: league {entry.league_id} is pending_review and has no shadow file")
+    for state in ("coded", "shadow"):
+        by_league: dict[int, list[RulesFile]] = {}
+        for f in files:
+            if f.rules.state == state:
+                by_league.setdefault(f.rules.league_id, []).append(f)
+        for league, versions in by_league.items():
+            for i, a in enumerate(versions):
+                for b in versions[i + 1:]:
+                    if set(a.rules.seasons) & set(b.rules.seasons) and _windows_overlap(a.rules, b.rules):
+                        problems.append(f"league {league}: versions {a.rules.version} and {b.rules.version} both answer "
+                                        f"for seasons {sorted(set(a.rules.seasons) & set(b.rules.seasons))} on the same days")
     return problems
 
 
@@ -566,9 +587,13 @@ class Coded:
         return self.file.rules
 
     def as_json(self) -> dict[str, Any]:
-        return {"status": self.status, "league_id": self.league_id, "season": self.season,
-                "version": self.rules.version, "file": self.file.path, "sha256": self.file.sha256,
-                "gaps": [g.model_dump(mode="json") for g in self.rules.gaps], "reader": VERSION}
+        out: dict[str, Any] = {"status": self.status, "league_id": self.league_id, "season": self.season,
+                               "version": self.rules.version, "file": self.file.path, "sha256": self.file.sha256,
+                               "gaps": [g.model_dump(mode="json") for g in self.rules.gaps], "reader": VERSION}
+        if self.rules.state == "shadow":  # only a shadow tool gets here (include_shadow); a coded answer is unchanged
+            out["state"] = "shadow"
+            out["pending"] = self.rules.pending
+        return out
 
 
 @dataclass(frozen=True, slots=True)
@@ -601,7 +626,7 @@ class Library:
     def versions(self, league_id: int) -> list[RulesFile]:
         return sorted((f for f in self.files if f.rules.league_id == league_id), key=lambda f: f.rules.version)
 
-    def rules_for(self, league_id: int, season: int, *, on: date | None = None) -> Answer:
+    def rules_for(self, league_id: int, season: int, *, on: date | None = None, include_shadow: bool = False) -> Answer:
         versions = self.versions(league_id)
         entry = self.coverage.entry(league_id)
         if not versions:
@@ -622,8 +647,13 @@ class Library:
             if not for_season:
                 return NotCoded(league_id, season, "season_not_covered",
                                 f"No version of the rules of season {season} is in force on {on.isoformat()}.")
-        live = [f for f in for_season if f.rules.state == "coded"]
+        live = [f for f in for_season if f.rules.state == "coded" or (include_shadow and f.rules.state == "shadow")]
         if not live:
+            waiting = [f for f in for_season if f.rules.state == "shadow"]
+            if waiting:
+                rules = waiting[-1].rules
+                return NotCoded(league_id, season, "pending_review",
+                                f"Version {rules.version} is coded in shadow and answers no reader yet: {rules.pending}")
             last = for_season[-1].rules
             return NotCoded(league_id, season, "version_retired",
                             f"Version {last.version} was retired: {last.retired_reason}")
@@ -635,10 +665,11 @@ def library() -> Library:
     return Library.read()
 
 
-def rules_for(league_id: int, season: int, *, on: date | None = None) -> Answer:
+def rules_for(league_id: int, season: int, *, on: date | None = None, include_shadow: bool = False) -> Answer:
     """The rules in force for a competition season (by the provider's league id and season key) - on a day when ``on`` is
-    given - or ``NotCoded`` with the reason. Never raises for a competition or season it does not know."""
-    return library().rules_for(league_id, season, on=on)
+    given - or ``NotCoded`` with the reason. Never raises for a competition or season it does not know. ``include_shadow``
+    (IA-149) is for the read-only shadow tools only: it answers a version coded in shadow as well."""
+    return library().rules_for(league_id, season, on=on, include_shadow=include_shadow)
 
 
 def fingerprint(files: Iterable[RulesFile]) -> str:
@@ -660,6 +691,7 @@ def summary(lib: Library, tracked: Mapping[int, str] | None = None) -> dict[str,
         "cups_coded": sum(1 for c in lib.coverage.competitions if c.type == "cup" and c.status == "coded"),
         "not_coded_by_reason": dict(sorted(by_reason.items())),
         "files": len(lib.files), "fingerprint": fingerprint(lib.files),
+        "shadow_versions": sorted(f"{f.rules.league_id} v{f.rules.version}" for f in lib.files if f.rules.state == "shadow"),
     }
     if tracked is not None:
         out["tracked_missing_from_coverage"] = sorted(i for i in tracked if lib.coverage.entry(i) is None)
