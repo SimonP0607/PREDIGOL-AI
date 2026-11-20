@@ -13,6 +13,8 @@ import {
   X,
 } from "lucide-react";
 import { useRef, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { usePmReaderSwitches } from "@/lib/auth/AuthProvider";
 import { intlTag, t } from "@/lib/i18n";
 import { useScrollCue } from "@/lib/scrollCue";
 import { formatDate, getTimeZone, shiftDay, zonedInstant } from "@/lib/time";
@@ -360,6 +362,22 @@ export function CompetitionPicker({
         ))}
       </select>
     </div>
+  );
+}
+
+/** The door to the world directory of competitions (plan PM, PM-09-05; UX-179): only while FBI_COMPETITION_DIRECTORY is on. */
+export function DirectoryLink() {
+  const { directory } = usePmReaderSwitches();
+  if (!directory) return null;
+  return (
+    <Link
+      to="/competitions"
+      className="inline-flex min-h-11 items-center gap-2 self-start text-sm font-semibold text-primary hover:underline"
+      data-testid="directory-link"
+    >
+      <Trophy aria-hidden className="h-4 w-4" />
+      {t("matches.filters.directory")}
+    </Link>
   );
 }
 
