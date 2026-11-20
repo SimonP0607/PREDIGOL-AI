@@ -29,6 +29,7 @@ from fbi.api.contracts.intelligence.availability import (
     MarketCellPrivate,
     MatchAvailabilityPrivate,
     ModuleVerdict,
+    PhaseAvailabilityPrivate,
     SeasonAvailabilityPrivate,
     SelectionVerdict,
 )
@@ -39,11 +40,11 @@ from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
 from fbi.api.services.forecast import users_may_see
 from fbi.api.services.market_probs import parlay_policy
-from fbi.api.switches import availability_on
+from fbi.api.switches import availability_on, availability_phases_on
 from fbi.core.clock import now
 from fbi.coverage import levels
 from fbi.coverage import resolve as resolver
-from fbi.coverage.job import PHASE_ALL
+from fbi.coverage.job import CUP_PHASES, PHASE_ALL
 
 CACHE_SECONDS: Final = 60
 HISTORY_DAYS: Final = 7
@@ -67,6 +68,12 @@ SELECT competition_season_id, datum, level, measured_level, missed, provisional,
        declared_flag, measured_at
   FROM analytics.coverage_cells WHERE competition_season_id = ANY(%(ids)s) AND phase_key = %(phase)s
 """
+PHASE_CELLS_SQL: Final = """
+SELECT competition_season_id, phase_key, datum, level, measured_level, missed, provisional, reason, n_finished, n_with_data, share,
+       pooled_seasons, declared_flag, measured_at
+  FROM analytics.coverage_cells WHERE competition_season_id = ANY(%(ids)s) AND phase_key = ANY(%(phases)s)
+"""
+"""A cup season's phases (PM-02-07), read only while ``FBI_AVAILABILITY_PHASES`` is on."""
 MARKETS_SQL: Final = """
 SELECT competition_season_id, market_key, level, measured_level, missed, provisional, reason, n_window, n_priced, priced_share,
        median_books, settle_share, catalogue_state, measured_at
@@ -113,7 +120,8 @@ def _market_cell(r: dict[str, Any]) -> MarketCellPrivate:
         catalogue_state=r["catalogue_state"] if r["catalogue_state"] else _NO_DATA)
 
 
-def _season(sid: int, season: int, data: list[LevelCellPrivate], markets: list[MarketCellPrivate]) -> SeasonAvailabilityPrivate:
+def _season(sid: int, season: int, data: list[LevelCellPrivate], markets: list[MarketCellPrivate],
+            phases: dict[str, list[LevelCellPrivate]] | None = None) -> SeasonAvailabilityPrivate:
     by_datum: dict[str, levels.Level] = {c.key: c.level for c in data}
     by_market: dict[str, levels.Level] = {c.key: c.level for c in markets}
     if set(levels.DATA) <= set(by_datum) and set(levels.MARKETS) <= set(by_market):
@@ -126,7 +134,9 @@ def _season(sid: int, season: int, data: list[LevelCellPrivate], markets: list[M
     return SeasonAvailabilityPrivate(
         competition_season_id=sid, season=season, phase=PHASE_ALL, summary=level, summary_label=label,
         families=[FamilyLevel(family=cast(Any, f), level=lv) for f, lv in families.items()],
-        data=sorted(data, key=lambda c: order.get(c.key, 99)), markets=sorted(markets, key=lambda c: order.get(c.key, 99)))
+        data=sorted(data, key=lambda c: order.get(c.key, 99)), markets=sorted(markets, key=lambda c: order.get(c.key, 99)),
+        phases=[PhaseAvailabilityPrivate(phase=cast(Any, p), data=sorted(cells, key=lambda c: order.get(c.key, 99)))
+                for p in CUP_PHASES if (cells := (phases or {}).get(p))])
 
 
 def _competitions(conn: Conn, competition_id: int | None, *, with_seasons: bool) -> list[CompetitionAvailabilityPrivate]:
@@ -145,9 +155,14 @@ def _competitions(conn: Conn, competition_id: int | None, *, with_seasons: bool)
     markets: dict[int, list[MarketCellPrivate]] = defaultdict(list)
     for r in fetch_all(conn, MARKETS_SQL, {"ids": ids}):
         markets[r["competition_season_id"]].append(_market_cell(r))
+    phases: dict[int, dict[str, list[LevelCellPrivate]]] = defaultdict(lambda: defaultdict(list))
+    if with_seasons and availability_phases_on():
+        for r in fetch_all(conn, PHASE_CELLS_SQL, {"ids": ids, "phases": list(CUP_PHASES)}):
+            phases[r["competition_season_id"]][r["phase_key"]].append(_cell(r))
     out: list[CompetitionAvailabilityPrivate] = []
     for c in comps:
-        graded = [_season(s["id"], s["season"], cells[s["id"]], markets[s["id"]]) for s in per_comp.get(c["id"], [])]
+        graded = [_season(s["id"], s["season"], cells[s["id"]], markets[s["id"]], phases.get(s["id"], {}))
+                  for s in per_comp.get(c["id"], [])]
         if not graded:
             continue
         head = next((g for g in graded if g.summary != "MI"), graded[0])  # the latest season with a sample decides the directory
@@ -171,7 +186,7 @@ def parlay_rules() -> resolver.ParlayRules:
 def _match(conn: Conn, fixture_id: int, at: datetime) -> MatchAvailabilityPrivate:
     policy = parlay_policy()
     found = resolver.availability(conn, fixture_id, at=at, rules=parlay_rules(), parlay_on=policy.enabled, state_of=policy.state_of,
-                                  forecast_users=users_may_see())
+                                  forecast_users=users_may_see(), by_phase=availability_phases_on())
     if found is None:
         raise ApiError(404, "not_found", "match not found")
     inputs_cs = fetch_one(conn, "SELECT competition_season_id, kickoff_at FROM core.fixtures WHERE id = %(id)s", {"id": fixture_id})
@@ -195,7 +210,7 @@ def _match(conn: Conn, fixture_id: int, at: datetime) -> MatchAvailabilityPrivat
     return MatchAvailabilityPrivate(
         fixture_id=fixture_id, kickoff_at=inputs_cs["kickoff_at"],
         competition_season_id=_NO_DATA if inputs_cs["competition_season_id"] is None else int(inputs_cs["competition_season_id"]),
-        blocks=blocks, markets=markets, notes=cast(Any, list(found.notes)))
+        phase=cast(Any, found.phase), blocks=blocks, markets=markets, notes=cast(Any, list(found.notes)))
 
 
 def _history(conn: Conn, at: datetime) -> tuple[ItemList[LevelChange], ItemList[Discrepancy]]:

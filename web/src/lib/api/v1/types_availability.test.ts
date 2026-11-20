@@ -9,6 +9,7 @@ import type { Availability, AvailabilityPrivate, MatchAvailability } from "./typ
 import { isMissing } from "./types_intelligence";
 import matchExample from "./fixtures/c16_match.json";
 import changesExample from "./fixtures/c16_changes_private.json";
+import competitionExample from "./fixtures/c16_competition.json";
 
 const pub = matchExample as unknown as Availability;
 const priv = changesExample as unknown as AvailabilityPrivate;
@@ -25,6 +26,15 @@ describe("C-16 types", () => {
       expect("selections" in m).toBe(false);
       expect(typeof m.price_in_force).toBe("boolean");
     }
+  });
+
+  test("1.1.0: a season carries its phases and a match the phase that graded it (PM-02-07)", () => {
+    const comp = competitionExample as unknown as Availability;
+    expect(comp.contract_version).toBe("1.1.0");
+    const phases = comp.competitions[0]?.seasons[0]?.phases ?? [];
+    expect(phases.map((p) => p.phase)).toEqual(["previa", "liga_o_grupos"]);
+    expect(phases[0]?.data.find((c) => c.key === "corners")?.level).toBe("C");
+    expect((pub.match as MatchAvailability).phase).toBe("todas");
   });
 
   test("the private changes route carries the changes and the discrepancies", () => {

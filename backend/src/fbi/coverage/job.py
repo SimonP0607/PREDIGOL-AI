@@ -23,6 +23,11 @@ Two steps:
 
    Every change of a published level (and the first miss of one) is appended to ``analytics.coverage_changes``.
 
+   **Phases of a cup** (PM-02-07): a cup season (``core.competitions.type = 'cup'``) with matches in at least two phases also gets the
+   cells of each phase (``phase_key`` ``previa``, ``liga_o_grupos``, ``eliminatoria``; ``cup_phases``), counted from the same facts and
+   graded with the same rules (2, 4 and 5; rule 3 pools whole editions, so a pooled competition is not split). The Champions League's
+   qualifying rounds no longer lower its league phase. The markets stay on ``todas`` (``analytics.market_availability`` has no phase).
+
 Scope: the incremental pass (every night) takes the tracked competitions with a match finished in the last ``RECENT_HOURS``; the full pass
 (Sundays, or ``--full``) every tracked competition. Of each, its last ``SEASONS_KEPT`` seasons with finished matches (``POOLED_EDITIONS``
 for a one-match competition). Reads stored data only: no provider, no model. Writes only the matrix's tables (and the job ledger, from the
@@ -44,6 +49,7 @@ import psycopg
 from psycopg.rows import tuple_row
 from psycopg.types.json import Jsonb
 
+from fbi.competitions import stages
 from fbi.coverage import levels
 from fbi.coverage.levels import Grade, Level
 from fbi.market.rules import RULES
@@ -60,7 +66,14 @@ FULL_WEEKDAY: Final = 6
 """Sunday (``date.weekday``): the full pass."""
 LOCK: Final = 0x0C0F16
 PHASE_ALL: Final = "todas"
-"""Every phase together, until PM-02-07 splits the cups."""
+"""Every phase together: every competition season has it; a cup's phases (PM-02-07) are cells besides it."""
+PHASE_PRE: Final = "previa"
+"""Qualifying rounds, and the knock-out rounds played before a cup's league or group stage starts (the Champions League's play-offs)."""
+PHASE_LEAGUE: Final = "liga_o_grupos"
+"""The league stage or the group stage."""
+PHASE_KNOCKOUT: Final = "eliminatoria"
+"""The knock-out rounds after the league or group stage (all of them in a cup without one: the FA Cup's rounds proper)."""
+CUP_PHASES: Final[tuple[str, ...]] = (PHASE_PRE, PHASE_LEAGUE, PHASE_KNOCKOUT)
 
 RECENT_HOURS: Final = 48
 DATA_REFRESH_DAYS: Final = 7
@@ -237,6 +250,36 @@ def one_match(fixtures_per_edition: Iterable[int]) -> bool:
     return bool(seen) and max(seen) <= ONE_MATCH_MAX
 
 
+def cup_phases(rounds: Iterable[tuple[int, str | None, datetime]]) -> dict[int, str]:
+    """The phase of each match of one cup season (``fixture id -> phase key``) from its round labels, read by
+    ``fbi.competitions.stages`` (the one reader of a label; nothing is re-read here): a league or group stage is ``liga_o_grupos``, a
+    qualifying round ``previa``, a knock-out round ``previa`` when it started before the first league or group stage and
+    ``eliminatoria`` otherwise. A friendly or an unread label has no phase (it counts only in ``todas``). Empty when the season has
+    fewer than two phases: its ``todas`` already says everything."""
+    seen = list(rounds)
+    numbered = {stages.stage_of(r) for _, r, _ in seen if stages.match_day_of(r) is not None}
+    first: dict[str, datetime] = {}
+    for _, label, kickoff in seen:
+        stage = stages.stage_of(label)
+        if stage not in first or kickoff < first[stage]:
+            first[stage] = kickoff
+    kinds = {st: stages.classify(st, numbered=st in numbered).kind for st in first if st}
+    league_start = min((first[st] for st, k in kinds.items() if k == "league"), default=None)
+
+    def phase(stage: str) -> str | None:
+        kind = kinds.get(stage)
+        if kind == "league":
+            return PHASE_LEAGUE
+        if kind == "qualifying":
+            return PHASE_PRE
+        if kind == "knockout":
+            return PHASE_PRE if league_start is not None and first[stage] < league_start else PHASE_KNOCKOUT
+        return None
+
+    out = {fid: p for fid, label, _ in seen if (p := phase(stages.stage_of(label))) is not None}
+    return out if len(set(out.values())) >= 2 else {}
+
+
 def share(c: Coverage) -> float | None:
     return round(c.with_data / c.finished, 4) if c.finished else None
 
@@ -252,18 +295,20 @@ class Season:
     season: int
     fixtures: int
     """Every match of the season, whatever its status (rule 3)."""
+    cup: bool = False
+    """A cup (``core.competitions.type = 'cup'``): its phases get cells of their own (PM-02-07)."""
 
 
 SCOPE_SQL: Final = """
 WITH comp AS (
-    SELECT c.id, c.provider_league_id FROM core.competitions c
+    SELECT c.id, c.provider_league_id, lower(coalesce(c.type, '')) = 'cup' AS cup FROM core.competitions c
      WHERE c.is_tracked
        AND (%(all)s OR EXISTS (SELECT 1 FROM core.fixtures f JOIN core.competition_seasons s ON s.id = f.competition_season_id
                                 WHERE s.competition_id = c.id AND f.status_group = 'finished' AND f.kickoff_at >= %(since)s
                                   AND f.kickoff_at <= %(now)s))
 )
 SELECT s.id, comp.id, comp.provider_league_id, s.season,
-       (SELECT count(*) FROM core.fixtures f WHERE f.competition_season_id = s.id) AS fixtures
+       (SELECT count(*) FROM core.fixtures f WHERE f.competition_season_id = s.id) AS fixtures, comp.cup
   FROM comp JOIN core.competition_seasons s ON s.competition_id = comp.id
  WHERE EXISTS (SELECT 1 FROM core.fixtures f WHERE f.competition_season_id = s.id AND f.status_group = 'finished')
  ORDER BY comp.id, s.season DESC
@@ -278,8 +323,8 @@ def scope(conn: psycopg.Connection[Any], *, now: datetime, full: bool, only: set
         cur.execute(SCOPE_SQL, {"all": full or only is not None, "since": now - timedelta(hours=RECENT_HOURS), "now": now})
         rows = cur.fetchall()
     by_comp: dict[int, list[Season]] = {}
-    for sid, cid, league, season, fixtures in rows:
-        by_comp.setdefault(int(cid), []).append(Season(int(sid), int(cid), int(league), int(season), int(fixtures)))
+    for sid, cid, league, season, fixtures, cup in rows:
+        by_comp.setdefault(int(cid), []).append(Season(int(sid), int(cid), int(league), int(season), int(fixtures), bool(cup)))
     out: list[Season] = []
     for seasons in by_comp.values():
         pooled = one_match(s.fixtures for s in seasons[:POOLED_EDITIONS])
@@ -409,6 +454,24 @@ COUNT_DATA_SQL: Final = ("SELECT x.competition_season_id, count(*), " + ", ".joi
     + " FROM analytics.coverage_fixture_facts x JOIN core.fixtures f ON f.id = x.fixture_id"
       " WHERE x.competition_season_id = ANY(%s) AND f.status_group = 'finished' GROUP BY 1")
 
+ROUNDS_SQL: Final = ("SELECT competition_season_id, id, round, kickoff_at FROM core.fixtures "
+                     "WHERE competition_season_id = ANY(%s) AND kickoff_at IS NOT NULL")
+"""Every match of the cup seasons (played or not: a stage's start is its first kick-off), for ``cup_phases``."""
+
+COUNT_PHASE_DATA_SQL: Final = ("SELECT x.competition_season_id, p.phase, count(*), " + ", ".join(
+    f"count(*) FILTER (WHERE '{d}' = ANY(x.present))" for d in levels.DATA)
+    + " FROM analytics.coverage_fixture_facts x JOIN core.fixtures f ON f.id = x.fixture_id"
+      " JOIN unnest(%s::bigint[], %s::text[]) AS p(fixture_id, phase) ON p.fixture_id = x.fixture_id"
+      " WHERE f.status_group = 'finished' GROUP BY 1, 2")
+
+HELD_PHASE_CELLS_SQL: Final = ("SELECT competition_season_id, phase_key, datum, level, missed, provisional, reason "
+                               "FROM analytics.coverage_cells WHERE competition_season_id = ANY(%s) AND phase_key = ANY(%s)")
+PREVIOUS_PHASE_SQL: Final = """
+SELECT s.competition_id, s.season, c.phase_key, c.datum, c.level FROM analytics.coverage_cells c
+  JOIN core.competition_seasons s ON s.id = c.competition_season_id
+ WHERE s.competition_id = ANY(%(comps)s) AND c.phase_key = ANY(%(phases)s)
+"""
+
 COUNT_MARKETS_SQL: Final = """
 SELECT x.competition_season_id, m.key,
        count(*) FILTER (WHERE x.kickoff_at >= %(window)s AND x.books IS NOT NULL) AS n_window,
@@ -495,6 +558,7 @@ class Report:
     facts: int = 0
     odds_facts: int = 0
     cells: int = 0
+    phase_cells: int = 0
     markets: int = 0
     changes: int = 0
     seconds: float = 0.0
@@ -503,7 +567,7 @@ class Report:
 
     def as_json(self) -> dict[str, Any]:
         return {"full": self.full, "seasons": self.seasons, "graded": self.graded, "facts": self.facts, "odds_facts": self.odds_facts,
-                "cells": self.cells, "markets": self.markets, "changes": self.changes, "seconds": round(self.seconds, 1),
+                "cells": self.cells, "phase_cells": self.phase_cells, "markets": self.markets, "changes": self.changes, "seconds": round(self.seconds, 1),
                 "stopped": self.stopped, "errors": self.errors[:5]}
 
 
@@ -513,7 +577,7 @@ def _record(cur: psycopg.Cursor[Any], sql: str, kind: str, cs: int, subject: str
            "provisional": result.provisional, "reason": result.reason}
     cur.execute(sql, row)
     if result.change is not None:
-        cur.execute(CHANGE_SQL, {"cs": cs, "phase": PHASE_ALL, "kind": kind, "subject": subject, "old": result.old_level,
+        cur.execute(CHANGE_SQL, {"cs": cs, "phase": base["phase"], "kind": kind, "subject": subject, "old": result.old_level,
                                  "level": result.level, "change": result.change, "n": counts.finished, "share": share(counts),
                                  "version": levels.RULES_VERSION, "at": base["at"]})
         report.changes += 1
@@ -545,6 +609,7 @@ def grade_seasons(conn: psycopg.Connection[Any], seasons: list[Season], *, now: 
         cur.execute(PREVIOUS_SQL, {"comps": sorted({s.competition_id for s in seasons}), "phase": PHASE_ALL})
         known: dict[tuple[int, int, str], Level] = {(int(r[0]), int(r[1]), str(r[2])): r[3] for r in cur.fetchall()}
         """(competition, season, ``d:<datum>`` or ``m:<market>``) -> published level: a datum and a market may share a name."""
+        phases = _phase_inputs(cur, [s for s in seasons if s.cup])
     conn.commit()
 
     by_comp: dict[int, list[Season]] = {}
@@ -594,7 +659,69 @@ def grade_seasons(conn: psycopg.Connection[Any], seasons: list[Season], *, now: 
                              "state": states.get(catalogue) if catalogue else None}, report)
                     known[(s.competition_id, s.season, "m:" + market)] = result.level
                     report.markets += 1
+                if s.cup and not pooled:
+                    _grade_phases(cur, s, phases, flag, base, report)
                 report.graded += 1
+
+
+@dataclass(slots=True)
+class PhaseInputs:
+    """What grading the phases of the cup seasons reads, in one go with the rest (PM-02-07)."""
+
+    counts: dict[tuple[int, str], tuple[int, list[int]]] = field(default_factory=dict)
+    """(competition season, phase) -> (finished matches, matches with each datum)."""
+    held: dict[tuple[int, str, str], Published] = field(default_factory=dict)
+    known: dict[tuple[int, int, str, str], Level] = field(default_factory=dict)
+    """(competition, season, phase, datum) -> published level (rule 2 reads the season before)."""
+
+
+def _phase_inputs(cur: psycopg.Cursor[Any], cups: list[Season]) -> PhaseInputs:
+    out = PhaseInputs()
+    if not cups:
+        return out
+    ids = [s.id for s in cups]
+    cur.execute(ROUNDS_SQL, (ids,))
+    per: dict[int, list[tuple[int, str | None, datetime]]] = {}
+    for cs, fid, label, kickoff in cur.fetchall():
+        per.setdefault(int(cs), []).append((int(fid), label, kickoff))
+    fids: list[int] = []
+    keys: list[str] = []
+    for rows in per.values():
+        for fid, phase in cup_phases(rows).items():
+            fids.append(fid)
+            keys.append(phase)
+    if fids:
+        cur.execute(COUNT_PHASE_DATA_SQL, (fids, keys))
+        out.counts = {(int(r[0]), str(r[1])): (int(r[2]), [int(v) for v in r[3:]]) for r in cur.fetchall()}
+    cur.execute(HELD_PHASE_CELLS_SQL, (ids, list(CUP_PHASES)))
+    out.held = {(int(r[0]), str(r[1]), str(r[2])): Published(r[3], bool(r[4]), bool(r[5]), r[6]) for r in cur.fetchall()}
+    cur.execute(PREVIOUS_PHASE_SQL, {"comps": sorted({s.competition_id for s in cups}), "phases": list(CUP_PHASES)})
+    out.known = {(int(r[0]), int(r[1]), str(r[2]), str(r[3])): r[4] for r in cur.fetchall()}
+    return out
+
+
+def _grade_phases(cur: psycopg.Cursor[Any], s: Season, phases: PhaseInputs, flag: Mapping[str, Any], base: dict[str, Any],
+                  report: Report) -> None:
+    """The data cells of each phase of cup season ``s`` that has matches: the same rules as its ``todas`` (2 with the same phase of
+    the season before, 4 against the phase's own published cell, 5 with the season's flag)."""
+    for phase in CUP_PHASES:
+        found = phases.counts.get((s.id, phase))
+        if found is None:
+            continue
+        prev = max((k[1] for k in phases.known if k[0] == s.competition_id and k[2] == phase and k[1] < s.season), default=None)
+        for j, datum in enumerate(levels.DATA):
+            counts = Coverage(*_data_pair(found, j))
+            column = DECLARED_FLAG[datum]
+            declared = flag.get(column) if column else None
+            before = phases.known.get((s.competition_id, prev, phase, datum)) if prev is not None else None
+            grade = apply_flag(levels.grade_datum(counts, previous=before), declared if isinstance(declared, bool) else None,
+                               with_data=counts.with_data)
+            result = publish(grade, phases.held.get((s.id, phase, datum)))
+            _record(cur, UPSERT_CELL_SQL, "datum", s.id, datum, result, counts,
+                    {**base, "phase": phase, "n": counts.finished, "k": counts.with_data, "share": share(counts), "pooled": 1,
+                     "declared": declared if isinstance(declared, bool) else None}, report)
+            phases.known[(s.competition_id, s.season, phase, datum)] = result.level
+            report.phase_cells += 1
 
 
 def _data_pair(found: tuple[int, list[int]] | None, j: int) -> tuple[int, int]:

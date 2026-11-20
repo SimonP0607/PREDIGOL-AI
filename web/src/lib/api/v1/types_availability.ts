@@ -2,6 +2,8 @@
  * C-16 «Disponibilidad» (plan PM, PM-02-05; backend `fbi.api.contracts.intelligence.availability`): what PrediGol has per
  * competition, season, datum and market (levels `coverage-levels-v1`), and the seven states of every block and market of a match.
  * Every route answers 404 while `FBI_AVAILABILITY` is off; nothing reads these types yet (the modules adopt them in PM-14-04).
+ * 1.1.0 (PM-02-07): a cup season's phases (`phases`) and the phase that graded a match's blocks (`phase`), filled only while
+ * `FBI_AVAILABILITY_PHASES` is on (`phases` empty and `phase` «todas» otherwise).
  */
 import type { ContractHead, ItemList, Maybe, MarketState } from "./types_intelligence";
 
@@ -70,6 +72,15 @@ export interface MarketCellPrivate extends MarketCell {
   catalogue_state: Maybe<MarketState>;
 }
 
+/** A cup's phases (PM-02-07). */
+export type CupPhase = "previa" | "liga_o_grupos" | "eliminatoria";
+
+/** The data cells of one phase of a cup season (the markets stay on «todas»). */
+export interface PhaseAvailability<D extends LevelCell = LevelCell> {
+  phase: CupPhase;
+  data: D[];
+}
+
 export interface SeasonAvailability<
   D extends LevelCell = LevelCell,
   M extends MarketCell = MarketCell,
@@ -82,6 +93,9 @@ export interface SeasonAvailability<
   families: FamilyLevel[];
   data: D[];
   markets: M[];
+  /** 1.1.0 (always sent; optional so code typed against 1.0.0 still compiles): empty for a league, a cup in one phase, or while
+   * `FBI_AVAILABILITY_PHASES` is off. */
+  phases?: PhaseAvailability<D>[];
 }
 
 export interface CompetitionAvailability<S extends SeasonAvailability = SeasonAvailability> {
@@ -141,6 +155,9 @@ export interface MatchAvailability<M extends MarketAvailability = MarketAvailabi
   fixture_id: number;
   kickoff_at: string;
   competition_season_id: Maybe<number>;
+  /** 1.1.0 (always sent; optional so code typed against 1.0.0 still compiles): the phase whose cells graded the blocks («todas»
+   * unless a cup match's phase was measured and the switch is on). */
+  phase?: "todas" | CupPhase;
   blocks: BlockAvailability[];
   markets: M[];
   notes: "muestra_insuficiente"[];

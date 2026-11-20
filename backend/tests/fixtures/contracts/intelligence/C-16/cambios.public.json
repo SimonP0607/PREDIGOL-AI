@@ -1,6 +1,6 @@
 {
   "contract": "C-16",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "public",
   "freshness": {
     "generated_at": "2026-11-21T08:04:00Z",

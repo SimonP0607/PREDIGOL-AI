@@ -88,6 +88,10 @@ AVAILABILITY: Final = "FBI_AVAILABILITY"
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
 it changes nothing a page shows until a module reads it (PM-14-04)."""
 
+AVAILABILITY_PHASES: Final = "FBI_AVAILABILITY_PHASES"
+"""The cups split by phase in C-16 (plan PM, PM-02-07): OFF while the line is absent - C-16 answers ``todas`` only and a match's blocks
+read its season's ``todas`` - and ``=1`` adds each season's phase cells (``previa``, ``liga_o_grupos``, ``eliminatoria``) and grades a
+cup match's blocks by the cells of its own phase. The nightly batch measures the phases either way (invisible while it is off)."""
 
 USAGE_CONSOLE: Final = "FBI_USAGE_CONSOLE"
 """The owner's console of the provider's requests by lane, endpoint and competition (plan PM, PM-04-05; BE-076, UX-175): OFF while
@@ -182,6 +186,11 @@ def stats_v2_on() -> bool:
 def availability_on() -> bool:
     """Whether the routes of C-16 answer (``FBI_AVAILABILITY``, off by default)."""
     return user_switch(AVAILABILITY, default=False)
+
+
+def availability_phases_on() -> bool:
+    """Whether C-16 reads the cups by phase (``FBI_AVAILABILITY_PHASES``, off by default)."""
+    return user_switch(AVAILABILITY_PHASES, default=False)
 
 
 def usage_console_on() -> bool:
