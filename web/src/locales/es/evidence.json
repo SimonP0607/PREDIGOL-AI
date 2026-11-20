@@ -1,0 +1,49 @@
+{
+  "level": {
+    "E0": {
+      "tag": "E0 · anécdota",
+      "text": "Muestra menor que el mínimo: no es una tendencia."
+    },
+    "E1": {
+      "tag": "E1 · descriptivo",
+      "text": "Lo que pasó, con su muestra y su intervalo."
+    },
+    "E2": {
+      "tag": "E2 · asociación",
+      "text": "Una relación que resistió las pruebas de azar, sin réplica todavía."
+    },
+    "E3": {
+      "tag": "E3 · replicado",
+      "text": "La relación se repitió con datos posteriores."
+    },
+    "E4": {
+      "tag": "E4 · validado",
+      "text": "Mejora comprobada frente al mercado, con la firma del dueño."
+    }
+  },
+  "badgeLabel": "Nivel de evidencia {tag}: {text}",
+  "sentence": {
+    "rate": "{subject}: {k} de {n} partidos ({pct} %). Con esta muestra, el valor real puede estar entre el {lo} % y el {hi} %.",
+    "rateLeague": "{subject}: {k} de {n} partidos ({pct} %). Con esta muestra, el valor real puede estar entre el {lo} % y el {hi} %; en la liga, {league} %.",
+    "rateThin": "{subject}: {k} de {n} partidos. Muestra pequeña: no es una tendencia.",
+    "mean": "{subject}: {value} por partido en {n} partidos.",
+    "meanLeague": "{subject}: {value} por partido en {n} partidos; en la liga, {league}.",
+    "meanThin": "{subject}: {value} por partido en solo {n} partidos. Muestra pequeña: no es una tendencia."
+  },
+  "check": {
+    "contraste": "Contraste: texto a 4,5:1 y marcas a 3:1 sobre su fondo",
+    "alternativa_textual": "No solo visual: la frase de lectura dice lo que muestra",
+    "texto_minimo": "Ningún texto por debajo de 12 px",
+    "sin_parpadeo": "Sin parpadeo; respeta «reducir movimiento»",
+    "color_no_unico": "El color no es la única señal",
+    "teclado": "Todo lo interactivo se alcanza con teclado",
+    "foco_visible": "Foco visible y no tapado",
+    "instrucciones": "Si es interactiva, dice cómo se usa",
+    "titulo_y_resumen": "Título y frase de lectura",
+    "incertidumbre": "Muestra e intervalo dichos",
+    "lenguaje_llano": "Lenguaje llano, sin jerga sin explicar",
+    "tabla_equivalente": "Tabla equivalente o datos legibles",
+    "zoom_y_espaciado": "Se lee con zoom al 200 % y espaciado de texto aumentado",
+    "lector_de_pantalla": "Nombre accesible y orden lógico para lector de pantalla"
+  }
+}
