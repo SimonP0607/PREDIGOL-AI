@@ -50,3 +50,16 @@ def test_c16_availability_is_told_to_the_page_and_off_by_default(value: str | No
         monkeypatch.setenv(switches.AVAILABILITY, value)
     assert Me.model_fields["availability"].default is False
     assert switches.availability_on() is expected
+
+
+@pytest.mark.parametrize(("value", "expected"), [(None, False), ("", False), ("1", True), ("0", False)])
+def test_shot_funnel_is_told_to_the_page_and_off_by_default(value: str | None, expected: bool,
+                                                             monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan PM, PM-10-01 (FE-005): the Match Center's shot funnel and two zones only with FBI_MATCH_SHOT_FUNNEL's line on;
+    /auth/me says it as ``match_shot_funnel``, off by default."""
+    if value is None:
+        monkeypatch.delenv(switches.MATCH_SHOT_FUNNEL, raising=False)
+    else:
+        monkeypatch.setenv(switches.MATCH_SHOT_FUNNEL, value)
+    assert Me.model_fields["match_shot_funnel"].default is False
+    assert switches.match_shot_funnel_on() is expected

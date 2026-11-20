@@ -1,0 +1,40 @@
+{
+  "source": {
+    "api_football": "estadísticas del partido de API-Football",
+    "football_data": "estadísticas del partido de football-data.co.uk"
+  },
+  "table": {
+    "show": "Ver como tabla",
+    "datum": "Dato"
+  },
+  "funnel": {
+    "title": "Embudo de remate",
+    "subtitle": "De cada remate, cuántos fueron a puerta y cuántos acabaron en gol.",
+    "subject": "Embudo de remate de {home} y {away}",
+    "shots": "Remates",
+    "onTarget": "A puerta",
+    "goals": "Goles",
+    "note": "El porcentaje es la parte de los remates de cada equipo que llega a ese paso.",
+    "ownGoals": "Los goles en propia puerta no salen de un remate del equipo: no se cuentan aquí ({count}).",
+    "goalsFromScore": "Goles tomados del marcador: los eventos del partido no permiten separar los goles en propia puerta.",
+    "method": "Remates, remates a puerta y goles de cada equipo en este partido, tal como los entrega el proveedor. Cada paso se compara con los remates del mismo equipo. Los goles salen de los eventos del partido; si no cuadran con el marcador, del marcador.",
+    "aria": "{team}: {shots} remates, {onTarget} a puerta, {goals} goles"
+  },
+  "zones": {
+    "title": "Zona de remate · 2 zonas",
+    "subtitle": "Dentro o fuera del área: las dos zonas que entrega el proveedor.",
+    "subject": "Remates dentro y fuera del área de {home} y {away}",
+    "inside": "dentro",
+    "outside": "fuera",
+    "insideLong": "Dentro del área",
+    "outsideLong": "Fuera del área",
+    "blocked": "Remates bloqueados",
+    "xg": "xG del partido",
+    "xgPerShot": "xG por remate",
+    "xgSource": "xG de API-Football.",
+    "honest": "Son las dos zonas que entrega el proveedor. No es un mapa de tiros: no se conoce el punto de cada remate.",
+    "method": "El proveedor cuenta los remates de cada equipo dentro y fuera del área; el porcentaje es la parte de los remates de ese equipo en cada zona. No da el punto de cada remate, así que no hay mapa: solo estas dos zonas.",
+    "aria": "{team}: {inside} remates dentro del área ({insidePct} %) y {outside} fuera ({outsidePct} %)"
+  },
+  "footer": "Fuente: {source} · {n} partido."
+}
