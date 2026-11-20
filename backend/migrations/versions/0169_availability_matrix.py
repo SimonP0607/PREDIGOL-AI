@@ -1,5 +1,5 @@
-"""The availability matrix: coverage cells by competition season, phase and datum, markets by competition season, the history of
-their levels and the shadow comparison's discrepancies (plan PM, section 4; PM-02-02)
+"""The availability matrix: coverage cells by competition season, phase and datum, markets by competition season, the facts of each
+match, the history of their levels and the shadow comparison's discrepancies (plan PM, section 4; PM-02-02)
 
 WHY THIS EXISTS
 ---------------
@@ -25,6 +25,14 @@ One row per competition season and market (``fbi.coverage.levels.MARKETS``): ove
 were priced and the median of houses; over the finished matches of the season, how many carry what the market settles on; the
 level, as above, and the catalogue's state of the market when there is one.
 
+analytics.coverage_fixture_facts
+--------------------------------
+One row per finished match measured: which data it carries (filled for both teams), how many houses priced each market (only for a
+match inside the odds window) and which markets its stored result settles. Facts, not states: a match's prices do not change after
+it is played, so the nightly batch measures each match once (and its data again on Sundays, when late statistics may have arrived)
+and the cells are counted from here, not from the 29 million rows of ``market.odds_quotes`` every night. A fifth table, not in the
+plan's list: without it the incremental pass would read every quote of every match of a season each night.
+
 analytics.coverage_changes
 --------------------------
 Append-only: one row each time a published level changes (or a cell is graded for the first time), with the level before and after
@@ -33,13 +41,13 @@ and why. History and the owner's notices.
 analytics.availability_discrepancies
 ------------------------------------
 Append-only: one row per day, match, module and subject where what the module shows differs from what the matrix would say, both
-read at the same instant (PM-02-06). A fourth table, not in the plan's list of three: the shadow's daily record needs a home and a
+read at the same instant (PM-02-06). Not in the plan's list of three either: the shadow's daily record needs a home and a
 second migration for it would be a second chance of a clash of revision numbers (it happened three times).
 
-Additive only: four new tables, no foreign key (no lock on ``core.competition_seasons`` or ``core.fixtures``; a cell outlives
+Additive only: five new tables, no foreign key (no lock on ``core.competition_seasons`` or ``core.fixtures``; a cell outlives
 nothing it refers to, seasons are never deleted), no change to an existing table, no row written. Privileges:
-``deploy/vps/db/grants.sql`` - the worker writes the cells and markets (INSERT, UPDATE; never DELETE) and only appends the changes
-and discrepancies; the API reads the four. Downgrade drops them only while they are empty: it never deletes a measure.
+``deploy/vps/db/grants.sql`` - the worker writes the cells, markets and facts (INSERT, UPDATE; never DELETE) and only appends the changes
+and discrepancies; the API reads the five. Downgrade drops them only while they are empty: it never deletes a measure.
 
 Revision ID: 0169
 Revises: 0168
@@ -54,8 +62,8 @@ down_revision = "0168"
 branch_labels = None
 depends_on = None
 
-TABLES = ("analytics.coverage_cells", "analytics.market_availability", "analytics.coverage_changes",
-          "analytics.availability_discrepancies")
+TABLES = ("analytics.coverage_cells", "analytics.market_availability", "analytics.coverage_fixture_facts",
+          "analytics.coverage_changes", "analytics.availability_discrepancies")
 
 _LEVEL = "IN ('A', 'B', 'C', 'D', 'MI')"
 _VERSION = r"~ '^[a-z][a-z0-9-]{1,40}-v[0-9]+$'"
@@ -118,6 +126,23 @@ def upgrade() -> None:
           'PM-02-02 (C-16, states 2, 3 and 6 by competition season): over the finished matches of the odds window, the share priced and '
           'the median of houses; over the finished matches of the season, the share carrying what the market settles on; the level '
           '(coverage-levels-v1) as in analytics.coverage_cells. Written by the nightly batch (PM-02-03).';
+
+        CREATE TABLE analytics.coverage_fixture_facts (
+            fixture_id             BIGINT        PRIMARY KEY,
+            competition_season_id  BIGINT        NOT NULL,
+            kickoff_at             TIMESTAMPTZ   NOT NULL,
+            present                TEXT[]        NOT NULL DEFAULT '{{}}',
+            books                  JSONB         CHECK (books IS NULL OR jsonb_typeof(books) = 'object'),
+            settles                TEXT[]        NOT NULL DEFAULT '{{}}',
+            rules_version          TEXT          NOT NULL CHECK (rules_version {_VERSION}),
+            measured_at            TIMESTAMPTZ   NOT NULL,
+            odds_measured_at       TIMESTAMPTZ
+        );
+        CREATE INDEX coverage_fixture_facts_season ON analytics.coverage_fixture_facts (competition_season_id, kickoff_at);
+        COMMENT ON TABLE analytics.coverage_fixture_facts IS
+          'PM-02-03: what a finished match carries - present: the data filled for both teams; books: houses per market (NULL outside '
+          'the odds window); settles: the markets its stored result settles. Measured once by the nightly batch (data again on '
+          'Sundays); the cells of analytics.coverage_cells and analytics.market_availability are counted from here.';
 
         CREATE TABLE analytics.coverage_changes (
             id                     BIGINT        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

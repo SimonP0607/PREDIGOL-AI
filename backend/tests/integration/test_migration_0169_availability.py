@@ -1,4 +1,4 @@
-"""Migration 0169 (PM-02-02) on a scratch database at the revision below it: the four tables of the availability matrix appear, take what
+"""Migration 0169 (PM-02-02) on a scratch database at the revision below it: the five tables of the availability matrix appear, take what
 the nightly batch writes, refuse what they must, and the downgrade refuses while a measure exists - it never deletes one - and goes back
 clean when they are empty."""
 
@@ -18,8 +18,8 @@ from tests.integration.conftest import ADMIN_URL, REPO_ROOT, TEST_DB, _dsn
 pytestmark = pytest.mark.integration
 SCRATCH = f"{TEST_DB}_m0169"
 BELOW = "0168"
-TABLES = ("analytics.coverage_cells", "analytics.market_availability", "analytics.coverage_changes",
-          "analytics.availability_discrepancies")
+TABLES = ("analytics.coverage_cells", "analytics.market_availability", "analytics.coverage_fixture_facts",
+          "analytics.coverage_changes", "analytics.availability_discrepancies")
 
 
 def _cfg() -> Config:
@@ -84,6 +84,12 @@ def test_0169_adds_the_tables_keeps_every_measure_and_goes_back_clean_when_empty
                 c.execute("INSERT INTO analytics.market_availability (competition_season_id, market_key, window_start, window_days, "
                           "n_window, n_priced, level, measured_level, rules_version, measured_at) "
                           "VALUES (7, 'OU', '2026-10-05', 46, 5, 6, 'MI', 'MI', 'coverage-levels-v1', now())")
+            c.execute("INSERT INTO analytics.coverage_fixture_facts (fixture_id, competition_season_id, kickoff_at, present, books, "
+                      "settles, rules_version, measured_at) VALUES (1557464, 7, '2026-11-08 20:00Z', '{events,lineups,corners}', "
+                      "'{\"1X2\": 10, \"corners\": 5}', '{goals,corners}', 'coverage-levels-v1', now())")
+            with pytest.raises(psycopg.errors.CheckViolation):
+                c.execute("INSERT INTO analytics.coverage_fixture_facts (fixture_id, competition_season_id, kickoff_at, books, "
+                          "rules_version, measured_at) VALUES (2, 7, now(), '[]', 'coverage-levels-v1', now())")
             row = c.execute("INSERT INTO analytics.coverage_changes (competition_season_id, phase_key, kind, subject, new_level, reason, "
                             "rules_version) VALUES (7, 'todas', 'datum', 'corners', 'A', 'primera_medida', 'coverage-levels-v1') "
                             "RETURNING id").fetchone()

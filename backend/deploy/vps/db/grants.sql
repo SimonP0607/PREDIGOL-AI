@@ -102,14 +102,15 @@ END
 $provider_usage$;
 
 -- The availability matrix (plan PM, PM-02-02, migration 0169). The loop above already gives the API SELECT (the resolver and C-16 read
--- the four) and the worker everything; here it is narrowed to what the nightly batch and the shadow comparison do:
---   analytics.coverage_cells, analytics.market_availability          the worker writes and rewrites its cells (INSERT, UPDATE); it never deletes one.
+-- the five) and the worker everything; here it is narrowed to what the nightly batch and the shadow comparison do:
+--   analytics.coverage_cells, analytics.market_availability,
+--   analytics.coverage_fixture_facts                                   the worker writes and rewrites its cells (INSERT, UPDATE); it never deletes one.
 --   analytics.coverage_changes, analytics.availability_discrepancies  append-only: the worker adds rows (INSERT), never edits or deletes one.
 DO $availability$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['analytics.coverage_cells', 'analytics.market_availability'] LOOP
+  FOREACH t IN ARRAY ARRAY['analytics.coverage_cells', 'analytics.market_availability', 'analytics.coverage_fixture_facts'] LOOP
     IF to_regclass(t) IS NULL THEN
       RAISE NOTICE 'grants: % does not exist (yet) - skipped', t;
       CONTINUE;
