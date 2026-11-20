@@ -1,0 +1,44 @@
+{
+  "title": "Datos nuevos del jugador",
+  "blocks": {
+    "underPosts": "Bajo los palos",
+    "withBall": "Con el balón",
+    "discipline": "Penaltis y fueras de juego"
+  },
+  "fig": {
+    "saves": "Paradas",
+    "save_pct": "De los remates a puerta, parados",
+    "goals_conceded": "Goles encajados",
+    "penalties_saved": "Penaltis parados",
+    "passes": "Pases",
+    "pass_accuracy": "Acierto en el pase",
+    "penalties_won": "Penaltis provocados",
+    "penalties_committed": "Penaltis cometidos",
+    "offsides": "Fueras de juego",
+    "dribbled_past": "Veces regateado"
+  },
+  "unit": {
+    "por_90": "por 90 minutos",
+    "total": "en la temporada",
+    "por_partido": "por partido",
+    "porcentaje": "porcentaje"
+  },
+  "league": "liga {v}",
+  "matches": "{n} partidos con el dato",
+  "missing": {
+    "sin_datos": "Sin datos esta temporada",
+    "sin_cobertura": "Pocos partidos con el dato: no se muestra",
+    "muestra_insuficiente": "Muestra insuficiente",
+    "no_entregado": "El proveedor no lo entrega",
+    "aun_no_disponible": "Aún no disponible"
+  },
+  "sample": "Muestra: {n} partidos y {minutes} minutos en esta competición.",
+  "thinSubject": "Datos del jugador en esta competición",
+  "partialSubject": "los datos de jugador de esta competición",
+  "goalsPrevented": "Goles evitados",
+  "goalsPreventedWhy": "El dato del proveedor no pasó la comprobación de calidad: no se muestra hasta que la pase.",
+  "sourceMixed": "Fuente: estadísticas por jugador de cada partido (PrediGol) y penaltis parados como los mide API-Football.",
+  "sourcePredigol": "Fuente: estadísticas por jugador de cada partido; la liga es la de los porteros de esta competición.",
+  "sourceProvider": "Dato de API-Football: lo mide el proveedor y PrediGol no lo recalcula.",
+  "blockMissing": "Pocos partidos de esta competición traen estos datos ({matches} como mucho): no se muestran."
+}
