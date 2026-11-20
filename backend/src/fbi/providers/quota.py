@@ -43,13 +43,16 @@ from collections.abc import Awaitable, Callable, Mapping
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from types import MappingProxyType
 
 import psycopg
 import structlog
 
 from fbi.core.clock import day_start, now
 from fbi.core.errors import QuotaExhaustedError
+from fbi.providers.lanes import LANE_OF_JOB, LaneDecision, LaneMode, LanePolicy
+from fbi.providers.lanes import (
+    NO_LANE as NO_LANE,  # re-exported: the readers of PM-01-02 import it from here
+)
 
 log = structlog.get_logger(__name__)
 
@@ -496,7 +499,6 @@ def summarize_minutes(conn: psycopg.Connection, *, provider: str = DEFAULT_PROVI
 
 # ── requests by endpoint, lane and job (plan PM, PM-01-02, migration 0168) ──────────────────────────────────────────────────
 
-NO_LANE = "sin_carril"
 NO_JOB = "sin_trabajo"
 OTHER_ENDPOINT = "/otro"
 USAGE_FLUSH_SECONDS = 60.0
@@ -504,36 +506,14 @@ USAGE_FLUSH_SECONDS = 60.0
 USAGE_MAX_KEYS = 5_000
 """A bound on what waits in memory (a day has a few dozen keys); a count beyond it is dropped and logged, never kept without limit."""
 
-PROVISIONAL_LANES: Mapping[str, str] = MappingProxyType({
-    # 1 directo
-    "live_match_capture": "directo", "live_odds_capture": "directo",
-    # 2 cuotas
-    "odds_capture": "cuotas", "odds_book_refresh": "cuotas", "final_prematch": "cuotas",
-    # 3 alineaciones
-    "prematch_lineups": "alineaciones", "lineup_watch": "alineaciones",
-    # 4 resultados
-    "results_sync": "resultados", "results_repair": "resultados", "post_match_detail": "resultados",
-    # 5 calendario y prioritarias
-    "fixtures_sync": "calendario", "catalogue_refresh": "calendario", "seasons_refresh": "calendario", "teams_sync": "calendario",
-    # 6 estadisticas y contexto
-    "context_refresh": "estadisticas_contexto", "context_due": "estadisticas_contexto",
-    "context_refresh_manual": "estadisticas_contexto",
-    # 7 jugadores y referencia
-    "reference_refresh": "referencia",
-    # 8 historicos
-    "historical_backfill": "historicos", "historical_odds_import": "historicos", "raw_backfill_season_stats": "historicos",
-    # 9 ampliacion
-    "league_probe": "ampliacion", "league_expansion": "ampliacion", "plan_probe": "ampliacion", "window_probe": "ampliacion",
-    "capacity_probe": "ampliacion",
-    # 10 reparacion
-    "reprocess_fixture_venues": "reparacion",
-})
-"""The lane of each job until PM-04-01 creates the lanes of the quota: the table of the plan (PLAN_MAESTRO, «Reparto del cupo en
-carriles»), by the ``job_type`` the ledger records. A job not listed counts under ``sin_carril``.
+PROVISIONAL_LANES: Mapping[str, str] = LANE_OF_JOB
+"""The lane of each job: since PM-04-01 (BE-060) the table of the lanes of the quota (``fbi.providers.lanes``), by the
+``job_type`` the ledger records; it was the provisional table of PM-01-02 and keeps its name for the readers of then. A job not
+listed counts under ``sin_carril``.
 
-CONTRACT FOR PM-04-01: a job that knows its lane says so with ``bind_usage_lane(name)`` (it wins over this table); this table may
-then be replaced by the configuration of the lanes. ``raw.provider_endpoint_usage`` keeps the ``job`` beside the ``lane``, so the
-history can be re-read under the new lanes without asking the provider again. A lane is ``[a-z0-9_]``, at most 40 characters."""
+A job that knows its lane may still say so with ``bind_usage_lane(name)`` (it wins over this table). ``raw.provider_endpoint_usage``
+keeps the ``job`` beside the ``lane``, so the history can be re-read under other lanes without asking the provider again. A lane is
+``[a-z0-9_]``, at most 40 characters."""
 
 _usage_job: ContextVar[str | None] = ContextVar("provider_usage_job", default=None)
 _usage_lane: ContextVar[str | None] = ContextVar("provider_usage_lane", default=None)
@@ -613,6 +593,15 @@ class EndpointUsageCounter:
         with self._lock:
             return sum(self._pending.values())
 
+    def pending_by_lane(self, day: date) -> dict[str, int]:
+        """What waits in memory for ``day``, by lane: the part of this process's requests the table does not hold yet."""
+        out: dict[str, int] = {}
+        with self._lock:
+            for (d, _endpoint, lane, _job), n in self._pending.items():
+                if d == day:
+                    out[lane] = out.get(lane, 0) + n
+        return out
+
     def record(self, endpoint: str, calls: int = 1) -> None:
         lane, job = current_usage_tags()
         key = (now().date(), normalise_endpoint(endpoint), lane, job)
@@ -651,3 +640,111 @@ class EndpointUsageCounter:
             log.warning("quota.endpoint_usage_not_kept", error=type(exc).__name__, pending=sum(batch.values()))
             return 0
         return sum(batch.values())
+
+
+# ── the lanes of the budget (plan PM, PM-04-01; BE-060) ─────────────────────────────────────────────────────────────────────
+
+
+class LaneLimitedError(QuotaExhaustedError):
+    """A lane of the budget refused the request (``FBI_APIFOOTBALL_LANES=enforce``). A ``QuotaExhaustedError``, so every job that
+    already stops when the day's budget is spent stops the same way - it has never been a reason to retry."""
+
+
+_LANES_READ = """
+SELECT lane, sum(requests)::bigint FROM raw.provider_endpoint_usage
+ WHERE provider = %(provider)s AND usage_date = %(day)s GROUP BY lane
+"""
+
+LANES_REFRESH_SECONDS = 15.0
+"""Today's counts by lane are read again at most this often per process. Between two reads the guard adds what it let through;
+what another process sent and had not yet flushed (at most a minute of it) is not seen - a soft bound by design: the hard one, shared
+and atomic, is still the daily budget."""
+LANES_LOG_SECONDS = 600.0
+"""A lane's ``quota.lane_would_limit`` / ``quota.lane_limited`` line is logged at most this often (the count goes on)."""
+
+
+class LaneGuard:
+    """The lanes of the budget in front of every request (PM-04-01): the client asks ``check()`` before it spends the daily budget.
+
+    ``measure``: the decision is taken and counted, a refusal is only logged (``quota.lane_would_limit``) - nothing changes for any
+    request. ``enforce``: a refusal raises ``LaneLimitedError``. It never waits: a request is let through or refused at once, so a
+    match in play is never held behind anything. A count it cannot read lets the request through (logged): the guard's own failure
+    never costs a request.
+
+    Today's spending by lane comes from ``raw.provider_endpoint_usage`` (PM-01-02: the same place every request is counted, in the
+    same lane) plus what this process's counter holds in memory, read at most every ``refresh_every`` seconds; it starts again at 00:00
+    UTC with the day of the counter."""
+
+    def __init__(self, *, policy: LanePolicy, mode: LaneMode, connect: Callable[[], psycopg.Connection],
+                 counter: EndpointUsageCounter | None, provider: str = DEFAULT_PROVIDER,
+                 refresh_every: float = LANES_REFRESH_SECONDS, log_every: float = LANES_LOG_SECONDS,
+                 clock: Callable[[], float] = time.monotonic) -> None:
+        self.policy = policy
+        self.mode = mode
+        self._connect = connect
+        self._counter = counter
+        self._provider = provider
+        self._refresh_every = refresh_every
+        self._log_every = log_every
+        self._clock = clock
+        self._lock = threading.Lock()
+        self._day: date | None = None
+        self._read_at: float | None = None
+        self._spent: dict[str, int] = {}
+        self._logged: dict[tuple[str, str], float] = {}
+        self.would_limit: dict[str, int] = {}
+        """Requests each lane would have refused since the process started (``measure``) or did refuse (``enforce``)."""
+
+    def _read(self, day: date) -> dict[str, int] | None:
+        try:
+            with self._connect() as conn, conn.cursor() as cur:
+                cur.execute(_LANES_READ, {"provider": self._provider, "day": day})
+                rows = cur.fetchall()
+        except Exception as exc:  # the guard's own failure never costs a request
+            log.warning("quota.lanes_not_read", error=type(exc).__name__)
+            return None
+        spent = {str(lane): int(n) for lane, n in rows}
+        if self._counter is not None:
+            for lane, n in self._counter.pending_by_lane(day).items():
+                spent[lane] = spent.get(lane, 0) + n
+        return spent
+
+    def spent_today(self) -> dict[str, int]:
+        """Today's requests by lane as the guard sees them now (refreshed when due)."""
+        day = now().date()
+        moment = self._clock()
+        with self._lock:
+            due = self._day != day or self._read_at is None or moment - self._read_at >= self._refresh_every
+        if due:
+            fresh = self._read(day)
+            with self._lock:
+                if fresh is not None or self._day != day:
+                    self._spent = fresh or {}
+                    self._day = day
+                self._read_at = moment
+        with self._lock:
+            return dict(self._spent)
+
+    def check(self, calls: int = 1) -> LaneDecision:
+        """The lane of the request made now in this task (``current_usage_tags``): let it through, or refuse it in ``enforce``."""
+        lane, job = current_usage_tags()
+        decision = self.policy.decide(lane, lane_spent=self.spent_today(), calls=calls)
+        if not decision.allowed:
+            with self._lock:
+                self.would_limit[decision.lane] = self.would_limit.get(decision.lane, 0) + calls
+                key = (decision.lane, decision.reason)
+                moment = self._clock()
+                say = key not in self._logged or moment - self._logged[key] >= self._log_every
+                if say:
+                    self._logged[key] = moment
+            if say:
+                log.warning("quota.lane_limited" if self.mode == "enforce" else "quota.lane_would_limit", lane=decision.lane,
+                            job=job, reason=decision.reason, lane_spent=decision.lane_spent, ceiling=decision.ceiling,
+                            refused_since_start=self.would_limit[decision.lane], mode=self.mode)
+            if self.mode == "enforce":
+                raise LaneLimitedError(
+                    f"lane {decision.lane!r} reached its daily ceiling ({decision.lane_spent} of {decision.ceiling} today): "
+                    f"{job} stops here; the other lanes go on. It starts again at 00:00 UTC (FBI_APIFOOTBALL_LANES).")
+        with self._lock:
+            self._spent[decision.lane] = self._spent.get(decision.lane, 0) + calls
+        return decision

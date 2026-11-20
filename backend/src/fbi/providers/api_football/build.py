@@ -17,18 +17,23 @@ import os
 import threading
 
 import psycopg
+import structlog
 
 from fbi.core.config import settings
 from fbi.providers.api_football.client import ApiFootballClient
+from fbi.providers.lanes import LanePolicy
 from fbi.providers.quota import (
     MINUTE_SHARE,
     EndpointUsageCounter,
+    LaneGuard,
     PersistentDailyQuota,
     PersistentMinuteLimiter,
     PersistentReportedQuota,
     RunCappedQuota,
 )
 from fbi.storage.payload_store import PayloadStore
+
+log = structlog.get_logger(__name__)
 
 
 def _connect() -> psycopg.Connection:
@@ -67,6 +72,8 @@ def build_client(max_requests: int | None = None) -> ApiFootballClient:
         quota_reporter=PersistentReportedQuota(connect=_connect),
         # Requests by endpoint, lane and job, in memory and added once a minute (plan PM, PM-01-02).
         usage=build_usage_counter(),
+        # The lanes of the budget (plan PM, PM-04-01): None while FBI_APIFOOTBALL_LANES is off.
+        lanes=build_lane_guard(),
     )
 
 
@@ -107,3 +114,29 @@ def build_usage_counter() -> EndpointUsageCounter | None:
 def _flush_at_exit(counter: EndpointUsageCounter) -> None:
     # The interpreter is leaving: flush() never raises (a write that fails is logged), so this is all it can cost.
     counter.flush()
+
+
+_lanes_lock = threading.Lock()
+_lane_guard: LaneGuard | None = None
+
+
+def build_lane_guard() -> LaneGuard | None:
+    """The process's one lane guard (plan PM, PM-04-01), shared by every client of the process; None while
+    ``FBI_APIFOOTBALL_LANES`` is off - the behaviour before the lanes, exactly. It reads today's counts from what the usage
+    counter (PM-01-02) writes, so with ``FBI_PROVIDER_USAGE`` off there is nothing to read and it stays off (said once)."""
+    global _lane_guard
+    plan = settings.provider_plan
+    if plan.lanes_mode == "off":
+        return None
+    with _lanes_lock:
+        if _lane_guard is None:
+            counter = build_usage_counter()
+            if counter is None:
+                log.warning("quota.lanes_off", reason="FBI_PROVIDER_USAGE is off: the lanes have no counts to read")
+                return None
+            policy, ignored = LanePolicy.from_settings(plan.lane_ceilings)
+            if ignored:
+                log.warning("quota.lane_ceilings_ignored", entries=ignored[:10])
+            _lane_guard = LaneGuard(policy=policy, mode=plan.lanes_mode, connect=_connect, counter=counter)
+            log.info("quota.lanes", mode=plan.lanes_mode, ceilings=policy.ceilings)
+        return _lane_guard
