@@ -2264,6 +2264,12 @@ async def main() -> None:
                           misfire_grace_time=QUOTES_MINUTES * 60, next_run_time=moment + timedelta(minutes=13))
     else:
         log.warning("worker.quotes_extract_off", hint="FBI_QUOTES_EXTRACT=0: the price clock is not structuring RAW /odds")
+    # The lanes of the daily budget (plan PM, PM-04-01): each job's lane is the table of fbi.providers.lanes, by its job_type; the
+    # guard is built with the first client (build_client) and logs quota.lanes then. Off: the behaviour before the lanes.
+    if settings.provider_plan.lanes_mode == "off":
+        log.info("worker.quota_lanes_off", hint="FBI_APIFOOTBALL_LANES off: no lane ceiling is measured or applied")
+    else:
+        log.info("worker.quota_lanes", mode=settings.provider_plan.lanes_mode)
     if settings.odds.book_enabled:
         # After the price clock's first pass: the book reads the answers the extractor has read.
         scheduler.add_job(_deadline("odds_book_build", "odds_book_build", _odds_book), "interval",
