@@ -459,7 +459,10 @@ def test_no_table_of_the_customer_schema_has_room_for_an_ip_a_card_a_token_or_an
                                        # UX-090: the periods that count (a view of membership_periods without the annulled)
                                        "live_membership_periods",
                                        # UX-032: which guide a reader saw, its version, step and dates - no word of theirs
-                                       "guide_progress"}
+                                       "guide_progress",
+                                       # PM-14-06 (0171): a reader's calendar link - only the SHA-256 of its secret (link_sha256),
+                                       # never the secret itself, and no team, address or device
+                                       "calendar_feeds"}
     offending = [(t, c) for t, c in columns if any(c == f or c.startswith(f + "_") or c.endswith("_" + f)
                                                    for f in forbidden)]
     assert not offending, offending

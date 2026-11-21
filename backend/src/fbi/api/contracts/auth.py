@@ -126,6 +126,8 @@ class Me(Contract):
     match_coverage: bool = Field(default=False, description="The Match Center adapted to the coverage levels of C-16: tabs and "
                                                             "blocks by level (plan PM, PM-14-02; FBI_MATCH_COVERAGE, off by "
                                                             "default; it reads C-16, so FBI_AVAILABILITY too).")
+    prob_icons: bool = Field(default=False, description="The result forecast also in 100 icons, with «Mito o dato» (plan PM, "
+                                                        "PM-10-07, lámina I09; FBI_PROB_ICONS, off by default).")
     availability: bool = Field(default=False, description="What PrediGol has per competition, datum and market (plan PM, C-16; "
                                                           "FBI_AVAILABILITY, off by default): the states «información no "
                                                           "disponible» and the owner's console of the matrix only then.")
