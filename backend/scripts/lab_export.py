@@ -5,7 +5,9 @@
     python scripts/lab_export.py verify <folder>                                  # on the laptop: the files match the manifest
 
 What may leave is a CLOSED list (``TABLES``): football data, prices, model versions and the LAB's own backtests - schemas
-``core``, ``market``, ``features``, ``models`` and ``analytics`` only, and inside them only the tables listed. ``auth`` and
+``core``, ``market``, ``features``, ``models`` and ``analytics`` only, and inside them only the tables listed. A table may name the only
+columns that leave (``columns``): the people-related tables added in ``lab-export-v2`` (PM-10-08, PM-08-07, PM-09-07, PM-12-03, IA-154)
+leave without names, free text or external identifiers - ids, kinds and counts only. ``auth`` and
 ``customer`` (accounts, payments, anything about a person) are refused by name, before the database is asked anything, and the
 worker's database role has no access to them either. Nothing else can be named: an unknown table is an error.
 
@@ -34,7 +36,8 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
-VERSION = "lab-export-v1"
+VERSION = "lab-export-v2"
+"""v1 (OPS-013): 13 tables. v2 (IA-154, 21-nov-2026): + 8 tables for the LAB lines of the plan PM, some with a column list."""
 ALLOWED_SCHEMAS = frozenset({"core", "market", "features", "models", "analytics"})
 FORBIDDEN_SCHEMAS = frozenset({"auth", "customer"})
 BATCH = 20_000
@@ -46,6 +49,10 @@ COPY_WINDOW = (time(3, 30), time(5, 0))
 _SESSION_FIXTURES = ("fixture_id IN (SELECT s.fixture_id FROM analytics.backtest_samples s "
                      "JOIN analytics.backtest_runs r ON r.id = s.backtest_run_id WHERE r.session_id = %(session)s)")
 _SINCE_FIXTURES = "fixture_id IN (SELECT f.id FROM core.fixtures f WHERE f.kickoff_at >= %(since)s)"
+_SINCE_SEASONS = ("competition_season_id IN (SELECT f.competition_season_id FROM core.fixtures f "
+                  "WHERE f.kickoff_at >= %(since)s)")
+_SINCE_OFFICIAL_ALIASES = ("id IN (SELECT f.alias_id FROM core.fixture_officials f WHERE f.fixture_id IN "
+                           "(SELECT r.id FROM core.fixtures r WHERE r.kickoff_at >= %(since)s))")
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +64,8 @@ class TableSpec:
     what: str
     filters: Mapping[str, str] = field(default_factory=dict)
     needs_filter: bool = False
+    columns: tuple[str, ...] = ()
+    """Only these columns leave (empty: all of them). Names, free text and external identifiers stay on the server."""
 
     @property
     def schema(self) -> str:
@@ -84,8 +93,27 @@ TABLES: dict[str, TableSpec] = {t.name: t for t in (
     TableSpec("analytics.backtest_samples", "cada partido y selección de una ejecución del LAB",
               {"session": "backtest_run_id IN (SELECT r.id FROM analytics.backtest_runs r WHERE r.session_id = %(session)s)"},
               needs_filter=True),
+    # lab-export-v2 (IA-154): the LAB lines of the plan PM (PM-10-08, PM-08-07, PM-09-07, PM-12-03)
+    TableSpec("core.fixture_events", "eventos de partido (tarjetas, goles, cambios), sin nombres ni comentarios",
+              {"since": _SINCE_FIXTURES}, needs_filter=True,
+              columns=("fixture_id", "source", "seq", "minute", "extra_minute", "team_side", "provider_team_id",
+                       "provider_player_id", "event_type", "detail")),
+    TableSpec("core.fixture_lineups", "formación declarada y entrenador de cada lado (su id, sin nombre)",
+              {"since": _SINCE_FIXTURES}, needs_filter=True,
+              columns=("fixture_id", "team_side", "source", "formation", "provider_coach_id", "coach_id")),
+    TableSpec("core.fixture_officials", "árbitro designado de cada partido (id del alias)",
+              {"since": _SINCE_FIXTURES}, needs_filter=True, columns=("fixture_id", "role", "alias_id")),
+    TableSpec("core.entity_aliases", "a qué persona apunta el alias de cada árbitro (ids y tipo, sin el texto del alias)",
+              {"since": _SINCE_OFFICIAL_ALIASES}, needs_filter=True,
+              columns=("id", "entity_type", "entity_id", "alias_type", "source")),
+    TableSpec("core.entity_ids", "qué personas y equipos tienen un identificador abierto (sistema y método, sin el identificador)",
+              columns=("entity_type", "entity_id", "system", "namespace", "method", "confidence", "review")),
+    TableSpec("core.standings", "tablas del proveedor por temporada", {"since": _SINCE_SEASONS}, needs_filter=True),
+    TableSpec("market.historical_odds", "cuotas históricas de football-data.co.uk (cierre y precierre)"),
+    TableSpec("analytics.promoted_forecast_spec", "la especificación del modelo de goles en vigor",
+              columns=("id", "session_id", "promoted_at", "spec")),
 )}
-"""The closed list (``lab-export-v1``). Adding a table is a PR that changes this list and its test."""
+"""The closed list (``lab-export-v1``, ``v2`` since IA-154). Adding a table is a PR that changes this list and its test."""
 
 
 class ExportRefusedError(ValueError):
@@ -122,7 +150,8 @@ def select_tables(names: Sequence[str] | None, filters: Mapping[str, Any]) -> li
 def query_for(spec: TableSpec, filters: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
     """The exact SELECT of a table (its identifier from the closed list, never from the user) and its parameters."""
     clauses = [spec.filters[f] for f in filters if f in spec.filters]
-    sql = f"SELECT * FROM {spec.name}" + (" WHERE " + " AND ".join(f"({c})" for c in clauses) if clauses else "")
+    cols = ", ".join(spec.columns) if spec.columns else "*"
+    sql = f"SELECT {cols} FROM {spec.name}" + (" WHERE " + " AND ".join(f"({c})" for c in clauses) if clauses else "")
     return sql, {f: v for f, v in filters.items() if f in spec.filters}
 
 
