@@ -117,3 +117,11 @@ def test_nothing_of_the_module_reaches_a_probability_a_model_or_a_pick() -> None
     assert "fixture_results" not in sql  # nothing of a result: the schedule and the stored tables only
     for word in ("picks.", "models.", "predictions", "features."):
         assert word not in sql
+
+
+def test_no_place_is_said_before_the_team_has_played_on_that_side() -> None:
+    records = [rec(n, 0, 0, 0, 0, 0) for n in range(1, 9)]  # the quadrangulars' stored table, two match days in (21-nov-2026)
+    assert imp.side_place(1, "home", records) is None
+    records[0] = rec(1, 1, 0, 0, 2, 0)
+    got = imp.side_place(1, "home", records)
+    assert got is not None and (got.position, got.of) == (1, 8)
