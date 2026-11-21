@@ -10,7 +10,9 @@ import { ageLevel, notPlayed, ratedPlayers, seasonRows, statRows } from "./model
 import { ProfileBlock } from "./ProfileBlock";
 import { PreviewStats } from "./stats/PreviewStats";
 import { MatchVizSection } from "./stats/MatchVizSection";
-import { useStatsSwitches } from "@/lib/auth/AuthProvider";
+import { useMatchVizSwitches, useStatsSwitches } from "@/lib/auth/AuthProvider";
+import { blockAllows, useMatchBlocks } from "./stats/coverage";
+import { CoverageStats } from "./stats/CoverageStats";
 import {
   Block,
   CenterSection,
@@ -142,9 +144,22 @@ function PreMatchStats({ ctx }: { ctx: MatchCtx }) {
 }
 
 export function StatsTab({ ctx }: { ctx: MatchCtx }) {
+  // plan PM, PM-14-02 (lámina I04): with FBI_MATCH_COVERAGE on and C-16 answering, a competition without team statistics at B gets
+  // what it does deliver instead of an empty card, and the best players only where the player statistics are at B
+  const { coverage } = useMatchVizSwitches();
+  const blocks = useMatchBlocks(ctx.fixtureId);
   if (ctx.phase === "scheduled" || notPlayed(ctx.phase)) {
     return <PreMatchStats ctx={ctx} />;
   }
+  if (coverage && blocks && blockAllows(blocks, "team_stats") === false) {
+    return (
+      <div className="space-y-4">
+        <MatchVizSection ctx={ctx} />
+        <CoverageStats ctx={ctx} blocks={blocks} />
+      </div>
+    );
+  }
+  const players = !(coverage && blockAllows(blocks, "player_stats") === false);
   const { home, away } = ctx.match;
   const lines = ctx.center.data?.statistics.status === "ok" ? ctx.center.data.statistics.data : [];
   const at = lines[0]?.fetched_at ?? null;
@@ -171,7 +186,7 @@ export function StatsTab({ ctx }: { ctx: MatchCtx }) {
             )}
           </CenterSection>
         </Block>
-        <TopPlayersBlock ctx={ctx} />
+        {players ? <TopPlayersBlock ctx={ctx} /> : null}
       </div>
     </div>
   );

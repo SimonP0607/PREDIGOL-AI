@@ -7,7 +7,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAvailabilityOn } from "@/lib/auth/AuthProvider";
 import { live } from "@/lib/api/v1/queries";
-import type { BlockAvailability } from "@/lib/api/v1/types_availability";
+import type {
+  BlockAvailability,
+  CoverageLevel,
+  MatchAvailability,
+} from "@/lib/api/v1/types_availability";
 import { present } from "@/lib/api/v1/types_intelligence";
 
 /** The C-16 keys of a match's blocks (`fbi.coverage.resolve.BLOCKS`). */
@@ -36,11 +40,28 @@ export function blockAllows(
   return block.exists && (level === "A" || level === "B");
 }
 
-/** The blocks C-16 gives for a match, or null while it is off or has not answered. */
-export function useMatchBlocks(fixtureId: string): BlockAvailability[] | null {
+/** What C-16 says of a match (its blocks and markets), or null while it is off or has not answered. */
+export function useMatchAvailability(fixtureId: string): MatchAvailability | null {
   const on = useAvailabilityOn();
   const q = useQuery({ ...live.matchAvailability(fixtureId), enabled: on, retry: false });
   if (!on) return null;
-  const match = present(q.data?.data?.match);
-  return match?.blocks ?? null;
+  return present(q.data?.data?.match) ?? null;
+}
+
+/** The blocks C-16 gives for a match, or null while it is off or has not answered. */
+export function useMatchBlocks(fixtureId: string): BlockAvailability[] | null {
+  return useMatchAvailability(fixtureId)?.blocks ?? null;
+}
+
+/**
+ * The level C-16 gives a block, when it measured it (null: not said, not measured). A level D block is one the competition does not
+ * deliver at all - the tab or block that rests on it has nothing to show there.
+ */
+export function blockLevel(
+  blocks: readonly BlockAvailability[] | null | undefined,
+  key: MatchBlockKey,
+): CoverageLevel | null {
+  const block = blocks?.find((b) => b.key === key);
+  if (!block || block.reason === "sin_medir") return null;
+  return present(block.level);
 }

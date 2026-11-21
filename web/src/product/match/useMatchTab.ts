@@ -13,6 +13,8 @@
 import { useCallback, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { TAB_KEYS, type TabKey } from "./context";
+import type { MatchAvailability } from "@/lib/api/v1/types_availability";
+import { present } from "@/lib/api/v1/types_intelligence";
 import type { Phase } from "./model";
 
 function isTab(value: string): value is TabKey {
@@ -117,7 +119,37 @@ export function tabsFor(): TabKey[] {
   return [...BASE_TABS];
 }
 
-/** What the page may show: the six tabs and, for the owner, the research view behind its button. */
-export function sectionsFor(admin: boolean): TabKey[] {
-  return admin ? [...BASE_TABS, "advanced"] : [...BASE_TABS];
+/** What the page may show: the tabs (the six, or the ones the coverage leaves) and, for the owner, the research view behind its button. */
+export function sectionsFor(admin: boolean, tabs: readonly TabKey[] = BASE_TABS): TabKey[] {
+  return admin ? [...tabs, "advanced"] : [...tabs];
+}
+
+/**
+ * The tabs of a match read from C-16 (plan PM, PM-14-02, láminas I01 and I04; UX-177), only with `FBI_MATCH_COVERAGE` on: the same
+ * six in the same order, less the ones that would open on nothing in this competition - never one that has something to show.
+ *  - Alineaciones: gone when C-16 grades the line-ups D (the competition does not deliver them; C still shows the line-up alone).
+ *  - Mercados: gone when no market exists for the match in C-16 and the page holds no price for it either.
+ *  - Análisis: gone when PrediGol computed no probability for the match result and C-16 grades that market C or D (lámina I04:
+ *    «sin probabilidad de PrediGol» in C and D); a market C-16 does not list leaves it.
+ * Resumen, Estadísticas and Noticias always stay: the result, the events and the table are in every level.
+ * Without C-16 (off, or not answered) the six, as always.
+ */
+export function tabsForCoverage(
+  availability: Pick<MatchAvailability, "blocks" | "markets"> | null,
+  opts: { pricesShown: boolean },
+): TabKey[] {
+  if (!availability) return tabsFor();
+  const lineups = availability.blocks.find((b) => b.key === "lineups");
+  const lineupsLevel = lineups && lineups.reason !== "sin_medir" ? present(lineups.level) : null;
+  const anyMarket = availability.markets.some((m) => m.exists);
+  const result = availability.markets.find((m) => m.key === "1X2" || m.matrix_market === "1X2");
+  const resultLevel = result ? present(result.level) : null;
+  const noReading =
+    result !== undefined && !result.prob_computed && (resultLevel === "C" || resultLevel === "D");
+  return BASE_TABS.filter((tab) => {
+    if (tab === "lineups") return lineupsLevel !== "D";
+    if (tab === "markets") return anyMarket || opts.pricesShown;
+    if (tab === "analysis") return !noReading;
+    return true;
+  });
 }
