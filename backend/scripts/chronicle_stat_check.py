@@ -55,7 +55,7 @@ def profile_of(conn: Any, team_id: int, cs: int) -> tuple[dict[str, float], date
 
     for scope in ("u10", "season"):
         try:
-            e = stats_profile.entity(conn, "equipo", team_id, role="perfil", season=cs, scope=scope, context="all")  # type: ignore[arg-type]
+            e = stats_profile.entity(conn, "equipo", team_id, role="perfil", season=cs, scope=scope, context="all")
         except ApiError:
             continue
         if e.team is None or isinstance(e.team, Missing):

@@ -7,6 +7,7 @@ lets the C-13 figure stand and drops the packet's."""
 from __future__ import annotations
 
 import dataclasses
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -125,7 +126,8 @@ def season(teams: int = 10) -> SeasonData:
                 continue
             k += 1
             numbers: dict[str, int | None] = {"goals_ft_home": k % 3, "goals_ft_away": (k * 7) % 4}
-            stats = {"home": {"xg": round(0.4 + (k * 37 % 23) / 10, 2)}, "away": {"xg": round(0.3 + (k * 11 % 17) / 10, 2)}}
+            stats: dict[str, dict[str, float | None]] = {"home": {"xg": round(0.4 + (k * 37 % 23) / 10, 2)},
+                                                         "away": {"xg": round(0.3 + (k * 11 % 17) / 10, 2)}}
             matches.append(Match(k, T0 + timedelta(days=k), 100 + h, 100 + a, f"Equipo {h}", f"Equipo {a}", False, numbers, stats,
                                  [Event(10, None, "home", "Goal", "Normal Goal", "")]))
     return SeasonData(Season(55, 2034, 1, "Liga", "Colombia", len(matches)), matches, [])
@@ -136,7 +138,7 @@ def test_zero_differences_between_the_sheet_and_the_profile_on_every_match() -> 
     docs, _, _ = st.season_documents(data)
     rows = {(d.team_id, d.scope, d.context): {"entity_id": d.team_id, "competition_season_id": 55, "scope": d.scope, "context": d.context,
                                               "calc_version": st.CALC_VERSION, "computed_at": COMPUTED,
-                                              "doc": job.json.loads(job.dumps(d.body))}
+                                              "doc": json.loads(job.dumps(d.body))}
             for d in docs}
     told = 0
     for m in data.matches:
