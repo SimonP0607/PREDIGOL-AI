@@ -147,6 +147,27 @@ BEGIN
 END
 $league_daily$;
 
+-- The private evaluation of the models by competition and coverage level, and the weekly board (plan PM, PM-12-06 and PM-12-01, migration
+-- 0172). The loop above already gives the API SELECT (the owner's board reads them) and the worker everything; here it is narrowed to
+-- what the weekly batch does:
+--   analytics.evaluation_reports, analytics.evaluation_segments   append-only: the worker adds rows (INSERT), never edits or deletes one.
+DO $evaluation_board$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['analytics.evaluation_reports', 'analytics.evaluation_segments'] LOOP
+    IF to_regclass(t) IS NULL THEN
+      RAISE NOTICE 'grants: % does not exist (yet) - skipped', t;
+      CONTINUE;
+    END IF;
+    EXECUTE format('GRANT SELECT, INSERT ON %s TO predigol_worker', t);
+    EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON %s FROM predigol_worker', t);
+    EXECUTE format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON %s FROM predigol_api', t);
+    EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %s TO predigol_worker', pg_get_serial_sequence(t, 'id'));
+  END LOOP;
+END
+$evaluation_board$;
+
 -- The API's writes.
 GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO predigol_api;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO predigol_api;
