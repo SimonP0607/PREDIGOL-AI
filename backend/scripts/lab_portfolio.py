@@ -179,10 +179,12 @@ def paired(a: NDArray[np.float64], b: NDArray[np.float64], weeks: NDArray[np.int
 
 
 def market_probs(con: Any) -> dict[int, NDArray[np.float64]]:
-    """Closing no-margin 1X2 from football-data: per bookmaker with the three prices, proportional, averaged over bookmakers."""
+    """Closing no-margin 1X2 from football-data: per bookmaker with the three prices, proportional, averaged over bookmakers.
+    football-data's AVG and MAX columns are aggregates, not bookmakers: they are left out (a MAX "book" has a negative margin)."""
     rows = con.execute("""
         SELECT fixture_id, bookmaker_code, lower(selection) AS sel, odds_decimal
           FROM market_historical_odds WHERE price_kind = 'closing' AND market_key = '1X2' AND odds_decimal > 1
+           AND upper(bookmaker_code) NOT IN ('AVG', 'MAX')
     """).fetchall()
     by: dict[tuple[int, str], dict[str, float]] = defaultdict(dict)
     for fid, book, sel, odds in rows:
