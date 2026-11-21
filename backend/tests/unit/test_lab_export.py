@@ -48,7 +48,8 @@ def test_auth_and_customer_are_refused_by_name() -> None:
 def test_every_query_reads_only_allowed_schemas(filters: dict[str, Any]) -> None:
     for spec in le.select_tables(None, filters):
         sql, params = le.query_for(spec, filters)
-        assert sql.startswith(f"SELECT * FROM {spec.name}")
+        cols = ", ".join(spec.columns) if spec.columns else "*"
+        assert sql.startswith(f"SELECT {cols} FROM {spec.name}")
         schemas = {m.group(1) for m in _REF.finditer(sql)} - {"s", "r", "f"}
         assert schemas <= le.ALLOWED_SCHEMAS, (spec.name, schemas)
         assert set(params) <= set(filters)
@@ -62,6 +63,27 @@ def test_big_tables_never_leave_whole() -> None:
         le.select_tables(["models.predictions"], {})
     session = {s.name for s in le.select_tables(None, {"session": 4})}
     assert {"analytics.backtest_samples", "core.fixture_results", "models.predictions"} <= session
+
+
+def test_v2_people_tables_leave_without_names_free_text_or_external_ids() -> None:
+    """IA-154: events, lineups, officials, aliases and open identifiers leave as ids, kinds and counts only."""
+    assert le.VERSION == "lab-export-v2"
+    people = {"core.fixture_events", "core.fixture_lineups", "core.fixture_officials", "core.entity_aliases", "core.entity_ids"}
+    assert people <= set(le.TABLES)
+    banned = {"player_name", "assist_name", "comments", "coach_name", "alias", "alias_key", "external_id", "evidence",
+              "row_key", "name", "firstname", "lastname", "birth_date", "promoted_by"}
+    for name in people | {"analytics.promoted_forecast_spec"}:
+        spec = le.TABLES[name]
+        assert spec.columns, name
+        assert not set(spec.columns) & banned, name
+        sql, _ = le.query_for(spec, {"since": datetime(2019, 1, 1, tzinfo=UTC)})
+        assert "*" not in sql.split(" FROM ", 1)[0], name
+    for name in ("core.fixture_events", "core.fixture_lineups", "core.fixture_officials", "core.entity_aliases",
+                 "core.standings"):
+        assert le.TABLES[name].needs_filter and "since" in le.TABLES[name].filters, name
+    since = {s.name for s in le.select_tables(None, {"since": datetime(2019, 1, 1, tzinfo=UTC)})}
+    assert people | {"market.historical_odds", "core.standings", "core.fixture_team_stats"} <= since
+    assert "models.predictions" not in since and "analytics.backtest_samples" not in since
 
 
 @pytest.mark.parametrize(("hhmm", "inside"), [((3, 29), False), ((3, 30), True), ((4, 59), True), ((5, 0), False),

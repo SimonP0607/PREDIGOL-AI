@@ -26,6 +26,17 @@ PINNED = {
 }
 """A registered protocol is frozen: changing one is a new version with its own PR, never an edit of these lines to make a test pass."""
 
+PINNED_PM = {
+    "PM-10-08": "9a8fdf48f635dda1977a6ea992a92ea9abf45050bd6233f3500a2d20ad45e50b",
+    "PM-08-07": "3b3ac95d82db8166233b56206279723fb6419b5f890af6442a40a8b2dbd41488",
+    "PM-09-07": "ed4015968c20d75928c9cd3bf6f73bcb555364ae7f0e6d326c3d32f33dd324ab",
+    "PM-12-03-OP26": "99998f67d326b09666b976d3905ca8ade4dc730226e65a8e472d87df00338dca",
+    "PM-12-03-OP27": "c8525423220e3cd5e188c2b9980a57cdd7291bf7e4aef5a5deb6bd549060eda5",
+    "PM-12-03-OP29": "1b1ae6591a075429012021e8f4564631358f22c096160d153e50175a1a927a4c",
+    "PM-12-03-OP30": "9192d1f5cab413e04052b326b3922b36f1dd60e5e340b5b52de353a74ea9ccd1",
+}
+"""IA-154: the LAB lines of the plan PM, registered on 21-nov-2026 before their export was taken; frozen the same way."""
+
 
 def test_every_registered_protocol_is_pinned_and_unchanged() -> None:
     assert set(proto.PROTOCOLS) == set(PINNED)
@@ -34,15 +45,21 @@ def test_every_registered_protocol_is_pinned_and_unchanged() -> None:
 
 
 def test_a_protocol_fixes_everything_before_the_data() -> None:
-    for p in proto.PROTOCOLS.values():
+    for p in [*proto.PROTOCOLS.values(), *proto.PM_LAB.values()]:
         for f in dataclasses.fields(p):
             value = getattr(p, f.name)
             assert value not in ("", (), None), (p.key, f.name)
-        assert p.key.startswith(("INT-", "AD-")) and p.version.startswith("proto-")
+        assert p.key.startswith(("INT-", "AD-", "PM-")) and p.version.startswith("proto-")
         assert p.version.endswith("-v1")
         # the protocols of the Intelligence plan were registered on 11-nov; those of the plan of the definitive architecture (AD-...) from
-        # its approval on 16-nov (AD-B07, 17-nov, the day it was written: before its LAB run)
-        assert p.registered_on == "2026-11-11" if p.key.startswith("INT-") else p.registered_on in ("2026-11-16", "2026-11-17")
+        # its approval on 16-nov (AD-B07, 17-nov, the day it was written: before its LAB run); the LAB lines of the plan PM (IA-154) on
+        # 21-nov, before the lab-export-v2 export they read was taken
+        if p.key.startswith("INT-"):
+            assert p.registered_on == "2026-11-11"
+        elif p.key.startswith("AD-"):
+            assert p.registered_on in ("2026-11-16", "2026-11-17")
+        else:
+            assert p.registered_on == "2026-11-21" and p.seed == 20261121
 
 
 def test_the_plan_lab_experiments_of_wave_one_have_a_protocol() -> None:
@@ -178,3 +195,23 @@ def test_the_regression_of_the_replay_bank_is_registered_with_its_proposed_toler
     assert p.version == "proto-ad-k04-v1" and p.seed == 20261111 and p.registered_on == "2026-11-17"
     assert "≤ 0,05" in p.pass_rule and "PROPUESTA" in p.pass_rule and "no se repite sobre las mismas ejecuciones" in p.stopping
     assert proto.stamp("AD-K04")["fingerprint"] == PINNED["AD-K04"]
+
+
+def test_the_lab_lines_of_the_plan_pm_are_registered_before_their_export() -> None:
+    """IA-154: PM-10-08, PM-08-07, PM-09-07 and one protocol per line of PM-12-03 (OP-26, OP-27, OP-29, OP-30; OP-28 stays with the
+    Intelligence plan's E4/E6 and is not touched), registered on 21-nov-2026 before the lab-export-v2 export was read."""
+    keys = {"PM-10-08", "PM-08-07", "PM-09-07", "PM-12-03-OP26", "PM-12-03-OP27", "PM-12-03-OP29", "PM-12-03-OP30"}
+    assert set(proto.PM_LAB) == set(PINNED_PM) == keys
+    assert not set(proto.PM_LAB) & set(proto.PROTOCOLS), "the signable catalogue (fbi.protosign, C-11) admits only INT-/AD- keys"
+    for key in keys:
+        p = proto.require(key)
+        assert proto.fingerprint(p) == PINNED_PM[key], key
+        assert "lab-export-v2" in p.data and p.version == f"proto-{key.lower()}-v1"
+        assert proto.stamp(key)["fingerprint"] == PINNED_PM[key]
+    # OP-29 is a new protocol: it does not repeat INT-A02 (rejected on 11-nov) and changes no figure
+    assert "INT-A02" in proto.require("PM-12-03-OP29").question
+    # nothing leaves the LAB: a pass is at most a candidate for the model gate, never production without the owner's signature
+    for key in ("PM-12-03-OP26", "PM-12-03-OP27", "PM-12-03-OP29", "PM-12-03-OP30"):
+        assert "firma del dueño" in proto.require(key).pass_rule
+    assert "DM-14" in proto.require("PM-09-07").pass_rule
+    assert "nunca baja un mínimo vigente" in proto.require("PM-10-08").pass_rule

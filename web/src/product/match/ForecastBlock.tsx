@@ -12,7 +12,7 @@
  * match - three answers that are not one - and, in a block of its own, what the families (the goals of each half, the
  * corners, the cards) forecast for it: research, uncalibrated, and never mixed into the forecast above (plan F10.17b).
  */
-import { useEffect, useId, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CircleCheck, Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ import { t } from "@/lib/i18n";
 import { formatOdds, fmtPct, fmtSignedPct, toNumber } from "@/lib/i18n/format";
 import { formatRelative } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
-import { usePreviewParam } from "@/lib/auth/AuthProvider";
+import { useMatchVizSwitches, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { track } from "@/lib/track";
 import type { Section } from "@/lib/api/v1/types";
 import type {
@@ -33,6 +33,12 @@ import type {
 } from "@/lib/api/v1/types_forecast";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { familyName, marketText, ruleKeyText } from "@/live/familiesText";
+import { iconCounts, iconsAllowed, sideOf } from "@/product/explain/iconArray";
+import {
+  ForecastViewToggle,
+  ProbabilityIcons,
+  type ForecastViewMode,
+} from "@/product/explain/ProbabilityIcons";
 import { ShadowBadge } from "@/product/shared/Bits";
 import { ExplainSteps } from "@/product/shared/ExplainLayers";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
@@ -156,17 +162,29 @@ function OutcomeRow({
   );
 }
 
+/** The home side's figure as its bar shows it, with its interval: the sentence under the icons repeats it. */
+function homeFigure(market: ForecastMarket): string {
+  const home = market.outcomes.find((o) => sideOf(o.selection) === "home");
+  return home ? `${fmtPct(home.probability, 0)}, ${intervalText(home)}` : "";
+}
+
 function MarketView({
   market,
   sides,
   preview,
+  icons = false,
 }: {
   market: ForecastMarket;
   sides: Sides;
   preview: boolean;
+  /** «Probabilidad en iconos» is open to this account (`FBI_PROB_ICONS`, PM-10-07); drawn only where `iconsAllowed` says. */
+  icons?: boolean;
 }) {
   const calibrated = market.calibration === "CALIBRATED";
   const note = basisNote(market.basis);
+  const counts = icons && iconsAllowed(market) ? iconCounts(market.outcomes) : null;
+  const [mode, setMode] = useState<ForecastViewMode>("bars");
+  const showIcons = counts !== null && mode === "icons";
   return (
     <section
       data-testid="forecast-market"
@@ -182,17 +200,27 @@ function MarketView({
           <GlossaryTerm term="calibrated">{calibrationLabel(market.calibration)}</GlossaryTerm>
         </Tag>
       </header>
-      <ul className="space-y-3">
-        {market.outcomes.map((o) => (
-          <OutcomeRow
-            key={o.selection}
-            market={market}
-            outcome={o}
-            sides={sides}
-            preview={preview}
-          />
-        ))}
-      </ul>
+      {counts ? <ForecastViewToggle mode={mode} onChange={setMode} /> : null}
+      {showIcons && counts ? (
+        <ProbabilityIcons
+          counts={counts}
+          home={sides.home}
+          away={sides.away}
+          figure={homeFigure(market)}
+        />
+      ) : (
+        <ul className="space-y-3">
+          {market.outcomes.map((o) => (
+            <OutcomeRow
+              key={o.selection}
+              market={market}
+              outcome={o}
+              sides={sides}
+              preview={preview}
+            />
+          ))}
+        </ul>
+      )}
       <p className="text-caption leading-snug text-subtle-foreground">
         {note ? <span data-testid="forecast-basis">{note} </span> : null}
         {/* The model's name is the owner's preview only (plan UX, A9): a reader gets null. */}
@@ -450,11 +478,14 @@ export function ForecastView({
   home,
   away,
   preview,
+  icons = false,
 }: {
   load: ForecastLoad;
   home: string;
   away: string;
   preview: boolean;
+  /** `FBI_PROB_ICONS` (PM-10-07, UX-182): the result forecast may also be read in 100 icons. */
+  icons?: boolean;
 }) {
   const titleId = useId();
   const screen = forecastScreen(load, preview);
@@ -513,6 +544,7 @@ export function ForecastView({
                   market={m}
                   sides={sides}
                   preview={preview}
+                  icons={icons}
                 />
               ))}
             </div>
@@ -533,6 +565,7 @@ export function ForecastView({
 /** The Resumen's block: loads the forecast for the signed-in view (a user's, or the Admin Console's preview). */
 export function ForecastBlock({ ctx }: { ctx: MatchCtx }) {
   const shadow = usePreviewParam();
+  const { probIcons } = useMatchVizSwitches();
   const q = useQuery(live.matchForecast(ctx.fixtureId, shadow));
   const load: ForecastLoad = q.isPending
     ? { status: "pending" }
@@ -550,6 +583,7 @@ export function ForecastBlock({ ctx }: { ctx: MatchCtx }) {
       home={ctx.match.home.name}
       away={ctx.match.away.name}
       preview={shadow === "shadow"}
+      icons={probIcons}
     />
   );
 }

@@ -102,3 +102,16 @@ def test_match_coverage_is_told_to_the_page_and_off_by_default(value: str | None
         monkeypatch.setenv(switches.MATCH_COVERAGE, value)
     assert Me.model_fields["match_coverage"].default is False
     assert switches.match_coverage_on() is expected
+
+
+@pytest.mark.parametrize(("value", "expected"), [(None, False), ("", False), ("1", True), ("0", False)])
+def test_prob_icons_are_told_to_the_page_and_off_by_default(value: str | None, expected: bool,
+                                                            monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan PM, PM-10-07 (UX-182): the result forecast in 100 icons only with FBI_PROB_ICONS's line on; /auth/me says it as
+    ``prob_icons``, off by default."""
+    if value is None:
+        monkeypatch.delenv(switches.PROB_ICONS, raising=False)
+    else:
+        monkeypatch.setenv(switches.PROB_ICONS, value)
+    assert Me.model_fields["prob_icons"].default is False
+    assert switches.prob_icons_on() is expected
