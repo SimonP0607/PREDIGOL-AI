@@ -66,19 +66,20 @@ def test_big_tables_never_leave_whole() -> None:
 
 
 def test_v2_people_tables_leave_without_names_free_text_or_external_ids() -> None:
-    """IA-154: events, lineups, officials, aliases and open identifiers leave as ids, kinds and counts only."""
-    assert le.VERSION == "lab-export-v2"
-    people = {"core.fixture_events", "core.fixture_lineups", "core.fixture_officials", "core.entity_aliases", "core.entity_ids"}
+    """IA-154/IA-155: events, lineups, officials, referees' aliases and open identifiers leave as ids, kinds and counts only."""
+    assert le.VERSION == "lab-export-v3"
+    people = {"core.fixture_events", "core.fixture_lineups", "core.fixture_officials", "core.referee_aliases", "core.entity_ids"}
+    assert "core.entity_aliases" not in le.TABLES, "v2 took the wrong alias table for the referees (IA-155)"
     assert people <= set(le.TABLES)
     banned = {"player_name", "assist_name", "comments", "coach_name", "alias", "alias_key", "external_id", "evidence",
-              "row_key", "name", "firstname", "lastname", "birth_date", "promoted_by"}
+              "row_key", "name", "firstname", "lastname", "birth_date", "promoted_by", "name_key", "display"}
     for name in people | {"analytics.promoted_forecast_spec"}:
         spec = le.TABLES[name]
         assert spec.columns, name
         assert not set(spec.columns) & banned, name
         sql, _ = le.query_for(spec, {"since": datetime(2019, 1, 1, tzinfo=UTC)})
         assert "*" not in sql.split(" FROM ", 1)[0], name
-    for name in ("core.fixture_events", "core.fixture_lineups", "core.fixture_officials", "core.entity_aliases",
+    for name in ("core.fixture_events", "core.fixture_lineups", "core.fixture_officials", "core.referee_aliases",
                  "core.standings"):
         assert le.TABLES[name].needs_filter and "since" in le.TABLES[name].filters, name
     since = {s.name for s in le.select_tables(None, {"since": datetime(2019, 1, 1, tzinfo=UTC)})}

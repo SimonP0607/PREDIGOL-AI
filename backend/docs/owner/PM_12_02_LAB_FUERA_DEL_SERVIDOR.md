@@ -124,7 +124,7 @@ externos**: la tabla dice qué columnas salen (`columns`) y una prueba lo compru
 | `core.fixture_events` | amarillas con jugador (apercibidos, PM-08-07) | `--since` obligatorio | ids del partido, equipo y jugador, minuto, tipo y detalle (sin nombres ni comentarios) |
 | `core.fixture_lineups` | entrenador del partido (PM-08-07) | `--since` obligatorio | partido, lado, formación, ids del entrenador (sin nombre) |
 | `core.fixture_officials` | árbitro designado (PM-08-07) | `--since` obligatorio | partido, papel, id del alias |
-| `core.entity_aliases` | a qué persona apunta el alias de un árbitro | `--since` (solo alias de árbitros de esos partidos) | ids, tipo y origen del alias (sin el texto) |
+| `core.referee_aliases` (v3; en v2 era `core.entity_aliases`, un error: ver abajo) | a qué árbitro apunta cada alias de los partidos | `--since` (solo alias de árbitros de esos partidos) | id, árbitro, ámbito, base, quién lo colocó y versión (sin el nombre) |
 | `core.entity_ids` | si la persona tiene identificador abierto | entera | tipo e id de la entidad, sistema, espacio, método, confianza, revisión (sin el identificador ni la evidencia) |
 | `core.standings` | tabla del proveedor para descartar sanciones (PM-09-07) | `--since` obligatorio (temporadas con partidos desde esa fecha) | todas |
 | `market.historical_odds` | cuotas de cierre de football-data.co.uk (PM-12-03) | entera | todas |
@@ -134,3 +134,10 @@ La exportación de estas líneas es **una sola**: `run --since 2019-01-01`, fuer
 una `fixtures_sync` y lejos de las 07:20 UTC. Los protocolos que la leen (`PM-10-08`, `PM-08-07`, `PM-09-07`, `PM-12-03-OP26`,
 `-OP27`, `-OP29`, `-OP30` en `fbi/research/protocol.py`) se registraron antes de tomarla. Vuelta atrás: la misma que arriba (un
 `revert` devuelve la lista v1; las lecturas no dejan nada).
+
+**Corrección `lab-export-v3` (IA-155, 21-nov-2026).** El alias de `core.fixture_officials` apunta a `core.referee_aliases`
+(migración 0083), no a `core.entity_aliases`. La exportación `lab-export-v2` del 21-nov-2026 05:01 UTC sacó por error 9.760 filas de
+`core.entity_aliases` cuyos ids coincidían con los de alias de árbitros (alias de jugadores, entrenadores, equipos y competiciones,
+**solo ids y tipos, sin nombres**): no sirven para nada y no permiten identificar a nadie. v3 las sustituye por `core.referee_aliases`
+(solo ids y metadatos, sin `name_key` ni `display`). PM-08-07 midió la identidad abierta de los árbitros sin ese enlace (ver
+`IA_155_FICHAS_LAB.md`): `core.entity_ids` no contiene ningún árbitro, así que el resultado no depende de él.

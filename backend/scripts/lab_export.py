@@ -36,8 +36,10 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
-VERSION = "lab-export-v2"
-"""v1 (OPS-013): 13 tables. v2 (IA-154, 21-nov-2026): + 8 tables for the LAB lines of the plan PM, some with a column list."""
+VERSION = "lab-export-v3"
+"""v1 (OPS-013): 13 tables. v2 (IA-154, 21-nov-2026): + 8 tables for the LAB lines of the plan PM, some with a column list. v3
+(IA-155): the referees' aliases come from core.referee_aliases; v2 took core.entity_aliases by mistake (the ids of other aliases:
+players, coaches, teams - without names, but not the referee's person)."""
 ALLOWED_SCHEMAS = frozenset({"core", "market", "features", "models", "analytics"})
 FORBIDDEN_SCHEMAS = frozenset({"auth", "customer"})
 BATCH = 20_000
@@ -103,9 +105,10 @@ TABLES: dict[str, TableSpec] = {t.name: t for t in (
               columns=("fixture_id", "team_side", "source", "formation", "provider_coach_id", "coach_id")),
     TableSpec("core.fixture_officials", "árbitro designado de cada partido (id del alias)",
               {"since": _SINCE_FIXTURES}, needs_filter=True, columns=("fixture_id", "role", "alias_id")),
-    TableSpec("core.entity_aliases", "a qué persona apunta el alias de cada árbitro (ids y tipo, sin el texto del alias)",
+    # lab-export-v3 (IA-155): the referee's alias is core.referee_aliases (migration 0083), not core.entity_aliases
+    TableSpec("core.referee_aliases", "a qué árbitro apunta cada alias de los partidos (ids, sin el texto del nombre)",
               {"since": _SINCE_OFFICIAL_ALIASES}, needs_filter=True,
-              columns=("id", "entity_type", "entity_id", "alias_type", "source")),
+              columns=("id", "referee_id", "scope", "basis", "placed_by", "version")),
     TableSpec("core.entity_ids", "qué personas y equipos tienen un identificador abierto (sistema y método, sin el identificador)",
               columns=("entity_type", "entity_id", "system", "namespace", "method", "confidence", "review")),
     TableSpec("core.standings", "tablas del proveedor por temporada", {"since": _SINCE_SEASONS}, needs_filter=True),
@@ -113,7 +116,7 @@ TABLES: dict[str, TableSpec] = {t.name: t for t in (
     TableSpec("analytics.promoted_forecast_spec", "la especificación del modelo de goles en vigor",
               columns=("id", "session_id", "promoted_at", "spec")),
 )}
-"""The closed list (``lab-export-v1``, ``v2`` since IA-154). Adding a table is a PR that changes this list and its test."""
+"""The closed list (``lab-export-v1``, ``v2`` since IA-154, ``v3`` since IA-155). Adding a table is a PR that changes this list and its test."""
 
 
 class ExportRefusedError(ValueError):
