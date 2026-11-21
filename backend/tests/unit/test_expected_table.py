@@ -57,7 +57,7 @@ def test_the_gate_of_the_matrix() -> None:
 
 
 def test_a_match_without_both_xg_is_left_out_and_counted() -> None:
-    rows = [{"id": 1, "home_team_id": 1, "away_team_id": 2, "goals_home": 1, "goals_away": 0, "xg_home": 1.2, "xg_away": None},
+    rows: list[dict[str, object]] = [{"id": 1, "home_team_id": 1, "away_team_id": 2, "goals_home": 1, "goals_away": 0, "xg_home": 1.2, "xg_away": None},
             {"id": 2, "home_team_id": 1, "away_team_id": 2, "goals_home": 1, "goals_away": 0, "xg_home": 1.2, "xg_away": 0.4}]
     played, missing = xt.played_of(rows)
     assert missing == 1 and [m.fixture_id for m in played] == [2]
