@@ -140,9 +140,11 @@ class SidePlace:
 
 def side_place(team_id: int, side: str, records: Sequence[SideRecord]) -> SidePlace | None:
     """The team's place among these records (one table, one side): points, then goal difference, then goals scored; teams level on
-    all three share the better place. ``None`` when the team has no record (a table without the home/away split)."""
+    all three share the better place. ``None`` when the team has no record (a table without the home/away split) or has played no
+    match on that side yet: a place among records of nothing says nothing (measured 21-nov-2026: the stored table of the Liga BetPlay's
+    quadrangulars had 0 played for its eight teams two match days in)."""
     mine = next((r for r in records if r.team_id == team_id), None)
-    if mine is None:
+    if mine is None or mine.played == 0:
         return None
 
     def key(r: SideRecord) -> tuple[int, int, int]:
