@@ -15,6 +15,7 @@ import "@/admin/usageText";
 import "@/product/competitions/text";
 import "@/product/match/stats/matchvizText";
 import "@/product/teams/stats/playerText";
+import "@/product/explain/probIconsText";
 
 function keys(node: Catalog, prefix = ""): string[] {
   return Object.entries(node).flatMap(([k, v]) =>

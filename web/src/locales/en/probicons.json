@@ -1,0 +1,40 @@
+{
+  "view": {
+    "label": "How to view the result forecast",
+    "bars": "Bars",
+    "icons": "Icons"
+  },
+  "lead": "Out of every 100 matches like this one…",
+  "grid": "Out of every 100 matches like this one: {homeTeam} wins {home}, {draw} end in a draw and {awayTeam} wins {away}.",
+  "legend": {
+    "home": "{team} win",
+    "draw": "end in a draw",
+    "away": "{team} win"
+  },
+  "reverse": "Put the other way: {team} do not win {n} out of 100.",
+  "notCertainTitle": "It is not a certainty.",
+  "notCertain": "It is how often this would happen across many similar matches. In this one only one of the three results will happen, and the least likely one happens too.",
+  "same": "It is the same figure as the bars ({figure}), counted in 100 icons: it adds no calculation. It is a probability, not a recommendation: a PrediGol pick is something else and is published separately.",
+  "adjusted": "The three rounded figures do not add up to 100: to draw 100 icons, one of the results has one icon more or one fewer than its bar.",
+  "myth": {
+    "title": "Myth or fact",
+    "myth": "Myth",
+    "fact": "Fact",
+    "streak": {
+      "claim": "“If a team has gone several matches without winning, they are due a win.”",
+      "why": "A streak does not, on its own, change what can happen in the next match. What changes it are the facts (absences, opponent, home ground), and the forecast already takes them into account."
+    },
+    "likely": {
+      "claim": "“The most likely result is what will happen.”",
+      "why": "The most likely result happens more often than the others, not always. An unlikely result also happens in many similar matches."
+    },
+    "judge": {
+      "claim": "“A forecast is judged over many matches, not one.”",
+      "why": "A single match does not tell whether a probability was right. It is checked by putting many together: if what PrediGol gave as frequent happened that often, the figure is calibrated."
+    },
+    "calibrated": {
+      "claim": "“Calibrated means certain.”",
+      "why": "Calibrated means PrediGol checked the figure against matches already played. It is still a probability: it does not promise the result."
+    }
+  }
+}

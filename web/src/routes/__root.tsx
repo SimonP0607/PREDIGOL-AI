@@ -133,6 +133,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:type", content: "website" },
+        // No page is indexed (plan PM, PM-14-10; DM-12 «mantener cerrado»): public/robots.txt lets search engines read this
+        // line instead of blocking the pages, keeps /api/ out and AI crawlers out but for /llms.txt (crawlPolicy.test.ts).
         { name: "robots", content: "noindex, nofollow" },
         // Installed on a phone's home screen (PWA): full screen, its own name and status bar.
         { name: "mobile-web-app-capable", content: "yes" },

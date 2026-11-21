@@ -20,6 +20,7 @@ LEGACY = "src/fbi/catalog/legacy_import.py"
 LAZY_ALLOWED: dict[str, frozenset[str]] = {
     LEGACY: frozenset({"polars"}),                        # reads the legacy parquet files when it runs (manage_competitions import-legacy)
     "scripts/lab_reproduce.py": frozenset({"duckdb"}),    # PM-12-02 (OPS-013): runs on the owner's laptop, on an export, never in the image
+    "scripts/lab_pm_common.py": frozenset({"duckdb"}),    # IA-154: the LAB lines of the plan PM, the same: off the server, on an export
 }
 """The only modules that may import a ``lab`` library, and only inside a function (or under ``TYPE_CHECKING``): what runs in the image
 never imports one when it loads."""

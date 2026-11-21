@@ -209,6 +209,10 @@ BEGIN
     -- owner (status, decision), blanked of the payer's name and note when the account is anonymised; never deleted (a trigger
     -- refuses it) and never edited once decided
     'customer.payment_requests:INSERT, UPDATE',
+    -- a reader's secret calendar link of the teams they follow (Plan Maestro PM, PM-14-06, migration 0171): made, revoked (a new one
+    -- revokes the previous), its last reading noted at most once an hour; deleted when the account is anonymised (A7). Only the
+    -- SHA-256 of the secret is stored; the worker never reads customer
+    'customer.calendar_feeds:INSERT, UPDATE, DELETE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',

@@ -1104,13 +1104,447 @@ K04: Final = Protocol(
     seed=20261111,
 )
 
+# ── Plan Maestro PM, ola 6: las líneas del LAB (IA-154, 21-nov-2026), registradas antes de leer la exportación ──────────────────────
+# Todas corren fuera del servidor sobre la exportación de solo lectura lab-export-v2 (PM-12-02, OPS-013 + IA-154), con DuckDB y el
+# código puro del repositorio. Ninguna decide nada: un resultado no cambia una regla, un umbral, un modelo ni una pantalla; un candidato
+# solo llega a CANDIDATE por la puerta del modelo y nunca a producción sin la firma del dueño; ningún LLM toca una probabilidad.
+
+_PM_EXPORT: Final = (
+    "Exportación de solo lectura lab-export-v2 (scripts.lab_export run --since 2019-01-01), una sola foto tomada el 21-nov-2026 fuera "
+    "de las ventanas, verificada contra su manifiesto (SHA-256) antes de leerla; nada se vuelve a leer del servidor. Partidos "
+    "terminados (status_group = finished) con su resultado reglamentario (reg_goals, si no ft_goals, si no goals)."
+)
+_PM_CLOSED: Final = (
+    "Temporada cerrada: is_current = false en core.competition_seasons y ningún partido suyo sin terminar salvo cancelados o "
+    "abandonados."
+)
+_PM_PRIORITY: Final = "Prioritarias: Premier League, Serie A, LaLiga, Bundesliga, Ligue 1 y Primera A de Colombia (ids 1, 2, 3, 4, 13 y 49)."
+_PM_B0: Final = (
+    "B0, la referencia, es la aritmética del modelo en vigor: fbi.models.goals (Dixon-Coles, respaldo Poisson si no converge) con el xi "
+    "y la penalización de la especificación promovida exportada (analytics.promoted_forecast_spec), 730 días de historia de la misma "
+    "competición y solo resultados conocidos 3 h después del saque, como fbi.competitions.scenario_store.fit_scores; se ajusta cada "
+    "lunes 00:00 UTC y pronostica todos los partidos de esa semana ISO. Un partido con un equipo que el ajuste no conoce queda fuera."
+)
+_PM_TEST: Final = (
+    "Prueba: partidos de liga nacional (core.competitions.type = league) terminados del 1-jul-2022 al 20-nov-2026, de competiciones "
+    "con al menos 2 temporadas en esa ventana con 150 o más partidos terminados cada una."
+)
+_PM_MARKET: Final = (
+    "Mercado: cuotas 1X2 de cierre de football-data.co.uk (market.historical_odds, price_kind = closing), probabilidad sin margen "
+    "proporcional de cada casa con las tres cuotas, promediada entre casas; solo hay cinco ligas (1, 2, 3, 4 y 13) de ago-2022 a "
+    "may-2025 (segmento M)."
+)
+_PM_PAIRED: Final = (
+    "Diferencia pareada del log loss 1X2 por partido (retador menos B0) media sobre los partidos de prueba que tienen las dos "
+    "probabilidades, con su IC del 95 % por bootstrap de semanas ISO enteras (2.000 réplicas, semilla del protocolo)."
+)
+_PM_GATE: Final = (
+    "Pasar no cambia nada: el retador quedaría como candidato para la puerta del modelo (fbi.research.gate) y nunca llega a "
+    "producción sin la firma del dueño."
+)
+
+PM1008: Final = Protocol(
+    key="PM-10-08",
+    version="proto-pm-10-08-v1",
+    title="Cuántos partidos necesita cada estadística de equipo para ser estable",
+    question=(
+        "¿Cuántos partidos necesita la media de cada estadística de equipo, a favor y en contra, para que su fiabilidad (la parte de la "
+        "diferencia entre equipos que no es azar) llegue a 0,5 y a 0,7 en cada liga, y lo confirma la comparación entre la primera y la "
+        "segunda mitad de cada temporada?"
+    ),
+    null=(
+        "La fiabilidad que predice la descomposición de la varianza no se confirma: la correlación entre mitades de temporada queda más "
+        "de 0,10 por debajo de la predicha en demasiadas ligas."
+    ),
+    alternative=(
+        "La correlación observada entre mitades es al menos la predicha menos 0,10 en la mayoría preregistrada de las ligas: el número de "
+        "partidos medido sirve como mínimo de muestra."
+    ),
+    unit=(
+        "Un equipo en una temporada cerrada de una liga nacional: el valor de la estadística en cada uno de sus partidos de esa liga, a "
+        "favor (su lado) y en contra (el rival)."
+    ),
+    data=(
+        _PM_EXPORT + " " + _PM_CLOSED + " Estadísticas de core.fixture_team_stats: tiros, tiros a puerta, tiros dentro del área, "
+        "córneres, faltas, fueras de juego, amarillas, paradas, posesión, pases, precisión de pase (acertados / pases) y xG del "
+        "proveedor; y goles del resultado. A favor y en contra, salvo la posesión (su «en contra» es el complemento). Rojas y penaltis "
+        "no: son demasiado raros para una media por partido. Ligas nacionales, temporadas cerradas desde 2019."
+    ),
+    split=(
+        "Dentro de cada temporada: la estimación usa todos los partidos con dato; la validación ordena por fecha los partidos de cada "
+        "equipo y compara la media de la primera mitad con la de la segunda (m = mitad entera inferior de sus partidos con dato). Nada "
+        "se ajusta mirando la validación."
+    ),
+    primary_metric=(
+        "n50 y n70, los partidos que llevan la fiabilidad a 0,5 y 0,7: n_R = R/(1 - R) * s2w/tau2, con s2w la varianza dentro del equipo "
+        "(agrupada) y tau2 = var(medias de los equipos) - media(s2w/n_i) la varianza real entre equipos (método de momentos), sumadas "
+        "por liga sobre sus temporadas ponderando por equipos; IC del 95 % por bootstrap de equipos dentro de cada temporada (1.000 "
+        "réplicas). tau2 <= 0: «no se estabiliza en una temporada»."
+    ),
+    pass_rule=(
+        "Por estadística: PASA si en al menos el 70 % de sus ligas elegibles la correlación de Pearson entre equipos de las medias de "
+        "primera y segunda mitad, media sobre sus temporadas, es >= R(m) - 0,10, con R(m) = m/(m + s2w/tau2) de esa misma liga. La "
+        "tabla versionada en fbi/stats lleva n50 y n70 de las que pasan y nunca baja un mínimo vigente: propone max(vigente, n50) y "
+        "bajarlo exige decisión del dueño."
+    ),
+    reject_rule=(
+        "NO PASA si lo cumple menos del 70 % de sus ligas elegibles: la estadística queda sin mínimo medido y sigue la convención "
+        "actual, con su motivo. INSUFICIENTE si tiene menos de 5 ligas elegibles."
+    ),
+    secondary=(
+        "n50 y n70 por estadística y liga con su intervalo, y su mediana global.",
+        "Fiabilidad a 3, 5, 10 y 20 partidos (MIN_MATCHES = 3 y los ámbitos u5, u10 y u20 de team-agg-v1).",
+        "Correlación entre mitades por fecha frente a mitades al azar (deriva dentro de la temporada).",
+        "Cobertura de cada estadística por liga.",
+    ),
+    min_sample=(
+        "Liga elegible para una estadística: al menos 2 temporadas cerradas con 10 o más equipos, cada uno con 10 o más partidos con "
+        "dato, y la estadística presente en el 80 % o más de los partidos de la temporada."
+    ),
+    power_note=(
+        "Con k equipos el error típico de una correlación r entre mitades es del orden de (1 - r^2)/sqrt(k - 3): 0,17 con 18 equipos y "
+        "r = 0,6. Por eso se promedian las temporadas y la regla pide el 70 % de las ligas, no cada temporada."
+    ),
+    exclusions=(
+        "Partidos no terminados y partidos de otras competiciones (copas, internacionales).",
+        "Valores ausentes de una estadística (cuentan para su cobertura, no para su media).",
+        "Equipos con menos de 10 partidos con dato en la temporada.",
+        "Temporadas abiertas.",
+    ),
+    stopping=(
+        "Una sola evaluación sobre esta exportación; no se repite con otros umbrales, estadísticas o ligas. Un cambio de método es un "
+        "protocolo v2 registrado antes de mirar."
+    ),
+    segments=("Por estadística y liga.", "Global (mediana de las ligas).", _PM_PRIORITY),
+    registered_on="2026-11-21",
+    seed=20261121,
+)
+
+PM0807: Final = Protocol(
+    key="PM-08-07",
+    version="proto-pm-08-07-v1",
+    title="Fichas que exigen medir antes de construir: estilo, parecidos, apercibidos, entrenador e identidad abierta",
+    question=(
+        "¿Tienen los datos guardados la cobertura y la estabilidad temporada a temporada que harían honesta cada ficha: estilo de juego "
+        "(E), equipos parecidos (P), apercibidos por acumulación de amarillas (A), entrenador del partido (T) e identidad abierta de "
+        "árbitros y técnicos (I)? La trayectoria del entrenador no entra: va por OP-12."
+    ),
+    null="La ficha no alcanza su regla de cobertura o de estabilidad: construirla mostraría ruido o huecos.",
+    alternative="La ficha alcanza su regla de cobertura y de estabilidad.",
+    unit=(
+        "E y P: un equipo en una temporada cerrada de liga nacional. A: un partido-lado (sus amarillas). T: un partido-lado (su "
+        "entrenador). I: una persona distinta (árbitro o entrenador) que dirigió un partido desde el 1-jul-2024."
+    ),
+    data=(
+        _PM_EXPORT + " " + _PM_CLOSED + " E y P: ocho dimensiones por partido de core.fixture_team_stats (posesión, pases, precisión "
+        "de pase, tiros, proporción de tiros dentro del área, córneres, faltas y fueras de juego), temporadas cerradas de 2021 a 2025. "
+        "A: amarillas de core.fixture_events (Card / Yellow Card con jugador) frente a yellow_cards de core.fixture_team_stats, partidos "
+        "desde el 1-jul-2024; y la regla de acumulación de amarillas codificada en config/rules/*. T: coach_id de core.fixture_lineups. "
+        "I: core.fixture_officials -> core.entity_aliases -> persona, y core.entity_ids (identificador externo de cualquier sistema)."
+    ),
+    split=(
+        "E: temporada s frente a s+1 de los equipos que siguen en la misma liga. P: primera frente a segunda mitad por fecha de la misma "
+        "temporada. A, T e I: sin partición (cobertura)."
+    ),
+    primary_metric=(
+        "E: mediana sobre los pares de temporadas de la correlación de Spearman entre equipos de cada dimensión (media por partido), y "
+        "cobertura de las ocho. P: Jaccard medio entre mitades de los 3 vecinos más cercanos (distancia euclídea de las ocho dimensiones "
+        "tipificadas dentro de la liga-temporada), con IC del 95 % por bootstrap de liga-temporadas, frente al Jaccard esperado al azar. "
+        "A: proporción de liga-temporadas cuyas amarillas con jugador coinciden con las de las estadísticas en el 95 % o más de sus "
+        "partidos-lado. T: proporción de partidos-lado con coach_id. I: proporción de árbitros y de entrenadores distintos con "
+        "identificador abierto."
+    ),
+    pass_rule=(
+        "E: 5 o más de las 8 dimensiones con mediana >= 0,6 y las 8 presentes en el 80 % o más de los partidos en al menos la mitad de "
+        "las liga-temporadas. P: extremo inferior del IC >= 0,40 y >= Jaccard al azar + 0,15. A: coincidencia en el 80 % o más de las "
+        "liga-temporadas Y la regla de acumulación codificada para la competición (sin regla la ficha no se construye aunque los datos "
+        "pasen). T: 90 % o más de los partidos-lado de competiciones seguidas. I: 80 % o más de los árbitros y 80 % o más de los "
+        "entrenadores. Un PASA no construye nada: construir es otra tarea con la decisión del dueño."
+    ),
+    reject_rule=(
+        "No alcanza su regla: NO PASA, la ficha no se construye y la medida queda como motivo. INSUFICIENTE si no se alcanza su muestra "
+        "mínima, o en A si los datos pasan pero no hay regla de acumulación codificada (pendiente de la lectura humana del reglamento "
+        "disciplinario de cada competición)."
+    ),
+    secondary=(
+        "Correlación por dimensión y liga; dimensiones que nunca se estabilizan.",
+        "Cobertura de A, T e I por liga, en las prioritarias y en el resto.",
+        "Qué dicen hoy las reglas codificadas sobre tarjetas (solo desempates de juego limpio, si es lo único).",
+    ),
+    min_sample=(
+        "E: 30 pares de liga-temporada con 10 o más equipos comunes. P: 30 liga-temporadas con 10 o más equipos con 10 o más partidos "
+        "por mitad. A y T: 20 liga-temporadas. I: 200 árbitros y 200 entrenadores distintos."
+    ),
+    power_note=(
+        "Con 15 equipos comunes el error típico de un Spearman de 0,6 es de unos 0,19 por par; la mediana de 30 pares lo baja a unos "
+        "0,04 (1,25 * 0,19/sqrt(30)): suficiente para separar 0,6 de 0,4."
+    ),
+    exclusions=(
+        "Partidos no terminados; copas e internacionales en E y P.",
+        "En A, partidos-lado sin estadísticas de equipo.",
+        "En I, alias sin persona asignada (cuentan como sin identidad).",
+    ),
+    stopping=(
+        "Una sola evaluación por ficha sobre esta exportación. La decisión del dueño se anota por ficha; repetir con otros umbrales es un "
+        "protocolo v2."
+    ),
+    segments=("Por ficha (E, P, A, T, I).", "Por liga para las coberturas.", _PM_PRIORITY),
+    registered_on="2026-11-21",
+    seed=20261121,
+)
+
+PM0907: Final = Protocol(
+    key="PM-09-07",
+    version="proto-pm-09-07-v1",
+    title="Probabilidades de temporada por simulación, validadas sobre temporadas cerradas",
+    question=(
+        "Con lo jugado hasta un tercio y hasta dos tercios de una temporada cerrada, ¿las probabilidades de ser campeón, de terminar "
+        "entre los cuatro primeros y de terminar entre los tres últimos que da la simulación de scenarios-v2 (Dixon-Coles con la "
+        "especificación en vigor, 10.000 temporadas) están calibradas y mejoran a la misma simulación con todos los equipos iguales?"
+    ),
+    null="El Brier no mejora al de la referencia de equipos iguales o la calibración se sale de su tolerancia.",
+    alternative="El Brier mejora con intervalo y la calibración está dentro de su tolerancia, en los dos cortes y los tres objetivos.",
+    unit=(
+        "Un equipo, una liga-temporada cerrada, un corte (1/3 o 2/3) y un objetivo (campeón, cuatro primeros, tres últimos): la "
+        "probabilidad simulada y si se cumplió en la tabla final."
+    ),
+    data=(
+        _PM_EXPORT + " " + _PM_CLOSED + " Ligas nacionales de 2019 a 2025 con formato de liga a doble vuelta: de 10 a 24 equipos, cada "
+        "par se enfrenta exactamente dos veces, una en cada campo, y todos los partidos terminados. Entrenamiento: resultados de la "
+        "misma competición en los 730 días previos al corte, conocidos 3 h después del saque, con fbi.models.goals (Dixon-Coles, "
+        "respaldo Poisson) y el xi y la penalización de la especificación promovida, como fbi.competitions.scenario_store.fit_scores."
+    ),
+    split=(
+        "Por fecha: el corte k/3 es el saque del primer partido que deja jugados al menos k/3 de los partidos de la temporada; lo "
+        "jugado antes del corte forma la tabla de partida y entra en el entrenamiento; el resto se simula. Nada posterior al corte entra."
+    ),
+    primary_metric=(
+        "Brier por objetivo y corte del modelo y de la referencia (la misma simulación con todos los equipos iguales: un Poisson con "
+        "solo el promedio de goles local y visitante de la liga en el entrenamiento) y su Brier skill score BSS = 1 - Brier/Brier_ref, "
+        "con IC del 95 % por bootstrap de liga-temporadas (2.000 réplicas); ECE con 10 grupos de igual tamaño. Tabla final y simulada "
+        "ordenadas por puntos (3/1/0), diferencia de goles, goles a favor y sorteo con la semilla."
+    ),
+    pass_rule=(
+        "PASA si en los dos cortes y los tres objetivos el extremo inferior del IC del BSS es > 0, el ECE es <= 0,03 y, en los grupos "
+        "extremos (probabilidad >= 0,9 o <= 0,1, con 20 o más casos), la probabilidad media cae dentro del intervalo de Wilson del 95 % "
+        "de la frecuencia observada. Aun pasando, las probabilidades siguen privadas: publicarlas exige DM-14 y la firma del dueño."
+    ),
+    reject_rule=(
+        "Falla cualquier objetivo o corte: NO PASA y las probabilidades de temporada siguen en sombra con su motivo. INSUFICIENTE con "
+        "menos de 100 liga-temporadas elegibles."
+    ),
+    secondary=(
+        "Log score por objetivo y corte; BSS por nivel de la liga y prioritarias frente al resto.",
+        "Cuántas veces la tabla final tuvo un empate a puntos justo en el puesto del objetivo (donde el desempate del reglamento importa).",
+        "Liga-temporadas descartadas por formato o por desacuerdo con la tabla del proveedor, y por qué.",
+    ),
+    min_sample="100 liga-temporadas elegibles (unos 2.000 equipos-temporada por objetivo y corte).",
+    power_note=(
+        "Las probabilidades de una temporada están ligadas (suman 1, 4 o 3): el bootstrap remuestrea liga-temporadas enteras, no "
+        "equipos, y el intervalo refleja que solo hay unas pocas centenas de temporadas."
+    ),
+    exclusions=(
+        "Liga-temporadas que no son doble vuelta exacta (fases, grupos, play-offs, apertura y clausura con final).",
+        "Liga-temporadas cuya última tabla del proveedor (core.standings) no coincide en puntos con la calculada (sanciones o partidos "
+        "adjudicados).",
+        "Liga-temporadas en las que el ajuste no conoce a algún equipo o no converge en ese corte (se descarta el corte entero).",
+        "Empates tras goles a favor en el puesto del objetivo: el objetivo cuenta como cumplido a partes iguales.",
+    ),
+    stopping="Una sola evaluación sobre esta exportación; otro modelo, otros cortes u otros objetivos son un protocolo v2.",
+    segments=("Por objetivo y corte.", "Por nivel de la liga (tier).", _PM_PRIORITY),
+    registered_on="2026-11-21",
+    seed=20261121,
+)
+
+PM1203_OP26: Final = Protocol(
+    key="PM-12-03-OP26",
+    version="proto-pm-12-03-op26-v1",
+    title="Ventaja de local por competición y variable en el tiempo",
+    question=(
+        "¿Pronostica mejor el 1X2 una ventaja de local que se vuelve a estimar con los partidos recientes de cada competición que la "
+        "ventaja de local de B0, fija dentro de su ventana de 730 días?"
+    ),
+    null="El log loss 1X2 del retador no es menor que el de B0.",
+    alternative="El log loss 1X2 del retador es menor que el de B0, con intervalo.",
+    unit="Un partido de prueba con las probabilidades 1X2 de B0 y del retador.",
+    data=(
+        _PM_EXPORT + " " + _PM_B0 + " Retador C26: B0 con su término de local sustituido por el que maximiza la verosimilitud "
+        "Poisson de los goles de los partidos de la misma competición de los 365 días anteriores al ajuste (peso de semivida 120 días; "
+        "los demás parámetros de B0 fijos), contraído hacia el local de B0 con una normal de desviación 0,10; la rho de Dixon-Coles y "
+        "la aritmética de la matriz de marcadores son las de B0. " + _PM_TEST
+    ),
+    split="Walk-forward: el ajuste del lunes usa solo partidos con saque 3 h o más antes; pronostica la semana ISO siguiente.",
+    primary_metric=_PM_PAIRED,
+    pass_rule=(
+        "PASA si el extremo superior del IC global es < 0 y en ningún segmento preregistrado el extremo inferior es > 0. " + _PM_GATE
+    ),
+    reject_rule="El extremo superior del IC global es >= 0: NO PASA y la ventaja de local sigue la de B0. INSUFICIENTE con menos de 5.000 partidos.",
+    secondary=(
+        "Ventaja de local estimada por competición y año, descriptiva (incluido 2020-21, si su historia lo permite).",
+        "Brier 1X2 y diferencia frente al mercado en el segmento M.",
+    ),
+    min_sample="5.000 partidos de prueba; un segmento se informa con 1.000 o más.",
+    power_note=(
+        "Con s la desviación típica de la diferencia por partido, la diferencia mínima detectable es 2,80 * s/sqrt(n): con s = 0,05 y "
+        "n = 5.000, unas 0,002 de log loss. El informe da s medida y la diferencia mínima alcanzada."
+    ),
+    exclusions=(
+        "Partidos con un equipo desconocido para el ajuste de B0.",
+        "Partidos en campo neutral (sin ventaja de local que estimar).",
+        "Competiciones fuera de la regla de prueba.",
+    ),
+    stopping="Una sola evaluación; otra semivida, otra contracción u otra ventana es un protocolo v2.",
+    segments=(_PM_PRIORITY, "El resto de ligas.", "Por temporada."),
+    registered_on="2026-11-21",
+    seed=20261121,
+)
+
+PM1203_OP27: Final = Protocol(
+    key="PM-12-03-OP27",
+    version="proto-pm-12-03-op27-v1",
+    title="Fuerza de equipo derivada de cuotas («rating de mercado»), con control de circularidad",
+    question=(
+        "¿Unas fuerzas de equipo ajustadas a las probabilidades de cierre del mercado de los partidos ANTERIORES pronostican el 1X2 "
+        "mejor que B0, que solo lee resultados, sin que la mejora sea un artefacto?"
+    ),
+    null="El retador no baja el log loss de B0, o un placebo que rompe la información de equipo lo baja igual.",
+    alternative="El retador baja el log loss de B0 y del placebo, y el placebo no mejora a B0.",
+    unit="Un partido de prueba del segmento M con las probabilidades de B0, del retador y del placebo.",
+    data=(
+        _PM_EXPORT + " " + _PM_MARKET + " " + _PM_B0 + " Retador C27: cada lunes y en cada liga, fuerzas de equipo s y un término "
+        "de local h ajustados por entropía cruzada a las probabilidades de mercado de los partidos de esa liga de los 365 días "
+        "anteriores (saque antes del lunes; peso exp(-0,002 * días)), con un logit ordenado de dos umbrales sobre h + s_local - "
+        "s_visitante y penalización 1,0 * suma(s^2); la probabilidad del partido sale de ese modelo, nunca de su propia cuota."
+    ),
+    split=(
+        "Walk-forward semanal como B0. Prueba: semanas del 1-ago-2023 al 31-may-2025 (los 365 días previos ya tienen cuotas). Control "
+        "de circularidad preregistrado: (1) no entra ninguna cuota de un partido con saque igual o posterior al lunes del ajuste, ni la "
+        "del propio partido; (2) placebo C27p: el mismo ajuste con las probabilidades de mercado permutadas al azar entre partidos de la "
+        "misma liga y la misma semana ISO de la historia (conserva calendario y nivel de la liga, rompe la información de equipo); (3) "
+        "la cuota del propio partido solo como contraste."
+    ),
+    primary_metric=_PM_PAIRED + " Lo mismo para C27 menos C27p y para C27p menos B0.",
+    pass_rule=(
+        "PASA si el extremo superior del IC de C27 - B0 es < 0, el de C27 - C27p es < 0 y el placebo no mejora a B0 (el extremo "
+        "superior del IC de C27p - B0 no es < 0). " + _PM_GATE
+    ),
+    reject_rule=(
+        "Falla cualquiera de las tres: NO PASA (si el placebo mejora a B0, el motivo es «circularidad o artefacto»). INSUFICIENTE con "
+        "menos de 1.500 partidos de prueba."
+    ),
+    secondary=(
+        "Peso del retador frente a B0 en un pool logarítmico ajustado en la semana anterior.",
+        "C27 frente al mercado del propio partido (se espera peor: no es criterio).",
+    ),
+    min_sample="1.500 partidos de prueba con las tres probabilidades.",
+    power_note="Diferencia mínima detectable 2,80 * s/sqrt(n); con s = 0,05 y n = 3.000, unas 0,0026 de log loss.",
+    exclusions=(
+        "Partidos sin cuota de cierre completa en el segmento M (no entran en el ajuste; en la prueba sí, si las tres probabilidades "
+        "existen).",
+        "Equipos sin ningún partido con cuota en la ventana del ajuste.",
+    ),
+    stopping="Una sola evaluación; otra ventana, otro decaimiento u otra forma del rating es un protocolo v2.",
+    segments=("Por liga del segmento M.", "Por temporada."),
+    registered_on="2026-11-21",
+    seed=20261121,
+)
+
+PM1203_OP29: Final = Protocol(
+    key="PM-12-03-OP29",
+    version="proto-pm-12-03-op29-v1",
+    title="Abstención conforme sobre el 1X2 (protocolo nuevo; no repite INT-A02)",
+    question=(
+        "¿Un conjunto conforme partido a partido sobre las probabilidades de B0 cubre el resultado real con la frecuencia prometida "
+        "(90 %) en cada segmento, y es lo bastante pequeño para servir de regla de abstención («no hay un resultado claro»)? No "
+        "recalibra ni cambia ninguna cifra: la calibración coherente de INT-A02, rechazada el 11-nov-2026, no se repite."
+    ),
+    null="La cobertura se sale de 90 % +/- 1,5 puntos en algún segmento o el conjunto medio no es informativo.",
+    alternative="La cobertura queda en la banda en todos los segmentos y el tamaño medio del conjunto es 2,5 o menos.",
+    unit="Un partido de prueba: el conjunto de resultados 1X2 que admite y si contiene el real.",
+    data=(
+        _PM_EXPORT + " " + _PM_B0 + " " + _PM_TEST + " Conjunto conforme partido a partido (split conformal, puntuación 1 - p del "
+        "resultado real, alfa = 0,10): cada lunes, q es el cuantil de orden ceil((n + 1) * 0,9)/n de las puntuaciones de los partidos de "
+        "prueba de las 13 semanas anteriores (todas las ligas, resultados ya conocidos); el conjunto de un partido es {k : 1 - p_k <= q}."
+    ),
+    split="Walk-forward semanal; la calibración del conjunto usa solo semanas ya terminadas.",
+    primary_metric=(
+        "Cobertura empírica (proporción de partidos cuyo resultado está en su conjunto) global y por segmento, con intervalo de "
+        "Wilson; tamaño medio del conjunto."
+    ),
+    pass_rule=(
+        "PASA si la cobertura está entre 0,885 y 0,915 global y en cada segmento preregistrado con 500 o más partidos, y el tamaño "
+        "medio es <= 2,5. " + _PM_GATE
+    ),
+    reject_rule=(
+        "La cobertura se sale de la banda en algún segmento, o el tamaño medio es > 2,5 (el conjunto no informa): NO PASA. "
+        "INSUFICIENTE con menos de 2.000 partidos de prueba."
+    ),
+    secondary=(
+        "Cobertura por resultado real (local, empate, visitante): la condicional por clase.",
+        "Proporción de partidos con conjunto de uno, dos y tres resultados, y acierto en los de uno.",
+    ),
+    min_sample="2.000 partidos de prueba tras las 13 semanas iniciales.",
+    power_note="El intervalo de Wilson de una cobertura de 0,90 con 2.000 partidos mide unos +/- 1,3 puntos; con 500, unos +/- 2,6.",
+    exclusions=("Las de B0.", "Las 13 primeras semanas de prueba (solo calibran)."),
+    stopping="Una sola evaluación; otro alfa, otra puntuación u otra ventana de calibración es un protocolo v2.",
+    segments=(_PM_PRIORITY, "El resto de ligas.", "Por temporada."),
+    registered_on="2026-11-21",
+    seed=20261121,
+)
+
+PM1203_OP30: Final = Protocol(
+    key="PM-12-03-OP30",
+    version="proto-pm-12-03-op30-v1",
+    title="Retadores y contraste externo del 1X2",
+    question=(
+        "¿Pronostica alguno de tres retadores fijados de antemano el 1X2 mejor que B0, y cuánto le separa de B0 el mercado de cierre "
+        "(contraste externo)?"
+    ),
+    null="Ningún retador baja el log loss de B0 con el intervalo corregido por comparaciones múltiples.",
+    alternative="Al menos un retador baja el log loss de B0 con el intervalo corregido.",
+    unit="Un partido de prueba con las probabilidades de B0 y de los tres retadores.",
+    data=(
+        _PM_EXPORT + " " + _PM_B0 + " " + _PM_TEST + " " + _PM_MARKET + " Retadores: C30a, Poisson sin corrección de Dixon-Coles "
+        "(fbi.models.goals, kind poisson, misma especificación); C30b, Elo dinámico + logit ordenado (fbi.features.elo, elo-v2.0, "
+        "recorriendo todos los partidos exportados en orden; fbi.models.elo_ologit.fit_ologit ajustado cada lunes con los partidos de la "
+        "competición de los 730 días anteriores); C30c, pool logarítmico a partes iguales de B0 y C30b, renormalizado. penaltyblog no se "
+        "instala (su Dixon-Coles con decaimiento es la familia de B0) y no hay banco CC0 autorizado: no se usan."
+    ),
+    split="Walk-forward semanal como B0.",
+    primary_metric=(
+        _PM_PAIRED + " Intervalos simultáneos de Bonferroni para los tres retadores (nivel 1 - 0,05/3). Contraste externo: B0 menos "
+        "mercado en el segmento M, con el mismo bootstrap."
+    ),
+    pass_rule=(
+        "PASA la línea si algún retador tiene el extremo superior de su intervalo corregido < 0 (se nombra el retador). El contraste "
+        "con el mercado no es criterio: si el mercado gana a B0, se anota la brecha. " + _PM_GATE
+    ),
+    reject_rule="Ningún retador lo logra: NO PASA y B0 sigue siendo la referencia. INSUFICIENTE con menos de 5.000 partidos.",
+    secondary=(
+        "Brier 1X2 de cada modelo; diferencia por segmento.",
+        "Mismo contraste en partidos del segmento M frente al mercado para los tres retadores.",
+    ),
+    min_sample="5.000 partidos de prueba con las cuatro probabilidades; el contraste externo, 1.500 partidos del segmento M.",
+    power_note="Diferencia mínima detectable con Bonferroni (z = 2,39 en vez de 1,96): unas 3,23 * s/sqrt(n).",
+    exclusions=("Las de B0.", "Partidos sin probabilidad de algún retador (se informan aparte)."),
+    stopping="Una sola evaluación; un retador nuevo es un protocolo v2.",
+    segments=(_PM_PRIORITY, "El resto de ligas.", "Por temporada."),
+    registered_on="2026-11-21",
+    seed=20261121,
+)
+
 PROTOCOLS: Final[dict[str, Protocol]] = {p.key: p for p in (A02, A09, B09, A08, C02, A03, B03, B07, K02, C08, C09, K03, K04)}
+
+PM_LAB: Final[dict[str, Protocol]] = {p.key: p for p in (PM1008, PM0807, PM0907, PM1203_OP26, PM1203_OP27, PM1203_OP29, PM1203_OP30)}
+"""The LAB lines of the plan PM (IA-154): registered, fingerprinted and pinned like the others, and found by ``require``, but kept OUT of
+``PROTOCOLS`` - the catalogue that ``fbi.protosign`` offers for signature, whose keys and console contract (C-11) admit only INT-/AD-.
+Making them signable is a change of that zone, with the Intelligence session; until then the owner's decision goes in their report."""
 
 
 def require(key: str) -> Protocol:
     """The registered protocol of an experiment; an experiment without one does not run."""
     try:
-        return PROTOCOLS[key]
+        return PROTOCOLS[key] if key in PROTOCOLS else PM_LAB[key]
     except KeyError:
         raise LookupError(f"no hay protocolo registrado para {key}: regístralo antes de mirar los datos") from None
 
