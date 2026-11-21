@@ -9,7 +9,7 @@ fixtures of the teams in ``customer.favorites``, with no price, no probability a
 
 customer.calendar_feeds
 -----------------------
-One row per link ever made: whose it is (``auth.users``), the SHA-256 of its secret (``token_hash``, 64 hex digits - the secret itself,
+One row per link ever made: whose it is (``auth.users``), the SHA-256 of its secret (``link_sha256``, 64 hex digits - the secret itself,
 256 random bits, is shown to the reader once and never stored, as ``auth`` does with its one-use links), when it was made, when it was
 revoked (a new link revokes the previous one; the reader can revoke it at any time) and when a calendar last read it (``last_read_at``,
 written at most once an hour: it tells the reader whether a leaked link is in use). At most ONE live link per reader (a partial unique
@@ -45,7 +45,7 @@ def upgrade() -> None:
         CREATE TABLE {TABLE} (
             id            BIGSERIAL     PRIMARY KEY,
             user_id       BIGINT        NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
-            token_hash    TEXT          NOT NULL UNIQUE CHECK (token_hash ~ '^[0-9a-f]{{64}}$'),
+            link_sha256   TEXT          NOT NULL UNIQUE CHECK (link_sha256 ~ '^[0-9a-f]{{64}}$'),
             created_at    TIMESTAMPTZ   NOT NULL DEFAULT now(),
             revoked_at    TIMESTAMPTZ,
             revoked_why   TEXT          CHECK (revoked_why IS NULL OR revoked_why IN ('reader', 'replaced', 'owner', 'account')),

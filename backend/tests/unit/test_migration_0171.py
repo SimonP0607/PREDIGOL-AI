@@ -49,7 +49,7 @@ def test_upgrade_creates_the_table_and_nothing_else() -> None:
     assert "CREATE TABLE customer.calendar_feeds (" in sql
     assert sql.count("CREATE TABLE") == 1 and sql.count("CREATE UNIQUE INDEX") == 1 and sql.count("CREATE INDEX") == 0
     assert "CREATE UNIQUE INDEX calendar_feeds_one_live ON customer.calendar_feeds (user_id) WHERE revoked_at IS NULL" in sql
-    assert "token_hash    TEXT          NOT NULL UNIQUE CHECK (token_hash ~ '^[0-9a-f]{64}$')" in sql
+    assert "link_sha256   TEXT          NOT NULL UNIQUE CHECK (link_sha256 ~ '^[0-9a-f]{64}$')" in sql
     assert "REFERENCES auth.users(id) ON DELETE RESTRICT" in sql and sql.count("REFERENCES") == 1
     for word in ("INSERT", "UPDATE ", "DELETE", "ALTER TABLE", "DROP", "email", "token TEXT"):
         assert word not in sql.replace("ON DELETE RESTRICT", ""), word
