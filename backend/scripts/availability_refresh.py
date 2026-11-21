@@ -19,6 +19,11 @@ After the pass, once a day while ``FBI_AVAILABILITY_SHADOW`` is on (the default)
 would say, 500 matches still to be played, into ``analytics.availability_discrepancies``), with its own ledger row (``availability_shadow``).
 ``--no-shadow`` skips it; ``--shadow-only`` runs only it.
 
+Last, only while ``FBI_MARKET_LEAGUE_STATS`` is on (off by default: PM-05-07), the same process measures the market's margin and dispersion
+by competition, market and day (``fbi.market.league_daily``, into ``market.league_daily_stats``) with its own ledger row
+(``market_league_stats``), inside what is left of the time the scheduler gives the process. ``--no-market`` skips it; ``--market-only``
+runs only it. A measure: nothing reads it to price, pick or decide.
+
 It records one row in the job ledger (``raw.ingestion_runs``, ``availability_refresh``) with what it did, how long it took and the peak
 of its memory (``params.memory_peak_mib``: the acceptance asks seven nights with duration and memory). Exit 0 when the pass ran (even
 stopped at its time budget: the next night goes on), 1 when it failed, 2 when the switch is off.
@@ -62,7 +67,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--scheduled", action="store_true", help="started by the worker's scheduler (recorded in the ledger)")
     parser.add_argument("--no-shadow", action="store_true", help="skip the shadow comparison (PM-02-06) after the pass")
     parser.add_argument("--shadow-only", action="store_true", help="only the shadow comparison (PM-02-06)")
+    parser.add_argument("--no-market", action="store_true", help="skip the market's margin and dispersion (PM-05-07)")
+    parser.add_argument("--market-only", action="store_true", help="only the market's margin and dispersion (PM-05-07)")
     args = parser.parse_args(argv)
+    process_started = time.monotonic()
     cap_memory(args.max_memory_mib)
 
     import psycopg
@@ -76,6 +84,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.shadow_only:
         with psycopg.connect(settings.database.psycopg_url, connect_timeout=10, application_name="availability_shadow") as conn:
             shadow_phase(conn, at=now(), started=time.monotonic(), scheduled=args.scheduled)
+        return 0
+    if args.market_only:
+        with psycopg.connect(settings.database.psycopg_url, connect_timeout=10, application_name="market_league_stats") as conn:
+            market_phase(conn, at=now(), process_started=process_started, scheduled=args.scheduled)
         return 0
     if job.mode() != "on":
         print(f"{job.SWITCH} is off: nothing is recalculated")
@@ -109,6 +121,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print({"run_id": run_id, "status": counters.status, **measured})
         if not args.no_shadow:
             shadow_phase(conn, at=at, started=time.monotonic(), scheduled=args.scheduled)
+        if not args.no_market:
+            market_phase(conn, at=at, process_started=process_started, scheduled=args.scheduled)
     return 1 if counters.status == "failed" else 0
 
 
@@ -155,6 +169,51 @@ def shadow_phase(conn: Any, *, at: datetime, started: float, scheduled: bool) ->
         db.execute("UPDATE raw.ingestion_runs SET params = params || %s::jsonb WHERE id = %s", (Json(measured), run_id))
         db.commit()
         print({"run_id": run_id, "job": shadow.JOB, "status": counters.status, **measured})
+
+
+MARKET_MARGIN_SECONDS = 60
+"""What the market phase leaves of the time the scheduler gives the whole process (``fbi.coverage.job.PROCESS_TIMEOUT``)."""
+
+
+def market_phase(conn: Any, *, at: datetime, process_started: float, scheduled: bool) -> None:
+    """PM-05-07: the market's margin and dispersion by competition, market and day (``fbi.market.league_daily``), with its own ledger
+    row, only while ``FBI_MARKET_LEAGUE_STATS`` is on, and stopping before the scheduler's limit on the whole process."""
+    import psycopg
+    from psycopg.types.json import Json
+
+    from fbi.coverage import job
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+    from fbi.market import league_daily
+
+    if league_daily.mode() != "on":
+        return
+    deadline = process_started + job.PROCESS_TIMEOUT - MARKET_MARGIN_SECONDS
+    started = time.monotonic()
+    if started >= deadline:
+        print({"job": league_daily.JOB, "skipped": "sin_tiempo"})
+        return
+    ledger = RunLedger(conn)
+    run_id = ledger.open(league_daily.JOB, params={"scheduled": scheduled, "method_version": league_daily.METHOD_VERSION})
+    counters = RunCounters()
+    report = None
+    try:
+        report = league_daily.run_pass(conn, now=at, deadline=deadline)
+        counters.rows_inserted = report.rows
+        counters.rows_normalized = report.prices
+        counters.errors.extend(report.errors)
+        if report.stopped == "otro_pase_en_curso":
+            counters.stopped_early = report.stopped
+    except Exception as exc:
+        counters.errors.append(f"{type(exc).__name__}: {exc}"[:300])
+    finally:
+        if conn.info.transaction_status != psycopg.pq.TransactionStatus.IDLE:
+            conn.rollback()
+        ledger.close(run_id, counters, notes=None if report is None else (report.stopped or None))
+        measured = {"memory_peak_mib": peak_mib(), "seconds": round(time.monotonic() - started, 1),
+                    "report": None if report is None else report.as_json()}
+        conn.execute("UPDATE raw.ingestion_runs SET params = params || %s::jsonb WHERE id = %s", (Json(measured), run_id))
+        conn.commit()
+        print({"run_id": run_id, "job": league_daily.JOB, "status": counters.status, **measured})
 
 
 if __name__ == "__main__":
