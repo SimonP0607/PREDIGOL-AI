@@ -9,12 +9,12 @@ from typing import Any
 
 import psycopg
 import pytest
+from scripts import chronicle_stat_check as check_script
 
 from fbi.chronicle import inputs
 from fbi.chronicle import stat_sheet as ss
 from fbi.stats import data as sd
 from fbi.stats import job
-from scripts import chronicle_stat_check as check_script
 
 from .conftest import Seed
 from .test_stats_documents_db import T0, _league, _season
