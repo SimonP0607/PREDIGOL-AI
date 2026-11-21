@@ -18,6 +18,9 @@ THE FACTS, each with an id the chronicle cites, a kind (``claims.KINDS``), its p
     the news                     ``ai.evidence`` BY REFERENCE (``E:<id>``): its status, kind, side and outlet - never its text. The claim is
                                  joined only by the writer, and only for a source the directory lets a model read (``source_policy``)
     the single figure            ``forecast-v2`` (IA-083): a figure enters with its citation (``figure_text.cite``), never as a number to use
+    the C-13 sheet (PM-11-07)    only with ``FBI_CHRONICLE_STAT_SHEET`` on (``fbi.chronicle.stat_sheet``): the ``xg`` of each side from its
+                                 statistics document (``analytics.stat_documents``), the figure the profile shows; the packet's ``xg``
+                                 is then left out (``fuente_c13``) and its form keeps no per-match average
     what is missing              by code: the line-ups not out yet, a regulation not coded, a scenarios reading that does not exist
 
 WHAT NEVER ENTERS (``excluded``, each with its reason):
@@ -50,6 +53,7 @@ from typing import Any, Final
 
 from fbi.api.services.story import Fact as StoryFact
 from fbi.chronicle import claims
+from fbi.chronicle.stat_sheet import FORM_AVERAGES, SideSheet
 from fbi.competitions.scenarios import FACT_NO_OBJECTIVE
 from fbi.forecasting.figure_text import cite
 
@@ -186,6 +190,9 @@ class PlanInput:
     """The keys (``PlanFact.key``) of the previous plan of the match with OTHER facts: what it did not have is new. When the newest stored
     plan has the same facts, its own ``previous`` is given again (``fbi.chronicle.inputs.previous_keys``), so the same facts always make the
     same plan - and the same chronicle is never paid twice."""
+    sheet: Mapping[str, SideSheet] | None = None
+    """PM-11-07 (``fbi.chronicle.stat_sheet``, ``FBI_CHRONICLE_STAT_SHEET``): each side's C-13 document. None (the switch off): the plan is
+    what it always was. A mapping (on, even empty): the ``xg`` facts come from C-13 only and the form keeps no per-match average."""
 
 
 # ── what the plan is ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -429,10 +436,39 @@ def story_facts(inp: PlanInput, taken: set[str]) -> tuple[list[PlanFact], list[E
         if kind == "table.pressure" and f.params.get("pressure") == "settled":
             excluded.append(Excluded(f.ref, kind, "sin_certificacion_motor"))
             continue
+        if inp.sheet is not None and kind == "xg":
+            excluded.append(Excluded(f.ref, kind, "fuente_c13"))
+            continue
         params = dict(f.params)
         if kind.startswith("absence."):
             params["source_kind"] = "proveedor"
+        if inp.sheet is not None and kind == "form":
+            params = {k: v for k, v in params.items() if k not in FORM_AVERAGES}
         out.append(_fact(_unique(f.ref, taken), kind, side, params, source="packet", known_at=inp.data_at, inp=inp))
+    return out, excluded
+
+
+def sheet_facts(inp: PlanInput, taken: set[str]) -> tuple[list[PlanFact], list[Excluded]]:
+    """PM-11-07: each side's ``xg`` fact from its C-13 document - the very values the profile serves - citing the metric keys and the
+    document's date. A document computed after the plan's moment, or one that does not publish both figures, tells nothing."""
+    out: list[PlanFact] = []
+    excluded: list[Excluded] = []
+    for side, team in (("home", inp.home), ("away", inp.away)):
+        sheet = (inp.sheet or {}).get(side)
+        if sheet is None:
+            continue
+        ref = f"C13:xg.{side}"
+        if sheet.computed_at > inp.at:
+            excluded.append(Excluded(ref, "xg", "posterior_al_plan"))
+            continue
+        xg = sheet.xg()
+        if xg is None:
+            excluded.append(Excluded(ref, "xg", "sin_cifra_c13"))
+            continue
+        xg_for, xg_against, n = xg
+        params = {"side": side, "team": team, "xg_for": xg_for, "xg_against": xg_against, "n": n}
+        out.append(_fact(_unique(ref, taken), "xg", side, params, source=sheet.source(("xg_for", "xg_against")),
+                         known_at=sheet.computed_at, inp=inp))
     return out, excluded
 
 
@@ -604,6 +640,10 @@ def build(inp: PlanInput) -> ContentPlan:
                            tuple(sorted(inp.previous)))
     taken: set[str] = set()
     facts, excluded = story_facts(inp, taken)
+    if inp.sheet is not None:
+        found_c13, dropped_c13 = sheet_facts(inp, taken)
+        facts += found_c13
+        excluded += dropped_c13
     found, dropped, status = scenario_facts(inp, taken)
     facts += found
     excluded += dropped
