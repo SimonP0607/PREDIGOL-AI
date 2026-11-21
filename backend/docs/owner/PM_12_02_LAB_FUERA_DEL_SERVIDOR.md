@@ -112,3 +112,25 @@ probabilidades 1X2.
 No hay nada que revertir en el servidor: las lecturas no dejan rastro en la base. La carpeta de `/tmp/predigol-lab` vive en el
 contenedor del worker y desaparece cuando el contenedor se recrea (el siguiente despliegue). En el portátil, la carpeta de
 `fbi_scratch\lab` es una copia que el dueño conserva o borra cuando quiera. El código se revierte con un `revert` del PR.
+
+## 6. `lab-export-v2` (IA-154, 21-nov-2026): las líneas del LAB del plan PM
+
+Para PM-10-08, PM-08-07, PM-09-07 y PM-12-03 la lista cerrada crece en ocho tablas (versión `lab-export-v2`). Siguen fuera `auth`,
+`customer` y todo lo que no esté en la lista; lo que es de personas sale **sin nombres, sin texto libre y sin identificadores
+externos**: la tabla dice qué columnas salen (`columns`) y una prueba lo comprueba.
+
+| Tabla | Para qué | Filtro | Columnas que salen |
+| --- | --- | --- | --- |
+| `core.fixture_events` | amarillas con jugador (apercibidos, PM-08-07) | `--since` obligatorio | ids del partido, equipo y jugador, minuto, tipo y detalle (sin nombres ni comentarios) |
+| `core.fixture_lineups` | entrenador del partido (PM-08-07) | `--since` obligatorio | partido, lado, formación, ids del entrenador (sin nombre) |
+| `core.fixture_officials` | árbitro designado (PM-08-07) | `--since` obligatorio | partido, papel, id del alias |
+| `core.entity_aliases` | a qué persona apunta el alias de un árbitro | `--since` (solo alias de árbitros de esos partidos) | ids, tipo y origen del alias (sin el texto) |
+| `core.entity_ids` | si la persona tiene identificador abierto | entera | tipo e id de la entidad, sistema, espacio, método, confianza, revisión (sin el identificador ni la evidencia) |
+| `core.standings` | tabla del proveedor para descartar sanciones (PM-09-07) | `--since` obligatorio (temporadas con partidos desde esa fecha) | todas |
+| `market.historical_odds` | cuotas de cierre de football-data.co.uk (PM-12-03) | entera | todas |
+| `analytics.promoted_forecast_spec` | xi, penalización y ventana del modelo en vigor | entera | id, sesión, fecha y especificación |
+
+La exportación de estas líneas es **una sola**: `run --since 2019-01-01`, fuera de la copia (03:30–05:00 UTC), a más de 20 minutos de
+una `fixtures_sync` y lejos de las 07:20 UTC. Los protocolos que la leen (`PM-10-08`, `PM-08-07`, `PM-09-07`, `PM-12-03-OP26`,
+`-OP27`, `-OP29`, `-OP30` en `fbi/research/protocol.py`) se registraron antes de tomarla. Vuelta atrás: la misma que arriba (un
+`revert` devuelve la lista v1; las lecturas no dejan nada).

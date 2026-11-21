@@ -218,6 +218,10 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_api", "customer.favorites", "UPDATE", False),
     ("predigol_worker", "customer.favorites", "SELECT", False),
     ("predigol_worker", "customer.favorites", "INSERT", False),
+    # a reader's secret calendar link (Plan Maestro PM, PM-14-06, migration 0171): made, revoked and touched by the API, deleted
+    # when the account is anonymised; the worker of PrediGol Intelligence never reads it
+    *(("predigol_api", "customer.calendar_feeds", privilege, True) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
+    *(("predigol_worker", "customer.calendar_feeds", privilege, False) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
     # what readers think of PrediGol (plan UX, B6): the API records the survey and «¿Te sirvió?» (a vote changes: UPDATE),
     # deletes them when the account is anonymised and, as the messenger, past their 24 months; the worker of PrediGol
     # Intelligence never reads them (the opinion never enters the models)
@@ -345,7 +349,7 @@ def test_the_worker_sees_nothing_of_the_customers_data(granted: str) -> None:
 def test_the_api_numbers_the_readers_devices_and_notices_and_the_worker_cannot(granted: str) -> None:
     """Plan UX, B7: a browser allowed and a notice queued take their numbers from sequences of their own."""
     with psycopg.connect(granted, autocommit=True) as conn:
-        for seq in ("customer.push_subscriptions_id_seq", "customer.push_notices_id_seq"):
+        for seq in ("customer.push_subscriptions_id_seq", "customer.push_notices_id_seq", "customer.calendar_feeds_id_seq"):
             assert conn.execute("SELECT has_sequence_privilege('predigol_api', %s, 'USAGE')", (seq,)).fetchone() == (True,)
             assert conn.execute("SELECT has_sequence_privilege('predigol_worker', %s, 'USAGE')",
                                 (seq,)).fetchone() == (False,)

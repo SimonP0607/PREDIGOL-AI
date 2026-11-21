@@ -121,6 +121,7 @@ Todos nacen apagados y se encienden en `app.env` sin desplegar; el mapa completo
 | `FBI_PLAYER_PROFILE_EXTRAS`, `FBI_WHAT_IF` | Plan PM (PM-08-06, PM-09-03): el perfil de jugador con los datos nuevos y la calculadora «¿Qué pasa si…?» (firma DM-14) (`player_profile_extras`, `what_if`; `competition_tables` dice si `FBI_COMPETITION_TABLES` está encendido) |
 | `FBI_LINEUP_LAYERS` | Plan PM (PM-10-04, lámina I02): capas de datos en la cancha de Alineaciones (`lineup_layers` en `/auth/me`) |
 | `FBI_MATCH_COVERAGE` | Plan PM (PM-14-02, láminas I01 e I04): el Match Center adapta pestañas y bloques a los niveles de C-16; necesita `FBI_AVAILABILITY` (`match_coverage` en `/auth/me`) |
+| `FBI_PROB_ICONS` | Plan PM (PM-10-07, lámina I09): el pronóstico del resultado también en 100 iconos, con «Mito o dato», solo calibrado y autorizado (`prob_icons` en `/auth/me`) |
 | `FBI_NEWS_V2`, `FBI_MATCH_INTELLIGENCE` | Plan maestro unificado: Noticias de las maquetas 08 a 10 (abogado y datos) y la pestaña «Intelligence» (el dueño) |
 
 ## 4 bis. Composición por tamaño de pantalla (auditoría visual del 16-nov-2026)
