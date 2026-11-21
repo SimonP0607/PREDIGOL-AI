@@ -110,6 +110,8 @@ export interface Me {
   lineup_layers?: boolean;
   /** The Match Center adapted to the coverage of C-16: tabs and blocks by level (plan PM, PM-14-02; FBI_MATCH_COVERAGE, off). */
   match_coverage?: boolean;
+  /** The result forecast also in 100 icons, with «Mito o dato» (plan PM, PM-10-07, lámina I09; FBI_PROB_ICONS, off by default). */
+  prob_icons?: boolean;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }

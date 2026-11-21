@@ -1,0 +1,40 @@
+{
+  "view": {
+    "label": "Cómo ver el pronóstico del resultado",
+    "bars": "Barras",
+    "icons": "Iconos"
+  },
+  "lead": "De cada 100 partidos como este…",
+  "grid": "De cada 100 partidos como este: {home} los gana {homeTeam}, {draw} terminan en empate y {away} los gana {awayTeam}.",
+  "legend": {
+    "home": "gana {team}",
+    "draw": "terminan en empate",
+    "away": "gana {team}"
+  },
+  "reverse": "Dicho al revés: {team} no gana {n} de cada 100.",
+  "notCertainTitle": "No es una certeza.",
+  "notCertain": "Es la frecuencia que se esperaría en muchos partidos parecidos. En este solo ocurrirá uno de los tres resultados, y el menos probable también pasa.",
+  "same": "Es la misma cifra de las barras ({figure}), contada en 100 iconos: no añade ningún cálculo. Es una probabilidad, no una recomendación: un pick de PrediGol es otra cosa y se publica aparte.",
+  "adjusted": "Las tres cifras redondeadas no suman 100: para dibujar 100 iconos, uno de los resultados lleva un icono más o uno menos que su barra.",
+  "myth": {
+    "title": "Mito o dato",
+    "myth": "Mito",
+    "fact": "Dato",
+    "streak": {
+      "claim": "«Si un equipo lleva varios partidos sin ganar, ya le toca».",
+      "why": "Una racha no cambia por sí sola lo que puede pasar en el siguiente partido. Lo que lo cambia son los hechos (bajas, rival, localía), y el pronóstico ya los tiene en cuenta."
+    },
+    "likely": {
+      "claim": "«Lo más probable es lo que va a pasar».",
+      "why": "Lo más probable pasa más veces que lo demás, no siempre. Un resultado poco probable también ocurre en muchos partidos parecidos."
+    },
+    "judge": {
+      "claim": "«Un pronóstico se juzga en muchos partidos, no en uno».",
+      "why": "Un solo partido no dice si una probabilidad estaba bien. Se comprueba juntando muchos: si lo que PrediGol dio como frecuente pasó con esa frecuencia, la cifra está calibrada."
+    },
+    "calibrated": {
+      "claim": "«Calibrada quiere decir segura».",
+      "why": "Calibrada quiere decir que PrediGol comprobó la cifra con partidos ya jugados. Sigue siendo una probabilidad: no promete el resultado."
+    }
+  }
+}

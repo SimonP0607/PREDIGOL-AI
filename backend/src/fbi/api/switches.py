@@ -106,6 +106,12 @@ absent - the six tabs and blocks as always - and ``=1`` leaves out the tabs that
 competition without team statistics does deliver, and notes partial odds. It reads C-16, so it needs ``FBI_AVAILABILITY`` on; with
 C-16 off or silent nothing changes. It is turned on only after the shadow comparison (PM-02-06) shows no unexplained discrepancy."""
 
+PROB_ICONS: Final = "FBI_PROB_ICONS"
+"""The result forecast of «Pronóstico PrediGol» also in 100 icons, with «Mito o dato» (plan PM, PM-10-07, lámina I09 «M08»; UX-182):
+OFF while the line is absent - the block is as it was - and ``=1`` offers «Barras | Iconos» on the result market where it is calibrated
+with a validated calibrator (state 5 of C-16) and readers may see the forecast. It counts the figure the bars show; it computes
+nothing and reads nothing new."""
+
 AVAILABILITY: Final = "FBI_AVAILABILITY"
 """The availability matrix over HTTP (plan PM, PM-02-05; contract C-16): OFF while the line is absent - its five routes answer 404,
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
@@ -243,6 +249,11 @@ def lineup_layers_on() -> bool:
 def match_coverage_on() -> bool:
     """Whether the Match Center adapts to the coverage levels of C-16 (``FBI_MATCH_COVERAGE``, off by default)."""
     return user_switch(MATCH_COVERAGE, default=False)
+
+
+def prob_icons_on() -> bool:
+    """Whether readers may read the result forecast in 100 icons, with «Mito o dato» (``FBI_PROB_ICONS``, off by default)."""
+    return user_switch(PROB_ICONS, default=False)
 
 
 def availability_on() -> bool:
