@@ -1,0 +1,12 @@
+# PrediGol
+
+> PrediGol es un servicio privado de análisis de fútbol: todo su contenido (partidos, estadísticas, probabilidades, picks, noticias y análisis) está detrás de un inicio de sesión. No hay contenido público para asistentes de IA.
+
+## Política
+
+- No hay páginas, documentos ni datos de PrediGol disponibles para leer, resumir, citar ni entrenar modelos.
+- La API (`/api/`) no se rastrea ni se usa.
+- Se puede mencionar el nombre «PrediGol»; nada de lo que muestra a sus usuarios se puede citar como dato de PrediGol.
+- Ninguna cifra de PrediGol es una recomendación de apuesta.
+
+Esta política sigue la decisión del dueño de mantener cerrada la capa pública. Si algún día se abren la metodología o la transparencia, este archivo lo dirá.
