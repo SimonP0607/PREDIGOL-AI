@@ -8,6 +8,8 @@ import { localFixed, localInt } from "@/lib/i18n/format";
 import { t as translate } from "@/lib/i18n";
 import { isMissing } from "@/lib/api/v1/types_intelligence";
 import type {
+  ScatterPoint,
+  PlayerBody,
   GameStates,
   GoalIntervals,
   HalfSplit,
@@ -16,6 +18,7 @@ import type {
   PulseBin,
   RadarAxis,
   StatFigure,
+  StripItem,
   Survival,
   TrendRow,
 } from "@/lib/api/v1/types_stats";
@@ -26,13 +29,18 @@ import { t } from "./readText";
 /** Under this many matches a team's chart is an anecdote (it caps the evidence level at E0). */
 export const MIN_MATCHES = 5;
 
-function reading(sentence: string, n: number): TextReading {
-  const thin = n < MIN_MATCHES;
+function reading(
+  sentence: string,
+  n: number,
+  minSample = MIN_MATCHES,
+  thinKey = "readchart.thin",
+): TextReading {
+  const thin = n < minSample;
   return {
     kind: "text",
-    sentence: thin ? `${sentence} ${t("readchart.thin", { n: localInt(n) })}` : sentence,
+    sentence: thin ? `${sentence} ${t(thinKey, { n: localInt(n) })}` : sentence,
     n,
-    minSample: MIN_MATCHES,
+    minSample,
   };
 }
 
@@ -256,5 +264,175 @@ export function trendsReading(team: string, rows: TrendRow[], matches: number): 
       league: localInt(Math.round(top.league_pct)),
     }),
     matches,
+  );
+}
+
+/** The place of one figure in words, turned round for a figure where less is better; null when the server sent no percentile. */
+export function figurePlace(f: StatFigure): string | null {
+  const good = goodness(f);
+  return good === null ? null : placeInWords(good);
+}
+
+function extremes(figures: StatFigure[]) {
+  const placed = figures
+    .map((f) => ({ f, good: goodness(f) }))
+    .filter((x): x is { f: StatFigure; good: number } => x.good !== null);
+  if (placed.length === 0) return null;
+  return {
+    best: placed.reduce((a, b) => (b.good > a.good ? b : a)),
+    worst: placed.reduce((a, b) => (b.good < a.good ? b : a)),
+    count: placed.length,
+  };
+}
+
+/** A player against the league's players of his position: his best and his weakest figure, with the 90 minutes behind them. */
+export function playerReading(p: PlayerBody, position: string): TextReading {
+  const nineties = Math.floor(p.nineties);
+  const e = extremes(p.figures);
+  const minSample = Math.ceil(p.min_nineties);
+  if (!e)
+    return reading(
+      t("readchart.player.none", { name: p.player.name }),
+      nineties,
+      minSample,
+      "readchart.thinPlayer",
+    );
+  return reading(
+    t(e.best.f.key === e.worst.f.key ? "readchart.player.one" : "readchart.player.read", {
+      name: p.player.name,
+      position,
+      best: figName(e.best.f.key),
+      bestWords: placeInWords(e.best.good),
+      worst: figName(e.worst.f.key),
+      worstWords: placeInWords(e.worst.good),
+      n: localInt(nineties),
+    }),
+    nineties,
+    minSample,
+    "readchart.thinPlayer",
+  );
+}
+
+/** One metric over the last appearances: the values the server sent and their mean (the strip itself shows the mean). */
+export function lastFiveReading(name: string, strip: StripItem[], metric: string): TextReading {
+  const values = strip.map((s) => s.values.find((v) => v.key === metric)?.value);
+  const known = values.filter((v): v is number => typeof v === "number");
+  const mean = known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
+  if (mean === null)
+    return reading(t("readchart.last5.none", { name, fig: figName(metric) }), known.length, 3);
+  return reading(
+    t("readchart.last5.read", {
+      name,
+      fig: figName(metric),
+      n: localInt(known.length),
+      values: values
+        .map((v) => (typeof v === "number" ? localFixed(v, v % 1 ? 1 : 0) : "—"))
+        .join(" · "),
+      mean: localFixed(mean, 1),
+    }),
+    known.length,
+    3,
+  );
+}
+
+export function minutesReading(p: PlayerBody): TextReading {
+  const sum = p.recent_minutes.reduce((a, m) => a + m.minutes, 0);
+  return reading(
+    t("readchart.minutes.read", {
+      name: p.player.name,
+      starts: localInt(p.starts),
+      of: localInt(p.appearances),
+      k: localInt(p.recent_minutes.length),
+      sum: localInt(sum),
+    }),
+    p.recent_minutes.length,
+    3,
+  );
+}
+
+/** Two teams' radars: the aspect where they differ most, with where each one sits in its league. */
+export function compareRadarReading(
+  a: { name: string; axes: RadarAxis[] },
+  b: { name: string; axes: RadarAxis[] },
+  matches: number,
+): TextReading {
+  const pairs = a.axes
+    .map((x) => ({
+      key: x.key,
+      pa: x.percentile,
+      pb: b.axes.find((y) => y.key === x.key)?.percentile,
+    }))
+    .filter(
+      (x): x is { key: RadarAxis["key"]; pa: number; pb: number } =>
+        typeof x.pa === "number" && typeof x.pb === "number",
+    );
+  if (pairs.length === 0)
+    return reading(t("readchart.compareRadar.none", { a: a.name, b: b.name }), matches);
+  const top = pairs.reduce((m, x) => (Math.abs(x.pa - x.pb) > Math.abs(m.pa - m.pb) ? x : m));
+  return reading(
+    t("readchart.compareRadar.read", {
+      a: a.name,
+      b: b.name,
+      axis: translate(`stats.axis.${top.key}`),
+      aWords: placeInWords(top.pa),
+      bWords: placeInWords(top.pb),
+    }),
+    matches,
+  );
+}
+
+/** Two players on the same position's figures: the figure where they are furthest apart. */
+export function comparePlayersReading(a: PlayerBody, b: PlayerBody): TextReading {
+  const nineties = Math.floor(Math.min(a.nineties, b.nineties));
+  const minSample = Math.ceil(Math.max(a.min_nineties, b.min_nineties));
+  const pairs = a.figures
+    .map((fa) => ({ fa, fb: b.figures.find((f) => f.key === fa.key) }))
+    .map(({ fa, fb }) => ({ fa, fb, ga: goodness(fa), gb: fb ? goodness(fb) : null }))
+    .filter(
+      (x): x is { fa: StatFigure; fb: StatFigure; ga: number; gb: number } =>
+        x.fb !== undefined && x.ga !== null && x.gb !== null,
+    );
+  if (pairs.length === 0)
+    return reading(
+      t("readchart.comparePlayers.none", { a: a.player.name, b: b.player.name }),
+      nineties,
+      minSample,
+      "readchart.thinPlayer",
+    );
+  const top = pairs.reduce((m, x) => (Math.abs(x.ga - x.gb) > Math.abs(m.ga - m.gb) ? x : m));
+  return reading(
+    t("readchart.comparePlayers.read", {
+      a: a.player.name,
+      b: b.player.name,
+      fig: figName(top.fa.key),
+      aWords: placeInWords(top.ga),
+      bWords: placeInWords(top.gb),
+    }),
+    nineties,
+    minSample,
+    "readchart.thinPlayer",
+  );
+}
+
+/** Two players' shots and accuracy, as the server sent them (null when one of them has no point). */
+export function scatterReading(
+  a: { name: string; point: ScatterPoint | null },
+  b: { name: string; point: ScatterPoint | null },
+  nineties: number,
+  minSample: number,
+): TextReading | null {
+  if (!a.point || !b.point) return null;
+  return reading(
+    t("readchart.scatter.read", {
+      a: a.name,
+      b: b.name,
+      pa: localFixed(a.point.shots_per90, 1),
+      ta: localFixed(a.point.on_target_pct, 0),
+      pb: localFixed(b.point.shots_per90, 1),
+      tb: localFixed(b.point.on_target_pct, 0),
+    }),
+    nineties,
+    minSample,
+    "readchart.thinPlayer",
   );
 }

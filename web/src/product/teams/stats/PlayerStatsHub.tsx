@@ -11,9 +11,16 @@ import { live } from "@/lib/api/v1/queries";
 import { LiveApiError } from "@/lib/api/v1/client";
 import { isMissing, present } from "@/lib/api/v1/types_intelligence";
 import { t } from "@/lib/i18n";
-import { localFixed } from "@/lib/i18n/format";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/States";
-import { ChartCard, ChipChoice } from "@/components/analytics/stats/ChartCard";
+import { EvidenceChart } from "@/components/analytics/EvidenceChart";
+import { READER_REVIEW } from "@/components/analytics/readerReview";
+import { ChipChoice } from "@/components/analytics/stats/ChartCard";
+import {
+  lastFiveReading,
+  minutesReading,
+  playerReading,
+} from "@/components/analytics/stats/howToRead";
+import { t as r } from "@/components/analytics/stats/readText";
 import { DistributionRow } from "@/components/analytics/stats/PositionDistribution";
 import { LastFive, MinutesBars } from "@/components/analytics/stats/SmallCharts";
 import { figName } from "@/components/analytics/stats/format";
@@ -47,20 +54,24 @@ export function PlayerStatsHub({ playerId }: { playerId: string }) {
   const position = present(body.position);
   const stripKeys = body.last5[0]?.values.map((v) => v.key) ?? [];
   const chosen = metric && stripKeys.includes(metric) ? metric : (stripKeys[0] ?? null);
+  const posName = position ? t(`stats.position.${position}`).toLowerCase() : "—";
+  const name = body.player.name;
+  const common = { evidence: "E1", review: READER_REVIEW } as const;
   return (
     <div className="grid gap-4 lg:grid-cols-2" data-testid="player-stats-hub">
-      <ChartCard
-        title={t("stats.distTitle", {
-          position: position ? t(`stats.positionPlural.${position}`) : "—",
-        })}
-        subtitle={t("stats.distSub", { nineties: localFixed(body.nineties, 1) })}
+      <EvidenceChart
+        {...common}
+        title={r("readchart.player.title")}
+        axes={r("readchart.player.axis")}
+        reading={playerReading(body, posName)}
+        terms={["percentile"]}
         footer={t("stats.templateNote")}
         testId="player-distribution"
         actions={
           <Link
             to="/compare/players"
             search={{ a: Number(playerId) }}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-elevated px-3 text-caption font-semibold text-foreground-soft hover:border-primary"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-elevated px-3 text-small font-semibold text-foreground-soft hover:border-primary"
           >
             <ArrowLeftRight aria-hidden className="h-4 w-4" /> {t("stats.compareWith")}
           </Link>
@@ -70,14 +81,20 @@ export function PlayerStatsHub({ playerId }: { playerId: string }) {
           {body.figures.map((f) => (
             <DistributionRow
               key={f.key}
-              players={[{ name: body.player.name, figure: f, color: "var(--color-primary)" }]}
+              players={[{ name, figure: f, color: "var(--color-primary)" }]}
             />
           ))}
         </div>
-      </ChartCard>
+      </EvidenceChart>
       <div className="flex flex-col gap-4">
         {chosen ? (
-          <ChartCard title={t("stats.last5")} testId="player-last5">
+          <EvidenceChart
+            {...common}
+            title={r("readchart.last5.title")}
+            axes={r("readchart.last5.axis")}
+            reading={lastFiveReading(name, body.last5, chosen)}
+            testId="player-last5"
+          >
             <ChipChoice
               value={chosen}
               onChange={setMetric}
@@ -85,17 +102,21 @@ export function PlayerStatsHub({ playerId }: { playerId: string }) {
               options={stripKeys.map((k) => ({ value: k, label: figName(k) }))}
             />
             <LastFive strip={body.last5} metric={chosen} />
-          </ChartCard>
+          </EvidenceChart>
         ) : null}
-        <ChartCard
-          title={t("stats.minutesTitle")}
-          subtitle={t("stats.starts", { n: body.starts, of: body.appearances })}
-          testId="player-minutes"
-        >
-          <MinutesBars items={body.recent_minutes} />
-        </ChartCard>
+        {body.recent_minutes.length > 0 ? (
+          <EvidenceChart
+            {...common}
+            title={r("readchart.minutes.title")}
+            axes={r("readchart.minutes.axis")}
+            reading={minutesReading(body)}
+            testId="player-minutes"
+          >
+            <MinutesBars items={body.recent_minutes} />
+          </EvidenceChart>
+        ) : null}
         {isMissing(body.position) ? null : (
-          <p className="text-caption text-subtle-foreground">{t("stats.playerNote")}</p>
+          <p className="text-small text-subtle-foreground">{t("stats.playerNote")}</p>
         )}
         <StatsFooter entity={entity} />
       </div>

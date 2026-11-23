@@ -62,5 +62,44 @@
     "title": "¿Qué se repite en sus partidos?",
     "axis": "Cada fila: en cuántos de sus partidos pasó. El tramo claro es lo que podría ser de verdad con esta muestra.",
     "read": "{team}: lo que más se aleja de su liga es «{label}», en el {pct} % de {n} partidos; en su liga, el {league} %."
+  },
+  "thinPlayer": "Pocos minutos jugados ({n} partidos completos): tómalo como una anécdota, no como una tendencia.",
+  "player": {
+    "title": "¿Cómo rinde frente a los jugadores de su puesto?",
+    "axis": "Cada fila es una cifra por 90 minutos. La franja clara es donde está la mayoría de los jugadores de su puesto en la liga; la marca gris, la mitad de ellos. El punto es el jugador.",
+    "read": "{name}: lo mejor entre los jugadores de su puesto ({position}) es {best} ({bestWords}) y lo más flojo, {worst} ({worstWords}). Con {n} partidos completos jugados.",
+    "one": "{name}: en {best}, {bestWords}, entre los jugadores de su puesto ({position}). Con {n} partidos completos jugados.",
+    "none": "{name}: todavía no hay cifras suficientes para compararlo con los de su puesto."
+  },
+  "last5": {
+    "title": "¿Cómo le han ido los últimos partidos?",
+    "axis": "Cada barra es un partido, del más antiguo al más reciente, con el rival debajo. La altura es la cifra elegida.",
+    "read": "{name}, {fig} en sus últimos {n} partidos: {values}; de media, {mean}.",
+    "none": "{name}: no hay cifra de {fig} en sus últimos partidos."
+  },
+  "minutes": {
+    "title": "¿Cuántos minutos juega?",
+    "axis": "Cada barra son los minutos de un partido, del más antiguo al más reciente; más oscura si fue titular.",
+    "read": "{name} ha sido titular en {starts} de {of} partidos de la temporada; en los últimos {k} sumó {sum} minutos."
+  },
+  "compareRadar": {
+    "read": "{a} y {b} se parecen menos en {axis}: {a} está {aWords} y {b}, {bWords}.",
+    "none": "{a} y {b}: todavía no hay cifras suficientes para compararlos."
+  },
+  "comparePlayers": {
+    "title": "¿Quién rinde más en cada cifra?",
+    "axis": "Cada fila es una cifra por 90 minutos; cada punto es un jugador sobre la franja de los de su puesto en la liga.",
+    "read": "{a} y {b} se separan más en {fig}: {a} está {aWords} y {b}, {bWords}.",
+    "none": "{a} y {b}: todavía no hay cifras suficientes para compararlos."
+  },
+  "scatter": {
+    "title": "¿Quién tira más y quién acierta más?",
+    "axis": "Horizontal: tiros por 90 minutos. Vertical: tiros a puerta (%). Cada punto gris es otro jugador de su puesto.",
+    "read": "{a}: {pa} tiros por 90 minutos y {ta} % a puerta; {b}: {pb} y {tb} %."
+  },
+  "compare": {
+    "radarTitle": "¿En qué se parecen y en qué se diferencian?",
+    "figuresTitle": "Cifra a cifra",
+    "statesTitle": "Cuando el partido se mueve"
   }
 }
