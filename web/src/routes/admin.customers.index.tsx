@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { CustomersPage } from "@/admin/CustomersPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** «Clientes» ya no es una pantalla aparte (AP-A03): sus vistas viven en «Usuarios». El enlace guardado sigue valiendo. */
 export const Route = createFileRoute("/admin/customers/")({
-  head: () => ({ meta: [{ title: "PrediGol · Admin" }] }),
-  component: CustomersPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/users", replace: true });
+  },
 });

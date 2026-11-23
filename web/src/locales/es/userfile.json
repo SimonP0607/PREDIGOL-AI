@@ -1,0 +1,20 @@
+{
+  "tabsLabel": "Secciones de la ficha",
+  "tabs": {
+    "account": "Cuenta y acceso",
+    "membership": "Membresía y pagos",
+    "support": "Soporte",
+    "activity": "Actividad y riesgo",
+    "restrictions": "Restricciones y auditoría"
+  },
+  "access": "Rol, acceso y sesiones",
+  "accessLoading": "Cargando los controles de la cuenta…",
+  "accessError": "No pudimos leer los controles de la cuenta. Recarga la ficha para reintentar.",
+  "paymentsLink": "Ver los avisos de pago",
+  "auditLink": "Ver el registro de auditoría",
+  "back": "Usuarios",
+  "noCard": "Esta cuenta no es de un lector: no tiene membresía, soporte ni actividad que mostrar. Aquí están sus controles de acceso.",
+  "viewsLabel": "Vistas de usuarios",
+  "accounts": "Cuentas y roles",
+  "invitedNoMembership": "Esta cuenta es una invitación sin activar: aún no tiene membresía que gestionar. Reenvía la invitación desde «Cuenta y acceso»."
+}

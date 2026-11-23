@@ -4,6 +4,7 @@
  * the backup. An account is deleted only as anonymisation, its address typed again; the deleted ones hide by default.
  */
 import { Fragment, useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronUp,
@@ -36,6 +37,7 @@ import type {
   RoleKey,
 } from "@/lib/api/v1/types_auth";
 import { t } from "@/lib/i18n";
+import { t as tu } from "./userText";
 import { detectTimeZone, formatDateTime, formatRelative, listTimeZones } from "@/lib/time";
 import { Card, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
 import { cn } from "@/lib/utils";
@@ -44,11 +46,13 @@ import { CouponsCard } from "./CouponsCard";
 import { MembershipCell } from "./MembershipCell";
 import { anonymisedSummary } from "./anonymised";
 import { PrivacyRequestsCard } from "./PrivacyRequests";
+import { CustomersList } from "./CustomersList";
+import { CUSTOMER_VIEWS, type CustomerView } from "@/lib/api/v1/types_customers";
 
 const ROLES: RoleKey[] = ["USER", "SUPER_ADMIN"];
 const DUE_STATES: readonly string[] = ["expiring", "grace", "expired"];
 
-function RoleBadge({ role }: { role: string }) {
+export function RoleBadge({ role }: { role: string }) {
   const admin = role === "SUPER_ADMIN";
   return (
     <span
@@ -69,7 +73,7 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-function StatusDot({ status }: { status: AdminUser["status"] }) {
+export function StatusDot({ status }: { status: AdminUser["status"] }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs">
       <span
@@ -413,7 +417,7 @@ function CreateForm({ onDone, backup }: { onDone: () => void; backup: boolean })
   );
 }
 
-function RowActions({
+export function RowActions({
   user,
   self,
   onNotice,
@@ -563,7 +567,7 @@ function RowActions({
 
 /** An account's open sessions, as the owner reads them (plan UX, B10): when each began, was last used and ends, in which
  * stage, from which browser - no cookie, only what names them. */
-function SessionsList({ user }: { user: AdminUser }) {
+export function SessionsList({ user }: { user: AdminUser }) {
   const [open, setOpen] = useState(false);
   const q = useQuery({
     queryKey: ["v1", "admin", "user-sessions", user.id],
@@ -612,7 +616,7 @@ function SessionsList({ user }: { user: AdminUser }) {
   );
 }
 
-function SecurityBadges({ user }: { user: AdminUser }) {
+export function SecurityBadges({ user }: { user: AdminUser }) {
   const chip =
     "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.65rem] font-semibold";
   return (
@@ -650,7 +654,7 @@ function SecurityBadges({ user }: { user: AdminUser }) {
 
 type SecurityAction = "password" | "mfa" | "sessions" | "unlock" | "requireMfa";
 
-function SecurityActions({ user, self }: { user: AdminUser; self: boolean }) {
+export function SecurityActions({ user, self }: { user: AdminUser; self: boolean }) {
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<SecurityAction | null>(null);
   const [temporary, setTemporary] = useState<string | null>(null);
@@ -818,6 +822,22 @@ export function UsersPage() {
       return false;
     }
   });
+  // One list, several views (AP-A03): the accounts with their roles and controls, or one of the customers' views (who needs
+  // attention); the notice of the morning and the summary's tiles open the view they name with ?view=.
+  const [view, setView] = useState<"accounts" | CustomerView>(() => {
+    try {
+      const asked = new URLSearchParams(window.location.search).get("view");
+      return CUSTOMER_VIEWS.find((v) => v === asked) ?? "accounts";
+    } catch {
+      return "accounts";
+    }
+  });
+  const counts = useQuery({
+    queryKey: ["v1", "admin", "customers", "summary"],
+    queryFn: () => v1.customers({ limit: 1 }),
+    staleTime: 60_000,
+  });
+  const viewCount = new Map(counts.data?.views.map((v) => [v.view, v.count]));
   const everyone = q.data?.data ?? [];
   const deleted = everyone.filter((u) => u.status === "deleted").length;
   const visible = showDeleted ? everyone : everyone.filter((u) => u.status !== "deleted");
@@ -900,203 +920,260 @@ export function UsersPage() {
           <CreateForm onDone={() => setCreating(null)} backup={selfService} />
         </Card>
       ) : null}
-      <CouponsCard />
-      <Card className="overflow-hidden">
-        {q.isPending ? (
-          <SkeletonCards className="p-4" />
-        ) : q.isError ? (
-          <ErrorState error={q.error} onRetry={() => void q.refetch()} />
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-caption text-muted-foreground">
-              <span>
-                {dueOnly ? `${t("admin.membership.dueFilterOn")} · ` : ""}
-                {t("admin.users.count", { count: users.length })}
+      <div
+        className="flex flex-wrap items-center gap-2"
+        role="tablist"
+        aria-label={tu("userfile.viewsLabel")}
+        data-testid="users-views"
+      >
+        {(["accounts", ...CUSTOMER_VIEWS] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            data-testid={v === "accounts" ? "users-view-accounts" : `customer-view-${v}`}
+            onClick={() => setView(v)}
+            className={cn(
+              "tap-y relative inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium pointer-coarse:py-2.5",
+              view === v
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border-strong text-muted-foreground hover:bg-elevated",
+            )}
+          >
+            {v === "accounts" ? tu("userfile.accounts") : t(`admin.customers.views.${v}`)}
+            {v === "accounts" ? null : (
+              <span className="numeric font-semibold" data-testid={`customer-count-${v}`}>
+                {viewCount.get(v) ?? "·"}
               </span>
-              <button
-                type="button"
-                onClick={() => setDueOnly((v) => !v)}
-                className="tap-y relative text-caption font-medium text-primary"
-                data-testid="membership-due-filter"
-              >
-                {dueOnly ? t("admin.membership.showAll") : t("admin.membership.dueFilter")}
-              </button>
-              {deleted > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleted((v) => !v)}
-                  className="tap-y relative text-caption font-medium text-primary"
-                  data-testid="show-deleted"
-                >
-                  {showDeleted
-                    ? t("admin.users.hideDeleted")
-                    : t("admin.users.showDeleted", { count: deleted })}
-                </button>
-              ) : null}
-            </div>
-            {/* The table from xl only: on a tablet (768-1279 px) its actions column sat off-screen and every row
-                was a tower of buttons; there each account is a card with its actions in reach. */}
-            <div className="hidden overflow-x-auto xl:block">
-              <table className="w-full text-sm" data-testid="users-table">
-                <thead className="text-left text-caption uppercase tracking-wider text-subtle-foreground">
-                  <tr className="border-b border-border">
-                    <th className="px-4 py-2 font-medium">{t("admin.users.user")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.users.role")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.users.status")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.users.security")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.membership.column")}</th>
-                    <th className="px-3 py-2 font-medium">{t("admin.users.lastLogin")}</th>
-                    <th className="px-3 py-2 text-right font-medium">
-                      {t("admin.users.sessions")}
-                    </th>
-                    <th className="px-3 py-2 text-right font-medium">{t("admin.users.actions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => {
-                    const isOpen = opened.has(u.id);
-                    return (
-                      <Fragment key={u.id}>
-                        <tr
-                          className={cn(
-                            "align-middle",
-                            isOpen ? "bg-elevated/40" : "border-b border-border/60",
-                          )}
-                          data-testid={`user-row-${u.id}`}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="font-medium">
-                              {u.display_name}
-                              {u.id === auth.user?.id ? (
-                                <span className="ml-1.5 text-caption text-gold">
-                                  ({t("admin.users.you")})
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="text-caption text-muted-foreground">{u.email}</div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <RoleBadge role={u.role} />
-                          </td>
-                          <td className="px-3 py-3">
-                            <StatusDot status={u.status} />
-                          </td>
-                          <td className="px-3 py-3">
-                            <SecurityBadges user={u} />
-                          </td>
-                          <td className="px-3 py-3">
-                            <MembershipCell user={u} />
-                          </td>
-                          <td className="numeric px-3 py-3 text-xs text-muted-foreground">
-                            {u.last_login_at
-                              ? formatRelative(u.last_login_at)
-                              : t("admin.users.never")}
-                          </td>
-                          <td className="numeric px-3 py-3 text-right text-xs">
-                            {u.active_sessions}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            {/* one button a row (sheet AD8): what can be done to the account opens under it */}
-                            <button
-                              type="button"
-                              aria-expanded={isOpen}
-                              aria-controls={`user-panel-${u.id}`}
-                              aria-label={t("admin.users.actionsFor", { name: u.display_name })}
-                              onClick={() => toggleOpen(u.id)}
-                              data-testid={`user-actions-${u.id}`}
-                              className={buttonVariants({ variant: "secondary", size: "icon" })}
+            )}
+          </button>
+        ))}
+      </div>
+      {view !== "accounts" ? <CustomersList key={view} view={view} /> : null}
+      {view === "accounts" ? (
+        <>
+          <CouponsCard />
+          <Card className="overflow-hidden">
+            {q.isPending ? (
+              <SkeletonCards className="p-4" />
+            ) : q.isError ? (
+              <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-caption text-muted-foreground">
+                  <span>
+                    {dueOnly ? `${t("admin.membership.dueFilterOn")} · ` : ""}
+                    {t("admin.users.count", { count: users.length })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setDueOnly((v) => !v)}
+                    className="tap-y relative text-caption font-medium text-primary"
+                    data-testid="membership-due-filter"
+                  >
+                    {dueOnly ? t("admin.membership.showAll") : t("admin.membership.dueFilter")}
+                  </button>
+                  {deleted > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleted((v) => !v)}
+                      className="tap-y relative text-caption font-medium text-primary"
+                      data-testid="show-deleted"
+                    >
+                      {showDeleted
+                        ? t("admin.users.hideDeleted")
+                        : t("admin.users.showDeleted", { count: deleted })}
+                    </button>
+                  ) : null}
+                </div>
+                {/* The table from xl only: on a tablet (768-1279 px) its actions column sat off-screen and every row
+                  was a tower of buttons; there each account is a card with its actions in reach. */}
+                <div className="hidden overflow-x-auto xl:block">
+                  <table className="w-full text-sm" data-testid="users-table">
+                    <thead className="text-left text-caption uppercase tracking-wider text-subtle-foreground">
+                      <tr className="border-b border-border">
+                        <th className="px-4 py-2 font-medium">{t("admin.users.user")}</th>
+                        <th className="px-3 py-2 font-medium">{t("admin.users.role")}</th>
+                        <th className="px-3 py-2 font-medium">{t("admin.users.status")}</th>
+                        <th className="px-3 py-2 font-medium">{t("admin.users.security")}</th>
+                        <th className="px-3 py-2 font-medium">{t("admin.membership.column")}</th>
+                        <th className="px-3 py-2 font-medium">{t("admin.users.lastLogin")}</th>
+                        <th className="px-3 py-2 text-right font-medium">
+                          {t("admin.users.sessions")}
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium">
+                          {t("admin.users.actions")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((u) => {
+                        const isOpen = opened.has(u.id);
+                        return (
+                          <Fragment key={u.id}>
+                            <tr
+                              className={cn(
+                                "align-middle",
+                                isOpen ? "bg-elevated/40" : "border-b border-border/60",
+                              )}
+                              data-testid={`user-row-${u.id}`}
                             >
-                              {isOpen ? <ChevronUp aria-hidden /> : <Ellipsis aria-hidden />}
-                            </button>
-                          </td>
-                        </tr>
-                        {isOpen ? (
-                          <tr
-                            id={`user-panel-${u.id}`}
-                            className="border-b border-border/60 bg-elevated/40"
-                            data-testid={`user-panel-${u.id}`}
-                          >
-                            <td colSpan={8} className="space-y-3 px-4 pb-4 pt-1">
-                              <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                <span>
-                                  {t("admin.users.language")}:{" "}
-                                  <span className="uppercase text-foreground">{u.language}</span>
-                                </span>
-                                <span>
-                                  {t("admin.users.timezone")}:{" "}
-                                  <span className="text-foreground">{u.timezone}</span>
-                                </span>
-                                <span>
-                                  {t("admin.users.createdOn")}:{" "}
-                                  <span className="numeric text-foreground">
-                                    {formatDateTime(u.created_at)}
-                                  </span>
-                                </span>
-                              </p>
-                              <RowActions
-                                user={u}
-                                self={u.id === auth.user?.id}
-                                onNotice={setNotice}
-                              />
-                              <SecurityActions user={u} self={u.id === auth.user?.id} />
-                              <SessionsList user={u} />
-                            </td>
-                          </tr>
-                        ) : null}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <ul
-              className="divide-y divide-border md:grid md:grid-cols-2 md:gap-px md:divide-y-0 md:bg-border xl:hidden"
-              data-testid="users-cards"
-            >
-              {users.map((u) => (
-                <li
-                  key={u.id}
-                  className="space-y-2.5 bg-card p-4"
-                  data-testid={`user-card-${u.id}`}
+                              <td className="px-4 py-3">
+                                <div className="font-medium">
+                                  <Link
+                                    to="/admin/users/$userId"
+                                    params={{ userId: String(u.id) }}
+                                    data-testid={`user-file-${u.id}`}
+                                    className="tap-y relative text-primary hover:underline"
+                                  >
+                                    {u.display_name}
+                                  </Link>
+                                  {u.id === auth.user?.id ? (
+                                    <span className="ml-1.5 text-caption text-gold">
+                                      ({t("admin.users.you")})
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className="text-caption text-muted-foreground">{u.email}</div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <RoleBadge role={u.role} />
+                              </td>
+                              <td className="px-3 py-3">
+                                <StatusDot status={u.status} />
+                              </td>
+                              <td className="px-3 py-3">
+                                <SecurityBadges user={u} />
+                              </td>
+                              <td className="px-3 py-3">
+                                <MembershipCell user={u} />
+                              </td>
+                              <td className="numeric px-3 py-3 text-xs text-muted-foreground">
+                                {u.last_login_at
+                                  ? formatRelative(u.last_login_at)
+                                  : t("admin.users.never")}
+                              </td>
+                              <td className="numeric px-3 py-3 text-right text-xs">
+                                {u.active_sessions}
+                              </td>
+                              <td className="px-3 py-3 text-right">
+                                {/* one button a row (sheet AD8): what can be done to the account opens under it */}
+                                <button
+                                  type="button"
+                                  aria-expanded={isOpen}
+                                  aria-controls={`user-panel-${u.id}`}
+                                  aria-label={t("admin.users.actionsFor", { name: u.display_name })}
+                                  onClick={() => toggleOpen(u.id)}
+                                  data-testid={`user-actions-${u.id}`}
+                                  className={buttonVariants({ variant: "secondary", size: "icon" })}
+                                >
+                                  {isOpen ? <ChevronUp aria-hidden /> : <Ellipsis aria-hidden />}
+                                </button>
+                              </td>
+                            </tr>
+                            {isOpen ? (
+                              <tr
+                                id={`user-panel-${u.id}`}
+                                className="border-b border-border/60 bg-elevated/40"
+                                data-testid={`user-panel-${u.id}`}
+                              >
+                                <td colSpan={8} className="space-y-3 px-4 pb-4 pt-1">
+                                  <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                    <span>
+                                      {t("admin.users.language")}:{" "}
+                                      <span className="uppercase text-foreground">
+                                        {u.language}
+                                      </span>
+                                    </span>
+                                    <span>
+                                      {t("admin.users.timezone")}:{" "}
+                                      <span className="text-foreground">{u.timezone}</span>
+                                    </span>
+                                    <span>
+                                      {t("admin.users.createdOn")}:{" "}
+                                      <span className="numeric text-foreground">
+                                        {formatDateTime(u.created_at)}
+                                      </span>
+                                    </span>
+                                  </p>
+                                  <RowActions
+                                    user={u}
+                                    self={u.id === auth.user?.id}
+                                    onNotice={setNotice}
+                                  />
+                                  <SecurityActions user={u} self={u.id === auth.user?.id} />
+                                  <SessionsList user={u} />
+                                </td>
+                              </tr>
+                            ) : null}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <ul
+                  className="divide-y divide-border md:grid md:grid-cols-2 md:gap-px md:divide-y-0 md:bg-border xl:hidden"
+                  data-testid="users-cards"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="break-words font-medium">
-                        {u.display_name}
-                        {u.id === auth.user?.id ? (
-                          <span className="ml-1.5 text-caption text-gold">
-                            ({t("admin.users.you")})
-                          </span>
-                        ) : null}
+                  {users.map((u) => (
+                    <li
+                      key={u.id}
+                      className="space-y-2.5 bg-card p-4"
+                      data-testid={`user-card-${u.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="break-words font-medium">
+                            <Link
+                              to="/admin/users/$userId"
+                              params={{ userId: String(u.id) }}
+                              data-testid={`user-file-${u.id}`}
+                              className="tap-y relative text-primary hover:underline"
+                            >
+                              {u.display_name}
+                            </Link>
+                            {u.id === auth.user?.id ? (
+                              <span className="ml-1.5 text-caption text-gold">
+                                ({t("admin.users.you")})
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="break-all text-caption text-muted-foreground">
+                            {u.email}
+                          </div>
+                        </div>
+                        <RoleBadge role={u.role} />
                       </div>
-                      <div className="break-all text-caption text-muted-foreground">{u.email}</div>
-                    </div>
-                    <RoleBadge role={u.role} />
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <StatusDot status={u.status} />
-                    <span className="uppercase">{u.language}</span>
-                    <span>{u.timezone}</span>
-                    <span data-testid={`user-card-created-${u.id}`}>
-                      {t("admin.users.createdOn")}: {formatDateTime(u.created_at)}
-                    </span>
-                    <span>
-                      {t("admin.users.lastLogin")}:{" "}
-                      {u.last_login_at ? formatRelative(u.last_login_at) : t("admin.users.never")}
-                    </span>
-                  </div>
-                  <SecurityBadges user={u} />
-                  <MembershipCell user={u} />
-                  <RowActions user={u} self={u.id === auth.user?.id} onNotice={setNotice} />
-                  <SecurityActions user={u} self={u.id === auth.user?.id} />
-                  <SessionsList user={u} />
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </Card>
-      <PrivacyRequestsCard />
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <StatusDot status={u.status} />
+                        <span className="uppercase">{u.language}</span>
+                        <span>{u.timezone}</span>
+                        <span data-testid={`user-card-created-${u.id}`}>
+                          {t("admin.users.createdOn")}: {formatDateTime(u.created_at)}
+                        </span>
+                        <span>
+                          {t("admin.users.lastLogin")}:{" "}
+                          {u.last_login_at
+                            ? formatRelative(u.last_login_at)
+                            : t("admin.users.never")}
+                        </span>
+                      </div>
+                      <SecurityBadges user={u} />
+                      <MembershipCell user={u} />
+                      <RowActions user={u} self={u.id === auth.user?.id} onNotice={setNotice} />
+                      <SecurityActions user={u} self={u.id === auth.user?.id} />
+                      <SessionsList user={u} />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Card>
+        </>
+      ) : null}
+      {view === "accounts" ? <PrivacyRequestsCard /> : null}
     </div>
   );
 }

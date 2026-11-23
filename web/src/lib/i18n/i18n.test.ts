@@ -12,6 +12,7 @@ import { hasKey, setLocale, translate } from "./index";
 import "@/product/shared/availabilityText";
 import "@/components/analytics/evidenceText";
 import "@/components/analytics/stats/readText";
+import "@/admin/userText";
 import "@/admin/usageText";
 import "@/admin/emailText";
 import "@/product/competitions/text";

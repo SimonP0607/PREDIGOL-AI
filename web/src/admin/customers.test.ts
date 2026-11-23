@@ -8,6 +8,8 @@ import { readFileSync } from "node:fs";
 import en from "@/locales/en/admin.json";
 import es from "@/locales/es/admin.json";
 import { CUSTOMER_VIEWS } from "@/lib/api/v1/types_customers";
+import { USER_TABS } from "./UserFile";
+import { USERFILE_CATALOG } from "./userText";
 
 type Tree = { [key: string]: string | Tree };
 const get = (tree: Tree, path: string): string | Tree | undefined =>
@@ -20,7 +22,8 @@ const get = (tree: Tree, path: string): string | Tree | undefined =>
     );
 
 const SOURCES = [
-  "CustomersPage.tsx",
+  "CustomersList.tsx",
+  "UserFile.tsx",
   "CustomerCard.tsx",
   "CustomerParts.tsx",
   "LifecycleCard.tsx",
@@ -108,5 +111,17 @@ describe("the texts of the customers' pages", () => {
     const text = JSON.stringify((es as unknown as Tree)["customers"]).toLowerCase();
     expect(text).not.toContain("token");
     expect(text).not.toContain("teléfono");
+  });
+});
+
+describe("the user's file (AP-A03)", () => {
+  test("five tabs, each named in both languages, and the accounts view too", () => {
+    expect(USER_TABS).toEqual(["account", "membership", "support", "activity", "restrictions"]);
+    for (const tree of [USERFILE_CATALOG.es, USERFILE_CATALOG.en] as Tree[]) {
+      for (const tab of USER_TABS) {
+        expect(typeof (tree["tabs"] as Tree)[tab], tab).toBe("string");
+      }
+      expect(typeof tree["accounts"]).toBe("string");
+    }
   });
 });

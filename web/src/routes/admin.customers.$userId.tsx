@@ -1,13 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { CustomerCard } from "@/admin/CustomerCard";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+/** La ficha del cliente es la ficha del usuario (AP-A03): el enlace guardado sigue valiendo. */
 export const Route = createFileRoute("/admin/customers/$userId")({
-  head: () => ({ meta: [{ title: "PrediGol · Admin" }] }),
-  component: Page,
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/admin/users/$userId",
+      params: { userId: params.userId },
+      replace: true,
+    });
+  },
 });
-
-function Page() {
-  const { userId } = Route.useParams();
-  const id = Number(userId);
-  return Number.isInteger(id) && id > 0 ? <CustomerCard userId={id} /> : null;
-}
