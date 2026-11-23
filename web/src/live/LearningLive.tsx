@@ -35,6 +35,7 @@ import { FamiliesPanel } from "./FamiliesPanel";
 import { CalibrationView, MarketsView } from "./IntelligenceLive";
 import { MemoryViews } from "./MemoryLive";
 import { PostmortemsPanel } from "./PostmortemsPanel";
+import { PipelineFlow } from "./PipelineFlow";
 
 export function LearningLive() {
   useStrayRedirect(LEARNING_PATH);
@@ -49,6 +50,7 @@ export function LearningLive() {
         description={t("admin.pages.learning.description")}
       />
       <ShadowBanner />
+      <PipelineFlow />
       <WarningBanner tone="info">{t("ai.evolution.noAuto")}</WarningBanner>
       <SegmentedTabs
         tabs={LEARNING_TABS}
