@@ -42,6 +42,7 @@ import { FilterSheet, SheetField } from "@/product/shared/FilterSheet";
 import {
   followFirst,
   followSet,
+  defaultScope,
   reasonOf,
   whyOf,
   type FollowSet,
@@ -170,7 +171,7 @@ function rowWhyOf(follow: FollowSet | null) {
   return (item: MatchItem): Why | null => {
     if (!follow) return null;
     const reason = reasonOf(item.match, follow);
-    if (!reason || reason.kind !== "team") return null;
+    if (!reason || (reason.kind !== "team" && reason.kind !== "player")) return null;
     return whyOf(reason, follow.suggested);
   };
 }
@@ -325,14 +326,15 @@ export function MatchesPage() {
     () => (reader ? followSet(favorites.data) : null),
     [reader, favorites.data],
   );
-  // The reader's own by default once they chose favourites (plan UX, B2); while they are the suggested ones, every match
-  // with the suggested a tap away; without favourites known or with personalisation off, every match.
-  const scope = follow ? (view.scope ?? (follow.suggested ? "all" : "mine")) : "all";
   const allItems = useMemo(() => toItems(rows, followed), [rows, followed]);
   const ownItems = useMemo(
     () => (follow ? allItems.filter((it) => reasonOf(it.match, follow) !== null) : allItems),
     [allItems, follow],
   );
+  // «Todos · Mis favoritos» (AP-P04): it opens on «Todos» unless a favourite plays that day - a page that looks empty is
+  // never the first thing a reader sees - and what the reader chose stays. While the favourites are the suggested ones,
+  // every match, with the suggested a tap away; without favourites known or with personalisation off, every match.
+  const scope = defaultScope(follow, view.scope, ownItems.length);
   const items = scope === "mine" ? ownItems : allItems;
   // A country, category or competition that does not play this day is ignored (plan Partidos, P2); the state chips
   // count with every other filter on (P3).
@@ -589,6 +591,7 @@ export function MatchesPage() {
           suggested={follow.suggested}
           ns="matches"
           testId="matches-scope"
+          favorites
         />
       ) : null}
       {/* The days and the states stay in sight while the list scrolls (plan Partidos, P3); held sideways, a phone

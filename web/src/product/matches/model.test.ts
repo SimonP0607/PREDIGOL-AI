@@ -355,7 +355,12 @@ describe("grouping and search", () => {
       ],
       [],
     );
-    const mine: FollowSet = { leagues: new Map([[239, 0]]), teams: new Set(), suggested: false };
+    const mine: FollowSet = {
+      leagues: new Map([[239, 0]]),
+      teams: new Set(),
+      playerTeams: new Map(),
+      suggested: false,
+    };
     const names = followFirst(groupByCompetition(items, "es-ES"), mine).map(
       (g) => g.competition.name,
     );

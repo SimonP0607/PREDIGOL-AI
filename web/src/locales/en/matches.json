@@ -103,7 +103,8 @@
     "label": "Which matches to see",
     "mine": "Your leagues · {count}",
     "suggested": "Suggested · {count}",
-    "all": "All · {count}"
+    "all": "All · {count}",
+    "favorites": "My favourites · {count}"
   },
   "mine": {
     "emptyToday": "None of your leagues or teams play today.",

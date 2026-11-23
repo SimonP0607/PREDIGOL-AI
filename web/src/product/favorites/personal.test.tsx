@@ -12,7 +12,15 @@ import { setLocale } from "@/lib/i18n";
 import type { FavoritesView } from "@/lib/api/v1/types_favorites";
 import type { CompetitionBadge, TeamBadge } from "@/lib/api/v1/types_product";
 import { orderBoards, orderSentence, viewsText } from "@/product/match/marketOrder";
-import { followFirst, followSet, mine, reasonOf, whyOf, type Followable } from "./follow";
+import {
+  defaultScope,
+  followFirst,
+  followSet,
+  mine,
+  reasonOf,
+  whyOf,
+  type Followable,
+} from "./follow";
 import { withSuggestion } from "./model";
 import { ScopeSwitch } from "./ScopeSwitch";
 import { WhyChip } from "./WhyChip";
@@ -123,6 +131,81 @@ describe("the day in the reader's order", () => {
       match(MILLOS, [30, "Junior"], BETPLAY),
     ];
     expect(mine(all, follow)).toEqual([all[1]!, all[2]!]);
+  });
+});
+
+describe("Partidos: «Todos · Mis favoritos» (AP-P04)", () => {
+  const player = (name: string, team: string | null) => ({ id: 7, name, position: null, team });
+
+  test("el equipo actual de un jugador seguido hace suyo el partido, con su motivo", () => {
+    const follow = followSet(view({ players: [player("Luis Díaz", "Bayern  München")] }));
+    const m = match([40, "Bayern München"], [41, "Köln"], [78, "Bundesliga"]);
+    expect(reasonOf(m, follow)).toEqual({ kind: "player", names: ["Luis Díaz"] });
+    expect(whyOf(reasonOf(m, follow), false)).toEqual({ kind: "player", names: ["Luis Díaz"] });
+    expect(reasonOf(match([42, "Köln"], [43, "Mainz"], [78, "Bundesliga"]), follow)).toBeNull();
+  });
+
+  test("un equipo o una liga seguidos siguen diciéndose antes que el jugador", () => {
+    const follow = followSet(
+      view({
+        teams: [{ id: 40, name: "Bayern München" } as never],
+        players: [player("Luis Díaz", "Bayern München")],
+      }),
+    );
+    expect(
+      reasonOf(match([40, "Bayern München"], [41, "Köln"], [78, "Bundesliga"]), follow)?.kind,
+    ).toBe("team");
+  });
+
+  test("sin equipo conocido el jugador no añade partidos", () => {
+    const follow = followSet(view({ players: [player("Alguien", null)] }));
+    expect(reasonOf(match(INTER, MILAN, [135, "Serie A"]), follow)).toBeNull();
+  });
+
+  test("abre en «Todos» salvo que un favorito juegue ese día; lo elegido se respeta", () => {
+    const chosen = followSet(view({ leagues: [league(1, "Liga BetPlay")] }));
+    const suggested = followSet(view({ suggested: true }));
+    expect(defaultScope(chosen, null, 0)).toBe("all");
+    expect(defaultScope(chosen, null, 3)).toBe("mine");
+    expect(defaultScope(suggested, null, 3)).toBe("all");
+    expect(defaultScope(chosen, "all", 3)).toBe("all");
+    expect(defaultScope(chosen, "mine", 0)).toBe("mine");
+    expect(defaultScope(null, "mine", 3)).toBe("all");
+  });
+
+  test("el selector pone «Todos» primero y dice «Mis favoritos», con sus recuentos", () => {
+    setLocale("es");
+    const html = renderToStaticMarkup(
+      <ScopeSwitch
+        value="all"
+        onChange={() => {}}
+        mine={2}
+        all={23}
+        suggested={false}
+        ns="matches"
+        testId="s"
+        favorites
+      />,
+    );
+    expect(html.indexOf("Todos · 23")).toBeGreaterThan(-1);
+    expect(html.indexOf("Todos · 23")).toBeLessThan(html.indexOf("Mis favoritos · 2"));
+    expect(html).not.toContain("Tus ligas");
+    setLocale("en");
+    expect(
+      renderToStaticMarkup(
+        <ScopeSwitch
+          value="all"
+          onChange={() => {}}
+          mine={2}
+          all={23}
+          suggested={false}
+          ns="matches"
+          testId="s"
+          favorites
+        />,
+      ),
+    ).toContain("My favourites · 2");
+    setLocale("es");
   });
 });
 

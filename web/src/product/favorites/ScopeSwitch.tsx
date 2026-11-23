@@ -18,6 +18,7 @@ export function ScopeSwitch({
   suggested,
   ns,
   testId,
+  favorites = false,
 }: {
   value: Scope;
   onChange: (next: Scope) => void;
@@ -28,6 +29,8 @@ export function ScopeSwitch({
   /** The page's own words: «Todos» the matches, «Todas» the selections. */
   ns: "matches" | "picks";
   testId: string;
+  /** «Todos · Mis favoritos» (AP-P04): everything first, then the reader's own, said as favourites. */
+  favorites?: boolean;
 }) {
   const option = (scope: Scope, label: string) => (
     <button
@@ -53,8 +56,19 @@ export function ScopeSwitch({
       data-scope={value}
       className="inline-flex max-w-full shrink-0 items-center gap-0.5 rounded-full border border-border bg-card p-0.5"
     >
-      {option("mine", t(suggested ? `${ns}.scope.suggested` : `${ns}.scope.mine`, { count: mine }))}
-      {option("all", t(`${ns}.scope.all`, { count: all }))}
+      {favorites ? option("all", t(`${ns}.scope.all`, { count: all })) : null}
+      {option(
+        "mine",
+        t(
+          suggested
+            ? `${ns}.scope.suggested`
+            : favorites
+              ? `${ns}.scope.favorites`
+              : `${ns}.scope.mine`,
+          { count: mine },
+        ),
+      )}
+      {favorites ? null : option("all", t(`${ns}.scope.all`, { count: all }))}
     </div>
   );
 }

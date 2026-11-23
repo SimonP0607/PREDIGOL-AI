@@ -6,7 +6,7 @@ import { intlTag, t } from "@/lib/i18n";
 import type { FollowReason } from "@/lib/api/v1/types_today";
 
 /** Why a row is on Inicio: a team or a league the reader follows, or one suggested while they chose none. */
-export type Why = FollowReason | { kind: "suggested" };
+export type Why = FollowReason | { kind: "player"; names: string[] } | { kind: "suggested" };
 
 /** «Nacional y Millonarios»: the followed teams as a sentence says them. */
 export function namesText(names: readonly string[]): string {
@@ -20,6 +20,13 @@ export function whyText(why: Why): { label: string; help: string } {
     return {
       label: t("home.today.whyTeam", { team }),
       help: t("home.today.whyTeamHelp", { team }),
+    };
+  }
+  if (why.kind === "player") {
+    const player = namesText(why.names);
+    return {
+      label: t("home.today.whyPlayer", { player }),
+      help: t("home.today.whyPlayerHelp", { player }),
     };
   }
   if (why.kind === "league") {
