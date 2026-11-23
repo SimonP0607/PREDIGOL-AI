@@ -227,5 +227,14 @@
     "live": "En vivo",
     "final": "Final",
     "withReading": "Con análisis"
+  },
+  "unified": {
+    "title": "Tus favoritos",
+    "hint": "Lo que sigues: sus partidos, noticias y picks, cada uno con su motivo"
+  },
+  "chooseTeams": {
+    "title": "Elige tus equipos",
+    "body": "Te mostramos primero sus partidos y noticias; los picks son los mismos para todos.",
+    "action": "Elegir equipos"
   }
 }

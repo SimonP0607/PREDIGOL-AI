@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Segmented } from "@/components/ui/segmented";
 import { Switch } from "@/components/ui/switch";
 import type { PreferencesIn } from "@/lib/api/v1/types_auth";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useAuth, useUxFixSwitches } from "@/lib/auth/AuthProvider";
 import { DEFAULT_DISPLAY, type Display } from "@/lib/display";
 import { t } from "@/lib/i18n";
 import { formatOdds } from "@/lib/i18n/format";
@@ -17,6 +17,8 @@ type HomeChoice = "auto" | "mine" | "all";
 
 export function DisplaySettings() {
   const auth = useAuth();
+  // One Inicio for everyone (AP-I01): «Inicio por defecto» is withdrawn; the column display.home_default stays in the database.
+  const { homeUnified } = useUxFixSwitches();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const shown: Display = { ...DEFAULT_DISPLAY, ...(auth.user?.display ?? {}) };
@@ -65,21 +67,23 @@ export function DisplaySettings() {
         />
         <p className="text-xs text-muted-foreground">{t("profile.display.oddsHelp")}</p>
       </div>
-      <div className="space-y-2">
-        <p className="text-sm font-medium">{t("profile.display.home")}</p>
-        <Segmented<HomeChoice>
-          value={shown.home_default ?? "auto"}
-          onChange={(v) => void save({ home_default: v })}
-          label={t("profile.display.home")}
-          testId="display-home"
-          options={[
-            { value: "auto", label: t("profile.display.homeAuto") },
-            { value: "mine", label: t("home.layers.forYou") },
-            { value: "all", label: t("home.view.all") },
-          ]}
-        />
-        <p className="text-xs text-muted-foreground">{t("profile.display.homeHelp")}</p>
-      </div>
+      {homeUnified ? null : (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t("profile.display.home")}</p>
+          <Segmented<HomeChoice>
+            value={shown.home_default ?? "auto"}
+            onChange={(v) => void save({ home_default: v })}
+            label={t("profile.display.home")}
+            testId="display-home"
+            options={[
+              { value: "auto", label: t("profile.display.homeAuto") },
+              { value: "mine", label: t("home.layers.forYou") },
+              { value: "all", label: t("home.view.all") },
+            ]}
+          />
+          <p className="text-xs text-muted-foreground">{t("profile.display.homeHelp")}</p>
+        </div>
+      )}
       <label className="flex min-h-11 items-center justify-between gap-4">
         <span>
           <span className="block text-sm font-medium">{t("profile.display.motion")}</span>

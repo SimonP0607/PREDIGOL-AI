@@ -403,6 +403,30 @@ describe("the layers", () => {
     expect(markup).toContain('data-testid="choose-prompt-close"');
     expect(markup).toContain('aria-label="Cerrar"');
   });
+
+  test("Inicio único (AP-I01): la tarjeta pide «Elige tus equipos» y lleva al mismo sitio", async () => {
+    const markup = await html(<ChoosePrompt teams />);
+    const page = text(markup);
+    expect(page).toContain("Elige tus equipos");
+    expect(page).toContain("Elegir equipos");
+    expect(page).not.toContain("Elige tus favoritos");
+    expect(markup).toContain('href="/profile#football"');
+    expect(markup).toContain('data-testid="choose-prompt-close"');
+  });
+
+  test("Inicio único (AP-I01): la banda de PrediGol no se pinta, solo nombra la región", async () => {
+    const markup = await html(
+      <Layer id="predigol" title="PrediGol" tone="gold" quiet>
+        <p>dos</p>
+      </Layer>,
+    );
+    expect(markup).toContain('aria-labelledby="layer-predigol"');
+    expect(markup).toContain('id="layer-predigol"');
+    expect(markup).toContain("sr-only");
+    expect(markup).not.toContain("Lo mismo para todos");
+    expect(markup).not.toContain("border-b");
+    expect(text(markup)).toContain("dos");
+  });
 });
 
 describe("LayersHold", () => {

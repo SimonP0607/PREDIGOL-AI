@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
 import { live } from "@/lib/api/v1/queries";
 import { shiftDay, todayKey } from "@/lib/time";
-import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
+import { useAuth, usePreviewParam, useUxFixSwitches } from "@/lib/auth/AuthProvider";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Home } from "@/lib/api/v1/types_product";
 import type { DailyBoard, ParlayRecord, RecordKind } from "@/lib/api/v1/types_records";
@@ -205,6 +205,8 @@ export function HomePage() {
   const preview = usePreviewParam();
   const { user } = useAuth();
   const reader = user?.role === "USER";
+  // One Inicio for everyone (AP-I01, D1): behind FBI_HOME_UNIFIED, off → Inicio as it was.
+  const { homeUnified: unified } = useUxFixSwitches();
   const home = useQuery({ ...live.home(preview), ...ON_RETURN });
   const today = useQuery({ ...live.today, ...ON_RETURN });
   const news = useQuery({ ...live.todayNews, ...ON_RETURN });
@@ -235,8 +237,8 @@ export function HomePage() {
   // «Todo» as they chose in their profile and, until they choose, «Para ti» for a reader who follows something (the
   // selector only exists for them: without a layer of their own, Inicio is PrediGol's, as always).
   const [chosenView, setView] = useState<HomeView | null>(null);
-  const view: HomeView = chosenView ?? getDisplay().home_default ?? "mine";
-  const shown = shownLayers(view, layers);
+  const view: HomeView = unified ? "all" : (chosenView ?? getDisplay().home_default ?? "mine");
+  const shown = shownLayers(view, layers, unified);
   // A reader's layers go on top of PrediGol, so they are painted together with it, not after it (they would push it down), and
   // the day's picks and the board change height when they arrive: the page waits for /me/today, /today, /home and /daily - at
   // most LAYERS_HOLD_MS - and shows one block meanwhile. The owner is never held.
@@ -316,8 +318,8 @@ export function HomePage() {
       {shown.forYou ? (
         <Layer
           id="for-you"
-          title={t("home.layers.forYou")}
-          hint={t("home.layers.forYouHint")}
+          title={t(unified ? "home.unified.title" : "home.layers.forYou")}
+          hint={t(unified ? "home.unified.hint" : "home.layers.forYouHint")}
           tone="primary"
           action={<EditFavorites />}
         >
@@ -335,10 +337,11 @@ export function HomePage() {
         <Layer
           id="predigol"
           title={t("home.layers.predigol")}
-          hint={t("home.layers.predigolHint")}
+          hint={unified ? undefined : t("home.layers.predigolHint")}
           tone="gold"
+          quiet={unified}
         >
-          {layers.prompt && reader ? <ChoosePrompt /> : null}
+          {layers.prompt && reader ? <ChoosePrompt teams={unified} /> : null}
           {/* At a desk (sheet I06) the day reads in two columns: what PrediGol recommends and what is played on the
               left, the parlays, the news and the results in a side column of 380 px. On a phone and a tablet the blocks
               keep the one column and the order they always had (`order-*`; the columns are not boxes there). */}

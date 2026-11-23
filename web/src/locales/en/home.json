@@ -227,5 +227,14 @@
     "live": "Live",
     "final": "Full time",
     "withReading": "With analysis"
+  },
+  "unified": {
+    "title": "Your favourites",
+    "hint": "What you follow: their matches, news and picks, each with its reason"
+  },
+  "chooseTeams": {
+    "title": "Choose your teams",
+    "body": "We show their matches and news first; the picks are the same for everyone.",
+    "action": "Choose teams"
   }
 }

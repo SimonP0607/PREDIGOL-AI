@@ -41,15 +41,32 @@ export function Layer({
   hint,
   tone,
   action,
+  quiet = false,
   children,
 }: {
   id: "for-you" | "predigol";
   title: string;
-  hint: string;
+  hint?: string | undefined;
   tone: "primary" | "gold";
   action?: ReactNode;
+  /** One Inicio for everyone (AP-I01): the band is only a landmark name for a screen reader, nothing is painted. */
+  quiet?: boolean;
   children: ReactNode;
 }) {
+  if (quiet) {
+    return (
+      <section
+        aria-labelledby={`layer-${id}`}
+        data-testid={`layer-${id}`}
+        className="@container space-y-9 sm:space-y-10"
+      >
+        <h2 id={`layer-${id}`} className="sr-only">
+          {title}
+        </h2>
+        {children}
+      </section>
+    );
+  }
   return (
     <section
       aria-labelledby={`layer-${id}`}
@@ -70,7 +87,7 @@ export function Layer({
           >
             {title}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+          {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
         </div>
         {action}
       </div>
@@ -104,7 +121,7 @@ export const CHOOSE_CLOSED_KEY = "predigol.home.chooseClosed";
  * Without favourites: one discreet line to choose them (plan de Inicio, 3.2) - the product is whole without them, so it can be
  * closed, and stays closed on this browser. It shows from the first paint and goes away once the reader's choice is read.
  */
-export function ChoosePrompt() {
+export function ChoosePrompt({ teams = false }: { teams?: boolean }) {
   const [closed, setClosed] = useState(false);
   useEffect(() => {
     try {
@@ -129,8 +146,13 @@ export function ChoosePrompt() {
     >
       <Star aria-hidden className="h-4 w-4 shrink-0 text-primary" />
       <p className="min-w-0 flex-1 text-sm leading-snug">
-        <span className="font-semibold">{t("home.choose.title")}</span>
-        <span className="hidden text-muted-foreground sm:inline"> · {t("home.choose.body")}</span>
+        <span className="font-semibold">
+          {t(teams ? "home.chooseTeams.title" : "home.choose.title")}
+        </span>
+        <span className="hidden text-muted-foreground sm:inline">
+          {" "}
+          · {t(teams ? "home.chooseTeams.body" : "home.choose.body")}
+        </span>
       </p>
       <Link
         to="/profile"
@@ -138,7 +160,7 @@ export function ChoosePrompt() {
         data-testid="choose-prompt-link"
         className="relative inline-flex min-h-11 shrink-0 items-center rounded-md px-1.5 text-sm font-medium text-primary hover:underline"
       >
-        {t("home.choose.action")}
+        {t(teams ? "home.chooseTeams.action" : "home.choose.action")}
       </Link>
       <button
         type="button"
