@@ -150,5 +150,12 @@
     "label": "Tipo de parlay",
     "daily": "Del día",
     "multiday": "Multi-día"
+  },
+  "addToSlip": {
+    "button": "Añadir a Mi parlay",
+    "added_one": "Añadida {count} selección a Mi parlay.",
+    "added_other": "Añadidas {count} selecciones a Mi parlay.",
+    "addedSome_one": "Añadida {count} selección; {left} no se pudo añadir (ya empezó, hay otra del mismo partido o el parlay está lleno).",
+    "addedSome_other": "Añadidas {count} selecciones; {left} no se pudo añadir (ya empezó, hay otra del mismo partido o el parlay está lleno)."
   }
 }
