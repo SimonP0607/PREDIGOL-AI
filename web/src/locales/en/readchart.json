@@ -102,6 +102,26 @@
     "figuresTitle": "Figure by figure",
     "statesTitle": "When the match moves"
   },
+  "movement": {
+    "title": "Has the price gone up or down?",
+    "axis": "Horizontal: time of the first and the last capture. Vertical: the best price available at that moment; each chart has its own scale.",
+    "line": "{title}: the best price went from {from} to {to} ({change}) over {n} captures.",
+    "single": "{title}: the best price is {odds}.",
+    "thin": "With a single capture there is no movement to read yet."
+  },
+  "recap": {
+    "cumulative": {
+      "title": "How is your result going overall?",
+      "axis": "Horizontal: day. Vertical: units won or lost, adding day after day (one unit per record).",
+      "read": "Your running result is {total} after {n} settled records over {days} days."
+    },
+    "daily": {
+      "title": "Which days did you win and which did you lose?",
+      "axis": "Horizontal: day. Vertical: units of that day, green if you won and red if you lost.",
+      "read": "Your best day was {best} ({bestProfit}) and your worst, {worst} ({worstProfit}), among {days} days with settled records.",
+      "one": "There is {days} day with settled records."
+    }
+  },
   "summary": {
     "title": "In short",
     "form": "Form: {team} has played {n} matches with {won} won, {drawn} drawn and {lost} lost ({gf} goals for and {ga} against).",
