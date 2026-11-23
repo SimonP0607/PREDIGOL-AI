@@ -137,7 +137,7 @@ function About({
 }: {
   transparency: boolean;
   busy: boolean;
-  onEnter: (skipped: boolean) => void;
+  onEnter: () => void;
   onTransparency: () => void;
   onHow: () => void;
   /** Absent when the account is shown no guide (FBI_GUIDES=0): the button is not offered. */
@@ -189,7 +189,7 @@ function About({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <button
           type="button"
-          onClick={() => onEnter(false)}
+          onClick={onEnter}
           disabled={busy}
           data-testid="welcome-enter"
           className={PRIMARY}
@@ -209,15 +209,6 @@ function About({
             {t("onboarding.welcome.about.tour")}
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={() => onEnter(true)}
-          disabled={busy}
-          data-testid="welcome-about-skip"
-          className={buttonVariants({ variant: "text", size: "lg" })}
-        >
-          {t("onboarding.welcome.about.skip")}
-        </button>
       </div>
     </>
   );
@@ -347,13 +338,7 @@ export function WelcomePage() {
             <About
               transparency={Boolean(auth.user?.transparency)}
               busy={busy}
-              onEnter={(skippedIt) => {
-                if (skippedIt) {
-                  skipped.current += 1;
-                  track("onboarding_step_skipped", { step: "about" });
-                }
-                void finish("next");
-              }}
+              onEnter={() => void finish("next")}
               onTransparency={() => void finish("transparency")}
               onHow={() => void finish("how")}
               onTour={

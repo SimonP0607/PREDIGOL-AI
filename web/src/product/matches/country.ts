@@ -43,7 +43,7 @@ export function countryLabel(
  * The provider's spellings that are not the English name Intl gives the country («USA», «Czech Republic», «Turkey»): the
  * code they stand for. The home nations are GB-*, named from the catalogs.
  */
-const SPELLINGS: Record<string, string> = {
+export const SPELLINGS: Record<string, string> = {
   usa: "US",
   "united states of america": "US",
   "korea republic": "KR",
@@ -72,7 +72,7 @@ const SPELLINGS: Record<string, string> = {
 };
 
 /** «Czech-Republic», «Côte d'Ivoire» -> «czech republic», «cote d ivoire»: how a name is compared. */
-function plain(name: string): string {
+export function plain(name: string): string {
   return name
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -87,7 +87,7 @@ let english: Map<string, string> | null = null;
 const NOT_COUNTRIES = new Set(["EU", "EZ", "UN", "ZZ", "QO", "XA", "XB"]);
 
 /** Every region's English name, as Intl spells it, to its ISO code: built once. */
-function englishCodes(): Map<string, string> {
+export function englishCodes(): Map<string, string> {
   if (english) return english;
   english = new Map();
   const names = displayNames("en");
