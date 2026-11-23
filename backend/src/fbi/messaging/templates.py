@@ -26,6 +26,8 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from fbi.messaging import layout
+
 Locale = Literal["es", "en"]
 Category = Literal["account", "security", "membership", "support", "privacy", "legal", "service"]
 OutboxCategory = Literal["account", "security", "membership", "support", "privacy", "legal", "service", "marketing"]
@@ -1015,6 +1017,13 @@ def render(name: str, locale: Locale, params: Mapping[str, str], account: Mappin
     footer_html = (
         f'{html.escape(COMMERCIAL_FOOTER[locale][0])} <a href="{html.escape(leave or "")}" style="color:#555555;">'
         f'{html.escape(COMMERCIAL_FOOTER[locale][1])}</a>' if commercial else html.escape(FOOTER[locale]))
+    if layout.switch_on():
+        # AP-M01 (FBI_EMAIL_V2): the same words in the brand's layout; the plain layout below is what the switch's absence keeps
+        branded = layout.page(
+            locale=locale, subject=subject, tone=layout.tone_of(name, t.category),
+            paragraphs=[fill(p, True) for p in kept],
+            button=(link, fill(c.button, True)) if link and c.button else None, footer=footer_html)
+        return Rendered(subject=subject, text=text, html=branded, link=link, unsubscribe=leave)
     body = (
         f'<!doctype html><html lang="{locale}"><head><meta charset="utf-8">'
         f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(subject)}</title>'

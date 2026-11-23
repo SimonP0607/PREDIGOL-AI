@@ -76,17 +76,18 @@ def daily_cap() -> int:
 # ── enqueue ───────────────────────────────────────────────────────────────────────────
 
 def enqueue(conn: psycopg.Connection[Any], *, user_id: int, template: str, params: Mapping[str, str],
-            dedup_key: str) -> int | None:
-    """Queue one message in the caller's transaction. Its id, or None when the key was queued before."""
+            dedup_key: str, locale: str | None = None) -> int | None:
+    """Queue one message in the caller's transaction. Its id, or None when the key was queued before. It goes in the
+    reader's language unless ``locale`` says another (only the console's test to its own administrator does)."""
     t = check_params(template, params)
     if not 8 <= len(dedup_key) <= 200:
         raise TemplateError(f"a deduplication key of 8 to 200 characters, not {dedup_key!r}")
     row = conn.execute("""
         INSERT INTO customer.messages_outbox (user_id, category, template, locale, params, dedup_key)
-        SELECT u.id, %s, %s, u.language, %s, %s FROM auth.users u WHERE u.id = %s
+        SELECT u.id, %s, %s, coalesce(%s::text, u.language), %s, %s FROM auth.users u WHERE u.id = %s
         ON CONFLICT (dedup_key) DO NOTHING
         RETURNING id
-    """, (t.category, t.name, Json(dict(params)), dedup_key, user_id)).fetchone()
+    """, (t.category, t.name, locale, Json(dict(params)), dedup_key, user_id)).fetchone()
     if row is None:
         return None
     log.info("outbox.queued", message_id=row[0], template=t.name, category=t.category)

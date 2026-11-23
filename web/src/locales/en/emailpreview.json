@@ -1,0 +1,23 @@
+{
+  "title": "Try an e-mail",
+  "intro": "See a template's exact e-mail, in the language and width you choose. It is the same text and the same design it leaves with: nothing is sent to anyone, and the buttons of templates with a one-use link show a sample address.",
+  "template": "Template",
+  "language": "Language",
+  "device": "Width",
+  "phone": "Phone",
+  "desktop": "Desktop",
+  "frame": "Preview of the «{template}» e-mail in {language}",
+  "subject": "Subject",
+  "button": "Button: {link}",
+  "loading": "Preparing the preview…",
+  "sendTest": "Send me a test",
+  "sending": "Sending…",
+  "queued": "Done: the test is in the queue, to your own account, in {language}. It leaves under the usual sending rules.",
+  "alreadyQueued": "That test was already in the queue.",
+  "notThisOne": "This e-mail carries a one-use link: you can view it, but it is not sent as a test.",
+  "limit": "You have asked for the most tests allowed this hour. Try again later.",
+  "failed": "The test could not be requested. Try again.",
+  "limitNote": "Up to 5 tests an hour, always to your own account. Each one is recorded in the activity log.",
+  "queueFrame": "How it looks",
+  "unavailable": "This e-mail cannot be drawn right now."
+}

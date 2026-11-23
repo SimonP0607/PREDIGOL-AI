@@ -511,6 +511,71 @@ def test_a_privacy_request_and_its_answer_queue_their_messages_without_their_wor
     assert owner.get("/api/v1/admin/messages/999999/preview").status_code == 404
 
 
+def test_the_console_previews_any_template_and_sends_a_test_only_to_its_own_administrator(fresh: str) -> None:
+    """AP-M02: the preview is the render the messenger calls; the test is queued for the administrator's own account, in
+    the language shown, at most five an hour, recorded in the trail; a reader reaches neither."""
+    reader, owner = client(READER), client(OWNER)
+    es = owner.post("/api/v1/admin/messages/preview", json={"template": "privacy_request_answered", "locale": "es"})
+    assert es.status_code == 200, es.text
+    en = owner.post("/api/v1/admin/messages/preview", json={"template": "privacy_request_answered", "locale": "en"})
+    assert en.status_code == 200 and en.json()["subject"] != es.json()["subject"]
+    given = owner.post("/api/v1/admin/messages/preview", json={
+        "template": "privacy_request_answered", "locale": "es", "params": {"request": "privacy_claim", "ticket": "99"}})
+    assert given.status_code == 200 and given.json()["html"] != es.json()["html"]
+    assert owner.post("/api/v1/admin/messages/preview", json={"template": "privacy_request_answered", "locale": "es",
+                                                               "params": {"token": "x"}}).status_code == 422
+    assert owner.post("/api/v1/admin/messages/preview", json={"template": "no_such", "locale": "es"}).status_code == 404
+    assert owner.post("/api/v1/admin/messages/preview", json={"template": "welcome", "locale": "fr"}).status_code == 422
+    assert reader.post("/api/v1/admin/messages/preview",
+                       json={"template": "privacy_request_answered", "locale": "es"}).status_code == 403
+    assert reader.post("/api/v1/admin/messages/test",
+                       json={"template": "privacy_request_answered", "locale": "es"}).status_code == 403
+
+    with psycopg.connect(fresh) as conn:
+        before = int(conn.execute("SELECT count(*) FROM auth.audit_events WHERE action = 'admin.message_test' "
+                                  "AND at > now() - interval '1 hour'").fetchone()[0])  # type: ignore[index]
+        assert conn.execute("SELECT count(*) FROM customer.messages_outbox").fetchone() == (0,)  # a preview queues nothing
+    sent = owner.post("/api/v1/admin/messages/test", json={"template": "privacy_request_answered", "locale": "en"})
+    assert sent.status_code == 200 and sent.json() == {"queued": True}
+    with psycopg.connect(fresh) as conn:
+        rows = conn.execute("SELECT u.email, o.locale, o.template FROM customer.messages_outbox o "
+                            "JOIN auth.users u ON u.id = o.user_id").fetchall()
+        assert rows == [(OWNER, "en", "privacy_request_answered")]
+        event = conn.execute("SELECT detail FROM auth.audit_events WHERE action = 'admin.message_test' "
+                             "ORDER BY id DESC LIMIT 1").fetchone()
+        assert event is not None and event[0] == {"template": "privacy_request_answered"}
+    # a message with a one-use link is previewed, never sent as a test
+    assert owner.post("/api/v1/admin/messages/test", json={"template": "email_verification", "locale": "es"}
+                      ).status_code == 422
+    allowed = max(0, outbox_test_limit() - before - 1)
+    for _ in range(allowed):
+        assert owner.post("/api/v1/admin/messages/test",
+                          json={"template": "privacy_request_answered", "locale": "es"}).status_code == 200
+    limited = owner.post("/api/v1/admin/messages/test", json={"template": "privacy_request_answered", "locale": "es"})
+    assert limited.status_code == 429 and limited.json()["error"]["code"] == "test_limit"
+
+
+def outbox_test_limit() -> int:
+    from fbi.api.routers.messaging import TEST_PER_HOUR
+
+    return TEST_PER_HOUR
+
+
+def test_the_branded_layout_is_what_the_queue_preview_shows_when_the_switch_is_on(
+        fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """AP-M01 through the real endpoint: with FBI_EMAIL_V2 the owner's preview of a queued message is the branded page."""
+    reader, owner = client(READER), client(OWNER)
+    r = reader.post("/api/v1/me/privacy-requests", json={"kind": "privacy_query", "message": SECRET_TEXT})
+    assert r.status_code == 201, r.text
+    queued = owner.get("/api/v1/admin/messages").json()["messages"][0]["id"]
+    plain = owner.get(f"/api/v1/admin/messages/{queued}/preview").json()["html"]
+    assert "#0e2318" not in plain
+    monkeypatch.setenv("FBI_EMAIL_V2", "on")
+    branded = owner.get(f"/api/v1/admin/messages/{queued}/preview").json()["html"]
+    assert "#0e2318" in branded and "<script" not in branded and "http://" not in branded
+    assert SECRET_TEXT not in branded
+
+
 # ── the owner's notices ───────────────────────────────────────────────────────────────
 
 def synthetic_run(conn: psycopg.Connection[Any], status: str, at: datetime) -> None:

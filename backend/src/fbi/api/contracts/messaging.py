@@ -65,6 +65,20 @@ class OutboxPreview(Contract):
     link: str | None = Field(description="Where the message's button leads.")
 
 
+class MessagePreviewIn(BaseModel):
+    """What the console asks to see (plan de correcciones UX, AP-M02): a template in a language, with its own parameters or,
+    without them, the sample the template carries. Nothing is sent and nothing is queued."""
+
+    model_config = ConfigDict(extra="forbid")
+    template: str = Field(min_length=1, max_length=60)
+    locale: Literal["es", "en"]
+    params: dict[str, str] | None = Field(default=None, description="The template's own parameters (a communiqué's titles and bodies); the sample when absent.")
+
+
+class MessageTestOut(Contract):
+    queued: bool = Field(description="False when the same test was already waiting in the queue.")
+
+
 class UnsubscribeIn(BaseModel):
     """The page of PrediGol the weekly summary's link opens (plan UX, B8): the token from the address's fragment."""
 

@@ -477,6 +477,7 @@
       "user_password_change_required": "Password change required",
       "session_revoked": "Sessions ended",
       "admin_write": "Admin console action",
+      "admin_message_test": "E-mail test sent to their own account",
       "user_invited": "Invitation sent",
       "user_invitation_resent": "Invitation resent",
       "user_invitation_renewed": "Invitation renewed from its link",

@@ -41,6 +41,8 @@ import type {
   NotificationPreferences,
   NotificationPreferencesIn,
   MessageStatus,
+  MessagePreviewIn,
+  MessageTestOut,
   OutboxPreview,
   OutboxSummary,
   UnsubscribeResult,
@@ -1219,6 +1221,12 @@ export const v1 = {
   messageQueue: (status?: MessageStatus) =>
     getJson<OutboxSummary>("/admin/messages", status ? { status } : {}),
   messagePreview: (id: number) => getJson<OutboxPreview>(`/admin/messages/${id}/preview`),
+  /** The exact e-mail of a template in a language, with its sample or the parameters given (AP-M02). Nothing is sent. */
+  previewTemplate: (body: MessagePreviewIn) =>
+    postJson<OutboxPreview>("/admin/messages/preview", body),
+  /** «Enviarme una prueba»: the template queued for the administrator's own account. 429 test_limit, 422 test_unavailable. */
+  sendTemplateTest: (body: MessagePreviewIn) =>
+    postJson<MessageTestOut>("/admin/messages/test", body),
   // ── the owner's communiqués (closing plan 4.3) ────────────────────────────
   /** Public: what the owner has published and is in force now (the banners and Novedades' entries). */
   activeAnnouncements: () => getJson<ActiveAnnouncements>("/announcements/active"),
