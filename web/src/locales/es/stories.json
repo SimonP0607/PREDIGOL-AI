@@ -123,5 +123,14 @@
   },
   "card": {
     "open": "Abrir la historia"
+  },
+  "match": {
+    "title": "Historias del partido",
+    "note": "Lo que cuentan las fuentes sobre este partido, desde el partido anterior de cada equipo. PrediGol resume con sus palabras; la noticia completa está en la fuente.",
+    "since": "Desde el {date}",
+    "team": "Más historias de {team}",
+    "all": "Ver todas las historias",
+    "count_one": "{count} historia",
+    "count_other": "{count} historias"
   }
 }

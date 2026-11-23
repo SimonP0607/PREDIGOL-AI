@@ -7,6 +7,9 @@
  * from «searched, nothing found».
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { MatchStoriesView } from "./MatchStories";
+import { stories } from "./storiesApi";
 import { Segmented } from "@/components/ui/segmented";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { NewsItem } from "@/lib/api/v1/types_news";
@@ -290,5 +293,27 @@ export function NewsTab({ ctx }: { ctx: MatchCtx }) {
     ],
     empty && user?.news_feed === true,
   );
-  return <NewsView load={load} v2={v2} teamNews={teamNews} />;
+  // the unified stories (FBI_NEWS_V2, AP-N04): when the server has any for this match they lead the tab, the cards as they were below
+  const storiesOn = user?.news_feed === true && v2;
+  const storyQuery = useQuery({
+    queryKey: ["v1", "stories", "match", ctx.fixtureId],
+    queryFn: () => stories.match(ctx.fixtureId),
+    enabled: storiesOn,
+    retry: false,
+  });
+  const match = storyQuery.data?.data?.match;
+  return (
+    <div className="space-y-4">
+      {storiesOn && match && "stories" in match ? (
+        <MatchStoriesView
+          data={match}
+          teams={[
+            { id: ctx.match.home.id, name: ctx.match.home.name },
+            { id: ctx.match.away.id, name: ctx.match.away.name },
+          ]}
+        />
+      ) : null}
+      <NewsView load={load} v2={v2} teamNews={teamNews} />
+    </div>
+  );
 }
