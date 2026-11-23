@@ -1589,5 +1589,29 @@
       "mine": "Tus equipos",
       "recent": "Más recientes"
     }
+  },
+  "keyFigures": {
+    "title": "Cifras clave",
+    "note": "Las mismas cifras del análisis, a la vista. No se calcula nada nuevo.",
+    "rank": "Puesto",
+    "rankValue": "{rank}.º",
+    "gap": "Puntos a la zona",
+    "gapUp": "{count} a {zone}",
+    "gapDown": "{count} de {zone}",
+    "form": "Forma",
+    "formLast": "Últimos {count}",
+    "xg": "xG a favor / en contra",
+    "rest": "Descanso",
+    "restAtMost": "hasta {days}",
+    "days_one": "{days} día",
+    "days_other": "{days} días",
+    "none": "—",
+    "tableTitle": "Cómo quedaría la tabla",
+    "ifHomeWin": "Si gana {team}",
+    "ifDraw": "Si empatan",
+    "ifAwayWin": "Si gana {team}",
+    "pointsPlaces": "{points} pts · {places}",
+    "sentences": "Ver el análisis en frases",
+    "sentencesHide": "Ocultar las frases"
   }
 }
