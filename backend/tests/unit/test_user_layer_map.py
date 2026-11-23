@@ -17,6 +17,12 @@ MAP = BACKEND / "docs" / "owner" / "INTERRUPTORES_UX.md"
 
 # Every variable of the readers' layer (plan UX A2 to B11) that the owner can set. Add a new switch here AND to the template AND to the map.
 USER_LAYER = (
+    "FBI_HOME_UNIFIED",
+    "FBI_MARKETS_V3",
+    "FBI_DAY_HIGHLIGHTS",
+    "FBI_MY_BOOKS",
+    "FBI_STAKES",
+    "FBI_TREND_BUILDER",
     "FBI_CONSENT_GATE",
     "FBI_EMAIL_SEND",
     "FBI_EMAIL_FROM",

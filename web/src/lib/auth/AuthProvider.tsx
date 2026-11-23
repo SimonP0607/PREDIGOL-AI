@@ -320,6 +320,30 @@ export function usePmReaderSwitches(): {
   };
 }
 
+/**
+ * The switches of the plan de correcciones UX (23-nov-2026), all born off: Inicio único, Mercados como casa de apuestas, «Lo más
+ * interesante de hoy», «Mis casas», unidades y armador por tendencias. Safe outside the provider (a component drawn alone in a test):
+ * everything off.
+ */
+export function useUxFixSwitches(): {
+  homeUnified: boolean;
+  marketsV3: boolean;
+  dayHighlights: boolean;
+  myBooks: boolean;
+  stakes: boolean;
+  trendBuilder: boolean;
+} {
+  const u = useContext(AuthContext)?.user;
+  return {
+    homeUnified: u?.home_unified === true,
+    marketsV3: u?.markets_v3 === true,
+    dayHighlights: u?.day_highlights === true,
+    myBooks: u?.my_books === true,
+    stakes: u?.stakes === true,
+    trendBuilder: u?.trend_builder === true,
+  };
+}
+
 /** The `preview` value for product queries: "shadow" only while a SUPER_ADMIN has the shadow preview on. */
 export function usePreviewParam(): "shadow" | undefined {
   return useAuth().shadowPreview ? "shadow" : undefined;
