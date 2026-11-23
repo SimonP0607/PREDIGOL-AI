@@ -8,6 +8,8 @@
  * by the sample (`cappedLevel`): under the minimum a chart is an anecdote (E0) whatever it claims.
  */
 import { useId, type ReactNode } from "react";
+import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import type { TermKey } from "@/lib/glossary";
 import { StatusBadge, type BadgeTone } from "@/components/primitives/StatusBadge";
 import { ChartCard } from "./stats/ChartCard";
 import {
@@ -48,6 +50,8 @@ export function EvidenceChart({
   reading,
   review,
   method,
+  terms,
+  axes,
   actions,
   footer,
   children,
@@ -63,6 +67,10 @@ export function EvidenceChart({
   /** The hand review of the 14 checks; an incomplete one fails the piece's test (`reviewProblems`). */
   review: ChartReview;
   method?: string | undefined;
+  /** «¿Qué significa?»: the glossary terms the chart uses, each one opening its definition (AP-T03). */
+  terms?: readonly TermKey[] | undefined;
+  /** What the two axes are, with their unit, in a sentence (AP-T03): «Horizontal: minuto del partido · Vertical: …». */
+  axes?: string | undefined;
   actions?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
@@ -77,7 +85,23 @@ export function EvidenceChart({
       title={title}
       subtitle={subtitle}
       method={method}
-      footer={footer}
+      footer={
+        terms?.length || footer ? (
+          <div className="space-y-1.5">
+            {terms?.length ? (
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="text-small font-semibold text-foreground-soft">
+                  {t("evidence.explain")}
+                </span>
+                {terms.map((term) => (
+                  <GlossaryTerm key={term} term={term} />
+                ))}
+              </p>
+            ) : null}
+            {footer}
+          </div>
+        ) : undefined
+      }
       className={className}
       testId={testId}
       actions={
@@ -98,6 +122,7 @@ export function EvidenceChart({
         <figure aria-describedby={id} className="m-0">
           {children}
         </figure>
+        {axes ? <p className="text-small text-subtle-foreground">{axes}</p> : null}
       </div>
     </ChartCard>
   );

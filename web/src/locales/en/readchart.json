@@ -1,0 +1,67 @@
+{
+  "thin": "Small sample ({n} matches): treat it as an anecdote, not a trend.",
+
+  "words": {
+    "better": "better than {pct} % of its league",
+    "worse": "worse than {pct} % of its league",
+    "middle": "right in the middle of its league"
+  },
+  "slot": {
+    "range": "minutes {label}",
+    "added1": "first-half added time",
+    "added2": "second-half added time"
+  },
+  "perf": {
+    "title": "How does it compare with its league?",
+    "axis": "Each bar says where the figure sits in its league; the grey mark is the league's middle. On the right, the place in words.",
+    "read": "{team}: its best is {best} ({bestWords}) and its weakest, {worst} ({worstWords}). Compared with {teams} teams of its league, over {n} matches.",
+    "one": "{team}: in {fig}, {words}. Compared with {teams} teams of its league, over {n} matches.",
+    "none": "{team}: there are not enough figures yet to compare it with its league."
+  },
+  "states": {
+    "title": "How long does it lead, draw or trail?",
+    "axis": "The bar splits the minutes played: green leading, grey level, red trailing.",
+    "read": "{team} has spent {won} minutes leading, {level} level and {lost} trailing, over {n} matches."
+  },
+  "pulse": {
+    "title": "In which minutes does it score more than its league?",
+    "axis": "Horizontal: minute of the match. Vertical: goals per 90 minutes, 100 = its league's average. The light band shows how much the figure could change with other matches.",
+    "readFor": "{team} scores {pct} % more goals than its league's average in {slot}, its best stretch, and {low} is when it scores least. Based on {n} matches.",
+    "readAgainst": "{team} concedes {pct} % more goals than its league's average in {slot}, its worst stretch. Based on {n} matches.",
+    "flat": "{team} does not beat its league's average in any stretch of the match. Based on {n} matches.",
+    "note": "Only goals with a minute count. It is the team's history, not what is happening in the match now."
+  },
+  "intervals": {
+    "title": "When do its goals come?",
+    "axis": "Horizontal: stretch of minutes. Vertical: goals; above, those it scores, below, those it concedes, and the grey mark is what its league's average would be.",
+    "read": "In {slot}, {team} scores {gf} goals and concedes {ga}; its league's average in that stretch, over the same matches, would be {lf} scored. In all, {tf} for and {ta} against in {n} matches."
+  },
+  "survival": {
+    "title": "How long until the match opens?",
+    "axis": "Horizontal: minute of the match. Vertical: matches still 0-0 at that minute (%). The dashed line is its league's average.",
+    "read": "In half of {team}'s matches there is already a goal by minute {median}; {half} % are still 0-0 at half-time. Over {n} matches.",
+    "none": "More than half of {team}'s matches never open: still 0-0 at the end. Over {n} matches."
+  },
+  "xg": {
+    "title": "Does it create more chances than it concedes?",
+    "axis": "Horizontal: matches, oldest to newest. Vertical: xG per match (average of the last 5).",
+    "read": "In its latest matches, {team} creates {xf} xG per match and concedes {xa}.",
+    "empty": "No xG data for this league."
+  },
+  "halves": {
+    "title": "Does it score more in the first or the second half?",
+    "axis": "Two bars per half: goals for and against.",
+    "read": "{team} has scored {f1} goals in the first half and {f2} in the second; it has conceded {a1} and {a2}. Data from {n} matches."
+  },
+  "radar": {
+    "title": "What is its profile against its league?",
+    "axis": "Six aspects of the game, always in the same order. Each says where the team sits in its league (100 = the best).",
+    "read": "{team}: its strongest aspect is {best} ({bestWords}) and its lowest, {worst} ({worstWords}).",
+    "how": "Attack = xG for per match · Finishing = goals minus xG · Volume = shots per match · Presence = corners for minus against · Defence = how few chances it concedes · Discipline = how well it avoids cards"
+  },
+  "trends": {
+    "title": "What repeats in its matches?",
+    "axis": "Each row: in how many of its matches it happened. The light stretch is what it could really be with this sample.",
+    "read": "{team}: what differs most from its league is “{label}”, in {pct} % of {n} matches; in its league, {league} %."
+  }
+}

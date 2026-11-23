@@ -19,6 +19,7 @@ import { CATALOGS, type Catalog, type Locale } from "./catalogs";
 // The namespaces added when their screen loads (`addCatalog`): imported so the list does not depend on test order.
 import "@/product/shared/availabilityText";
 import "@/components/analytics/evidenceText";
+import "@/components/analytics/stats/readText";
 import "@/product/competitions/text";
 import "@/product/match/stats/matchvizText";
 import "@/product/teams/stats/playerText";
@@ -51,6 +52,7 @@ const READER = [
   "guides",
   "transparency",
   "evidence",
+  "readchart",
   "competitions",
   "players",
   "matchviz",

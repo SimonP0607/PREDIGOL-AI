@@ -12,7 +12,8 @@
       "predigol": "Lo que dice PrediGol",
       "prices": "Probabilidades y cuotas",
       "parlays": "Parlays",
-      "results": "Resultados y cuentas"
+      "results": "Resultados y cuentas",
+      "stats": "Estadísticas de equipos y jugadores"
     }
   },
   "ui": {
@@ -235,6 +236,21 @@
       "name": "Perdido",
       "short": "La selección no se cumplió: se pierde la unidad entera.",
       "long": "En un parlay, una sola selección perdida lo pierde entero. Una pérdida cuenta en la rentabilidad igual que una ganancia."
+    },
+    "percentile": {
+      "name": "Lugar en su liga (percentil)",
+      "short": "Dónde queda un equipo o jugador entre los de su liga: «mejor que el 63 %» quiere decir que supera a 63 de cada 100.",
+      "long": "Se calcula con los equipos de la misma competición y temporada. 50 % es la mitad de la liga; cerca de 100 %, de los mejores; cerca de 0 %, de los últimos. En cifras donde menos es mejor (goles en contra), PrediGol le da la vuelta para que más siempre sea mejor."
+    },
+    "xg": {
+      "name": "xG (goles esperados)",
+      "short": "Los goles que se esperarían de las ocasiones que tuvo un equipo, según lo difícil que era cada tiro. Dice cuánto mereció marcar.",
+      "long": "Un penalti vale mucho más que un tiro de lejos. Sumar esos valores da el xG del partido: si un equipo marca mucho más que su xG, suele haber tenido suerte o acierto fuera de lo normal. Es una estimación del proveedor de datos, no un resultado."
+    },
+    "goalPulse": {
+      "name": "Pulso de goles",
+      "short": "Cuántos goles marca o encaja un equipo en cada tramo del partido, comparado con la media de su liga (100 = igual que la media).",
+      "long": "Se cuentan los goles por minuto en tramos de cinco, se suavizan para que un solo partido no mande y se dividen entre los de la liga en el mismo minuto. La banda clara marca cuánto cambiaría la cifra con otros partidos: cuanto más ancha, menos fiable. El tiempo añadido cuenta aparte."
     }
   }
 }

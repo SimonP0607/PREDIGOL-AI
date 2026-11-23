@@ -1,0 +1,66 @@
+{
+  "thin": "Muestra pequeña ({n} partidos): tómalo como una anécdota, no como una tendencia.",
+  "words": {
+    "better": "mejor que el {pct} % de su liga",
+    "worse": "peor que el {pct} % de su liga",
+    "middle": "justo en la mitad de su liga"
+  },
+  "slot": {
+    "range": "los minutos {label}",
+    "added1": "el tiempo añadido del primer tiempo",
+    "added2": "el tiempo añadido del segundo tiempo"
+  },
+  "perf": {
+    "title": "¿Cómo rinde frente a su liga?",
+    "axis": "Cada barra dice en qué lugar de su liga está la cifra; la marca gris es la mitad de la liga. A la derecha, el lugar en palabras.",
+    "read": "{team}: lo mejor es {best} ({bestWords}) y lo más flojo, {worst} ({worstWords}). Se compara con {teams} equipos de su liga, en {n} partidos.",
+    "one": "{team}: en {fig}, {words}. Se compara con {teams} equipos de su liga, en {n} partidos.",
+    "none": "{team}: todavía no hay cifras suficientes para compararlo con su liga."
+  },
+  "states": {
+    "title": "¿Cuánto tiempo va ganando, empatando o perdiendo?",
+    "axis": "La barra reparte los minutos jugados: verde ganando, gris empatando, rojo perdiendo.",
+    "read": "{team} ha pasado {won} minutos ganando, {level} empatando y {lost} perdiendo, en {n} partidos."
+  },
+  "pulse": {
+    "title": "¿En qué minutos marca más que su liga?",
+    "axis": "Horizontal: minuto del partido. Vertical: goles cada 90 minutos, 100 = la media de su liga. La banda clara marca cuánto podría cambiar la cifra con otros partidos.",
+    "readFor": "{team} marca un {pct} % más de goles que la media de su liga en {slot}, su mejor tramo, y es en {low} cuando menos marca. Hecho con {n} partidos.",
+    "readAgainst": "{team} encaja un {pct} % más de goles que la media de su liga en {slot}, su peor tramo. Hecho con {n} partidos.",
+    "flat": "{team} no supera a la media de su liga en ningún tramo del partido. Hecho con {n} partidos.",
+    "note": "Cuenta solo goles con minuto. Es historia del equipo, no lo que pasa ahora en el partido."
+  },
+  "intervals": {
+    "title": "¿Cuándo caen sus goles?",
+    "axis": "Horizontal: tramo de minutos. Vertical: goles; arriba los que marca, abajo los que encaja, y la marca gris es lo que sería la media de su liga.",
+    "read": "En {slot}, {team} marca {gf} goles y encaja {ga}; la media de su liga en ese tramo, con los mismos partidos, sería de {lf} a favor. En total, {tf} a favor y {ta} en contra en {n} partidos."
+  },
+  "survival": {
+    "title": "¿Cuánto tarda en abrirse el partido?",
+    "axis": "Horizontal: minuto del partido. Vertical: partidos que siguen 0-0 en ese minuto (%). La línea discontinua es la media de su liga.",
+    "read": "En la mitad de los partidos de {team} ya hay un gol hacia el minuto {median}; el {half} % sigue 0-0 al descanso. Con {n} partidos.",
+    "none": "Más de la mitad de los partidos de {team} no se abre: sigue 0-0 al terminar. Con {n} partidos."
+  },
+  "xg": {
+    "title": "¿Crea más ocasiones de las que concede?",
+    "axis": "Horizontal: partidos, del más antiguo al más reciente. Vertical: xG por partido (media de los últimos 5).",
+    "read": "En sus últimos partidos, {team} crea {xf} xG por partido y concede {xa}.",
+    "empty": "Sin datos de xG para esta liga."
+  },
+  "halves": {
+    "title": "¿Marca más en el primer o en el segundo tiempo?",
+    "axis": "Dos barras por tiempo: goles a favor y en contra.",
+    "read": "{team} ha marcado {f1} goles en el primer tiempo y {f2} en el segundo; ha encajado {a1} y {a2}. Datos de {n} partidos."
+  },
+  "radar": {
+    "title": "¿Cómo es su perfil frente a su liga?",
+    "axis": "Seis aspectos del juego, siempre en el mismo orden. Cada uno dice en qué lugar de su liga está el equipo (100 = el mejor).",
+    "read": "{team}: su aspecto más fuerte es {best} ({bestWords}) y el más bajo, {worst} ({worstWords}).",
+    "how": "Ataque = xG a favor por partido · Pegada = goles menos xG · Volumen = tiros por partido · Presencia = córners a favor menos en contra · Defensa = lo bien que concede pocas ocasiones · Disciplina = lo bien que evita tarjetas"
+  },
+  "trends": {
+    "title": "¿Qué se repite en sus partidos?",
+    "axis": "Cada fila: en cuántos de sus partidos pasó. El tramo claro es lo que podría ser de verdad con esta muestra.",
+    "read": "{team}: lo que más se aleja de su liga es «{label}», en el {pct} % de {n} partidos; en su liga, el {league} %."
+  }
+}

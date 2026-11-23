@@ -46,5 +46,6 @@
     "tabla_equivalente": "Equivalent table or readable data",
     "zoom_y_espaciado": "Readable at 200 % zoom and with increased text spacing",
     "lector_de_pantalla": "Accessible name and logical order for a screen reader"
-  }
+  },
+  "explain": "What does it mean?"
 }

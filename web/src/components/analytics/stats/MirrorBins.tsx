@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 import { num } from "./format";
 
 const W = 340;
-const H = 150;
-const MID = 75;
+const H = 160;
+const MID = 78;
 const PAD = 14;
 
 function minuteText(g: GoalRef): string {
@@ -29,8 +29,10 @@ export function MirrorBins({ intervals, testId }: { intervals: GoalIntervals; te
   );
   const slot = (W - PAD * 2) / bins.length;
   const bw = slot * 0.62;
-  const scale = (MID - 12) / max;
+  const scale = (MID - 18) / max;
   const chosen = bins.find((b) => b.label === open);
+  // a 12 px label needs about 34 px: show every `step`-th bin's label, the buttons and the table name them all
+  const step = Math.max(1, Math.ceil(34 / slot));
   return (
     <div data-testid={testId}>
       <svg
@@ -85,29 +87,31 @@ export function MirrorBins({ intervals, testId }: { intervals: GoalIntervals; te
                 x={cx}
                 y={MID - up - 3}
                 textAnchor="middle"
-                fontSize="9"
+                fontSize="12"
                 fill="var(--color-foreground-soft)"
               >
                 {b.goals_for}
               </text>
               <text
                 x={cx}
-                y={MID + down + 10}
+                y={MID + down + 12}
                 textAnchor="middle"
-                fontSize="9"
+                fontSize="12"
                 fill="var(--color-foreground-soft)"
               >
                 {b.goals_against}
               </text>
-              <text
-                x={cx}
-                y={H - 2}
-                textAnchor="middle"
-                fontSize="8.5"
-                fill="var(--color-subtle-foreground)"
-              >
-                {b.label}
-              </text>
+              {i % step === 0 ? (
+                <text
+                  x={cx}
+                  y={H - 2}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fill="var(--color-subtle-foreground)"
+                >
+                  {b.label}
+                </text>
+              ) : null}
             </g>
           );
         })}
@@ -124,7 +128,7 @@ export function MirrorBins({ intervals, testId }: { intervals: GoalIntervals; te
             aria-pressed={open === b.label}
             onClick={() => setOpen(open === b.label ? null : b.label)}
             className={cn(
-              "inline-flex min-h-11 items-center rounded-lg border px-2.5 text-caption",
+              "inline-flex min-h-11 items-center rounded-lg border px-2.5 text-small",
               open === b.label
                 ? "border-primary text-primary"
                 : "border-border bg-elevated text-foreground-soft",
@@ -135,7 +139,7 @@ export function MirrorBins({ intervals, testId }: { intervals: GoalIntervals; te
         ))}
       </div>
       {chosen ? (
-        <div className="mt-2 rounded-xl bg-elevated p-3 text-caption" data-testid="interval-goals">
+        <div className="mt-2 rounded-xl bg-elevated p-3 text-small" data-testid="interval-goals">
           <p className="mb-1 font-semibold">{t("stats.intervalsGoals", { label: chosen.label })}</p>
           <ul className="grid gap-1 sm:grid-cols-2">
             {chosen.goals_for_list.map((g, i) => (

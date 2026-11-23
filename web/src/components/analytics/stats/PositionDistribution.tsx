@@ -33,7 +33,7 @@ export function DistributionRow({ players, testId }: { players: DistPlayer[]; te
   const at = (v: number) => `${Math.min(100, Math.max(0, ((v - base) / span) * 100))}%`;
   return (
     <div className="space-y-1" data-testid={testId}>
-      <div className="flex items-baseline justify-between gap-2 text-caption">
+      <div className="flex items-baseline justify-between gap-2 text-small">
         <span className="text-foreground-soft">{figName(first.key)}</span>
         <span className="numeric">
           {players
