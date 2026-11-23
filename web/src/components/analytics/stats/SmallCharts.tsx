@@ -251,15 +251,29 @@ export function MinutesBars({
   items: { fixture_id: number; minutes: number; starter: boolean }[];
 }) {
   return (
-    <div className="flex h-16 items-end gap-1" aria-hidden>
-      {items.map((m) => (
-        <span
-          key={m.fixture_id}
-          className={cn("flex-1 rounded-t-md", m.starter ? "bg-primary" : "bg-primary-dim/60")}
-          style={{ height: `${Math.max(6, (100 * Math.min(m.minutes, 95)) / 95)}%` }}
-          title={`${m.minutes}'`}
-        />
-      ))}
+    <div>
+      <div className="flex h-16 items-end gap-1" aria-hidden>
+        {items.map((m) => (
+          <span
+            key={m.fixture_id}
+            className={cn("flex-1 rounded-t-md", m.starter ? "bg-primary" : "bg-primary-dim/60")}
+            style={{ height: `${Math.max(6, (100 * Math.min(m.minutes, 95)) / 95)}%` }}
+            title={`${m.minutes}'`}
+          />
+        ))}
+      </div>
+      <table className="sr-only">
+        <caption>{t("stats.minutesTitle")}</caption>
+        <tbody>
+          {items.map((m, i) => (
+            <tr key={m.fixture_id}>
+              <th scope="row">{i + 1}</th>
+              <td>{m.minutes}&apos;</td>
+              <td>{m.starter ? t("stats.starter") : t("stats.substitute")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -274,33 +288,65 @@ export function VolumeAccuracy({
   testId?: string;
 }) {
   return (
-    <div className="h-56 w-full" data-testid={testId}>
-      <ResponsiveContainer width="100%" height="100%">
-        <ScatterChart margin={{ top: 8, right: 10, left: -12, bottom: 4 }} accessibilityLayer>
-          <CartesianGrid stroke="var(--color-border)" />
-          <XAxis
-            type="number"
-            dataKey="shots_per90"
-            name={t("stats.scatterX")}
-            tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
-          />
-          <YAxis
-            type="number"
-            dataKey="on_target_pct"
-            name={t("stats.scatterY")}
-            domain={[0, 100]}
-            tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
-          />
-          <ZAxis range={[28, 28]} />
-          <Tooltip {...tooltipStyle} />
-          <Scatter data={background} fill="var(--color-border-strong)" />
-          {players.map((p) =>
-            p.point ? (
-              <Scatter key={p.name} name={p.name} data={[p.point]} fill={p.color} shape="circle" />
-            ) : null,
-          )}
-        </ScatterChart>
-      </ResponsiveContainer>
+    <div data-testid={testId}>
+      <div className="h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart margin={{ top: 8, right: 10, left: -12, bottom: 4 }} accessibilityLayer>
+            <CartesianGrid stroke="var(--color-border)" />
+            <XAxis
+              type="number"
+              dataKey="shots_per90"
+              name={t("stats.scatterX")}
+              tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
+            />
+            <YAxis
+              type="number"
+              dataKey="on_target_pct"
+              name={t("stats.scatterY")}
+              domain={[0, 100]}
+              tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
+            />
+            <ZAxis range={[28, 28]} />
+            <Tooltip {...tooltipStyle} />
+            <Scatter
+              data={background}
+              fill="var(--color-border-strong)"
+              isAnimationActive={false}
+            />
+            {players.map((p) =>
+              p.point ? (
+                <Scatter
+                  key={p.name}
+                  name={p.name}
+                  data={[p.point]}
+                  fill={p.color}
+                  shape="circle"
+                  isAnimationActive={false}
+                />
+              ) : null,
+            )}
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{t("stats.scatterTitle")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("stats.scatterPlayer")}</th>
+            <th scope="col">{t("stats.scatterX")}</th>
+            <th scope="col">{t("stats.scatterY")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {players.map((p) => (
+            <tr key={p.name}>
+              <th scope="row">{p.name}</th>
+              <td>{p.point ? localFixed(p.point.shots_per90, 1) : "—"}</td>
+              <td>{p.point ? localFixed(p.point.on_target_pct, 0) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

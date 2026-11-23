@@ -1,6 +1,5 @@
 {
   "thin": "Small sample ({n} matches): treat it as an anecdote, not a trend.",
-
   "words": {
     "better": "better than {pct} % of its league",
     "worse": "worse than {pct} % of its league",
@@ -63,5 +62,44 @@
     "title": "What repeats in its matches?",
     "axis": "Each row: in how many of its matches it happened. The light stretch is what it could really be with this sample.",
     "read": "{team}: what differs most from its league is “{label}”, in {pct} % of {n} matches; in its league, {league} %."
+  },
+  "thinPlayer": "Few minutes played ({n} full matches): treat it as an anecdote, not a trend.",
+  "player": {
+    "title": "How does he compare with players in his position?",
+    "axis": "Each row is a figure per 90 minutes. The light band is where most players of his position in the league sit; the grey mark, the middle of them. The dot is the player.",
+    "read": "{name}: among players of his position ({position}) his best is {best} ({bestWords}) and his weakest, {worst} ({worstWords}). Over {n} full matches played.",
+    "one": "{name}: in {best}, {bestWords}, among players of his position ({position}). Over {n} full matches played.",
+    "none": "{name}: there are not enough figures yet to compare him with his position."
+  },
+  "last5": {
+    "title": "How have his last matches gone?",
+    "axis": "Each bar is one match, oldest to newest, with the opponent below. Height is the chosen figure.",
+    "read": "{name}, {fig} in his last {n} matches: {values}; on average, {mean}.",
+    "none": "{name}: no {fig} figure in his last matches."
+  },
+  "minutes": {
+    "title": "How many minutes does he play?",
+    "axis": "Each bar is the minutes of one match, oldest to newest; darker if he started.",
+    "read": "{name} has started {starts} of {of} matches this season; in the last {k} he played {sum} minutes."
+  },
+  "compareRadar": {
+    "read": "{a} and {b} differ most in {axis}: {a} is {aWords} and {b}, {bWords}.",
+    "none": "{a} and {b}: there are not enough figures yet to compare them."
+  },
+  "comparePlayers": {
+    "title": "Who does more in each figure?",
+    "axis": "Each row is a figure per 90 minutes; each dot is a player on the band of his position's players in the league.",
+    "read": "{a} and {b} are furthest apart in {fig}: {a} is {aWords} and {b}, {bWords}.",
+    "none": "{a} and {b}: there are not enough figures yet to compare them."
+  },
+  "scatter": {
+    "title": "Who shoots more and who is more accurate?",
+    "axis": "Horizontal: shots per 90 minutes. Vertical: shots on target (%). Each grey dot is another player of his position.",
+    "read": "{a}: {pa} shots per 90 minutes and {ta} % on target; {b}: {pb} and {tb} %."
+  },
+  "compare": {
+    "radarTitle": "Where are they alike and where do they differ?",
+    "figuresTitle": "Figure by figure",
+    "statesTitle": "When the match moves"
   }
 }

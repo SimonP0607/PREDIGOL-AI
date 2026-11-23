@@ -250,5 +250,8 @@
     "player": "liquida con los datos del partido · anulada si no juega"
   },
   "figureHelp": "{name}: {value} {unit} · percentil {pct} · media de la liga {league} · {n} partidos con dato",
-  "xgMatch": "Partido"
+  "xgMatch": "Partido",
+  "starter": "Titular",
+  "substitute": "Suplente",
+  "scatterPlayer": "Jugador"
 }

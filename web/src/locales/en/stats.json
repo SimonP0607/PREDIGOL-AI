@@ -250,5 +250,8 @@
     "player": "settles on the match data · void if he does not play"
   },
   "figureHelp": "{name}: {value} {unit} · percentile {pct} · league mean {league} · {n} matches with data",
-  "xgMatch": "Match"
+  "xgMatch": "Match",
+  "starter": "Starter",
+  "substitute": "Substitute",
+  "scatterPlayer": "Player"
 }

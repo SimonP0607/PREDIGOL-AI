@@ -14,11 +14,20 @@ import { useStatsSwitches } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
 import { localFixed } from "@/lib/i18n/format";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/States";
+import { EvidenceChart } from "@/components/analytics/EvidenceChart";
+import { READER_REVIEW } from "@/components/analytics/readerReview";
 import { ChartCard, ChipChoice } from "@/components/analytics/stats/ChartCard";
+import {
+  compareRadarReading,
+  comparePlayersReading,
+  figurePlace,
+  scatterReading,
+} from "@/components/analytics/stats/howToRead";
+import { t as r } from "@/components/analytics/stats/readText";
 import { RadarBars } from "@/components/analytics/stats/RadarBars";
 import { DistributionRow } from "@/components/analytics/stats/PositionDistribution";
 import { VolumeAccuracy } from "@/components/analytics/stats/SmallCharts";
-import { figName, figValue, percentileText } from "@/components/analytics/stats/format";
+import { figName, figValue } from "@/components/analytics/stats/format";
 import { teamColor } from "./shared";
 
 type Kind = "teams" | "players";
@@ -47,7 +56,7 @@ function Picker({
       : (players.data?.data ?? []).map((x) => ({ id: x.id, name: x.name, sub: x.team }));
   return (
     <div className="space-y-2">
-      <label className="block text-caption text-muted-foreground">
+      <label className="block text-small text-muted-foreground">
         {label}
         <input
           type="search"
@@ -67,7 +76,7 @@ function Picker({
                 className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-left text-sm hover:bg-elevated"
               >
                 <span className="truncate font-semibold">{x.name}</span>
-                <span className="truncate text-caption text-subtle-foreground">{x.sub ?? ""}</span>
+                <span className="truncate text-small text-subtle-foreground">{x.sub ?? ""}</span>
               </button>
             </li>
           ))}
@@ -86,7 +95,7 @@ function Head({ entities }: { entities: StatsEntity[] }) {
           <span className="truncate text-sm font-semibold">
             {present(e.team)?.team.name ?? present(e.player)?.player.name ?? "—"}
           </span>
-          <span className="text-caption text-subtle-foreground">
+          <span className="text-small text-subtle-foreground">
             {e.competition.competition.name} {e.competition.season}
           </span>
         </div>
@@ -121,12 +130,20 @@ function TeamsBody({ entities }: { entities: StatsEntity[] }) {
     ],
   ];
   const keys = a.figures.map((f) => f.key);
+  const common = { evidence: "E1", review: READER_REVIEW } as const;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <ChartCard
-        title={t("stats.radarTitle")}
-        subtitle={t("stats.radarSub")}
-        method={t("stats.radarFormula")}
+      <EvidenceChart
+        {...common}
+        title={r("readchart.compareRadar.title")}
+        axes={r("readchart.radar.axis")}
+        reading={compareRadarReading(
+          { name: a.team.name, axes: a.radar },
+          { name: b.team.name, axes: b.radar },
+          Math.min(a.record.matches, b.record.matches),
+        )}
+        terms={["percentile"]}
+        footer={r("readchart.radar.how")}
         testId="compare-radar"
       >
         <RadarBars
@@ -135,7 +152,7 @@ function TeamsBody({ entities }: { entities: StatsEntity[] }) {
             { name: b.team.name, axes: b.radar, color: teamColor(1) },
           ]}
         />
-      </ChartCard>
+      </EvidenceChart>
       <div className="flex flex-col gap-4">
         <ChartCard title={t("stats.compareStates")} testId="compare-states">
           <dl className="grid gap-2">
@@ -157,7 +174,7 @@ function TeamsBody({ entities }: { entities: StatsEntity[] }) {
           subtitle={t("stats.compareEach")}
           testId="compare-figures"
         >
-          <ul className="space-y-1.5 text-caption">
+          <ul className="space-y-1.5 text-small">
             {keys.map((k) => {
               const fa = a.figures.find((f) => f.key === k)!;
               const fb = b.figures.find((f) => f.key === k);
@@ -166,12 +183,12 @@ function TeamsBody({ entities }: { entities: StatsEntity[] }) {
                   <span className="truncate text-foreground-soft">{figName(k)}</span>
                   <span className="numeric" style={{ color: teamColor(0) }}>
                     {figValue(fa)}{" "}
-                    <span className="text-subtle-foreground">{percentileText(fa.percentile)}</span>
+                    <span className="text-subtle-foreground">{figurePlace(fa) ?? "—"}</span>
                   </span>
                   <span className="numeric" style={{ color: teamColor(1) }}>
                     {fb ? figValue(fb) : "—"}{" "}
                     <span className="text-subtle-foreground">
-                      {fb ? percentileText(fb.percentile) : ""}
+                      {fb ? (figurePlace(fb) ?? "—") : ""}
                     </span>
                   </span>
                 </li>
@@ -194,16 +211,26 @@ function PlayersBody({ entities }: { entities: StatsEntity[] }) {
     scatter.find((p) => p.player_id === id) ??
     present(entities[1]!.scatter)?.find((p) => p.player_id === id) ??
     null;
+  const common = { evidence: "E1", review: READER_REVIEW } as const;
+  const pa = { name: a.player.name, point: point(a.player.id), color: teamColor(0) };
+  const pb = { name: b.player.name, point: point(b.player.id), color: teamColor(1) };
+  const scatterRead = scatterReading(
+    pa,
+    pb,
+    Math.floor(Math.min(a.nineties, b.nineties)),
+    Math.ceil(Math.max(a.min_nineties, b.min_nineties)),
+  );
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <ChartCard
-        title={t("stats.distCompare")}
-        subtitle={t("stats.distCompareSub", {
-          position: position ? t(`stats.positionPlural.${position}`) : "—",
-        })}
+      <EvidenceChart
+        {...common}
+        title={r("readchart.comparePlayers.title")}
+        axes={r("readchart.comparePlayers.axis")}
+        reading={comparePlayersReading(a, b)}
+        terms={["percentile"]}
         testId="compare-distributions"
       >
-        <p className="text-caption text-subtle-foreground">
+        <p className="text-small text-subtle-foreground">
           {a.player.name}: {t("stats.sampleNineties", { n: localFixed(a.nineties, 1) })} ·{" "}
           {b.player.name}: {t("stats.sampleNineties", { n: localFixed(b.nineties, 1) })}
         </p>
@@ -223,22 +250,22 @@ function PlayersBody({ entities }: { entities: StatsEntity[] }) {
             );
           })}
         </div>
-      </ChartCard>
-      <ChartCard
-        title={t("stats.scatterTitle")}
-        subtitle={t("stats.scatterSub", {
-          position: position ? t(`stats.position.${position}`).toLowerCase() : "—",
-        })}
-        testId="compare-scatter"
-      >
-        <VolumeAccuracy
-          background={scatter}
-          players={[
-            { name: a.player.name, point: point(a.player.id), color: teamColor(0) },
-            { name: b.player.name, point: point(b.player.id), color: teamColor(1) },
-          ]}
-        />
-      </ChartCard>
+      </EvidenceChart>
+      {scatterRead ? (
+        <EvidenceChart
+          {...common}
+          title={r("readchart.scatter.title")}
+          axes={r("readchart.scatter.axis")}
+          reading={scatterRead}
+          testId="compare-scatter"
+        >
+          <VolumeAccuracy background={scatter} players={[pa, pb]} />
+        </EvidenceChart>
+      ) : (
+        <ChartCard title={r("readchart.scatter.title")} testId="compare-scatter">
+          <p className="text-small text-subtle-foreground">{t("stats.missing.sin_datos")}</p>
+        </ChartCard>
+      )}
     </div>
   );
 }
@@ -292,7 +319,7 @@ export function ComparePage({
             <Picker kind={kind} label={t("stats.comparePick")} onPick={pick("b")} />
           ) : null}
           {a !== undefined && a === b ? (
-            <p className="text-caption text-warning">{t("stats.compareSame")}</p>
+            <p className="text-small text-warning">{t("stats.compareSame")}</p>
           ) : null}
         </Card>
       ) : null}
@@ -338,7 +365,7 @@ export function ComparePage({
           ) : (
             <PlayersBody entities={q.data.data.entities} />
           )}
-          <p className="text-center text-caption text-subtle-foreground">
+          <p className="text-center text-small text-subtle-foreground">
             {kind === "teams" ? t("stats.radarSame") : t("stats.playerNote")}
           </p>
         </>

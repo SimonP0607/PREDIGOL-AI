@@ -13,7 +13,16 @@ import { present } from "@/lib/api/v1/types_intelligence";
 import { readingSentence, reviewProblems } from "../evidence";
 import { READER_REVIEW } from "../readerReview";
 import preview from "./fixtures/c13_preview.json";
+import player from "./fixtures/c13_player.json";
+import type { PlayerBody } from "@/lib/api/v1/types_stats";
 import {
+  comparePlayersReading,
+  compareRadarReading,
+  figurePlace,
+  lastFiveReading,
+  minutesReading,
+  playerReading,
+  scatterReading,
   halvesReading,
   intervalsReading,
   performanceReading,
@@ -126,6 +135,81 @@ describe("the sentences of the team's charts come from the contract", () => {
     setLocale("es");
     const r = trendsReading(name, body.trends.items, body.record.matches);
     if (r) expect(r.sentence).toMatch(/de \d+ partidos; en su liga, el \d+ %/);
+  });
+});
+
+const pl = (player as unknown as StatsProfile).entities[0]!.player as PlayerBody;
+
+describe("the sentences of a player's charts and of the comparisons", () => {
+  test("a player against his position, in words, with the 90 minutes behind it", () => {
+    setLocale("es");
+    const r = playerReading(pl, "delantero");
+    expect(r.sentence).toContain(pl.player.name);
+    expect(r.sentence).toMatch(
+      /mejor que el \d+ % de su liga|peor que el \d+ % de su liga|mitad de su liga/,
+    );
+    expect(r.sentence).not.toMatch(/\bp\d{2}\b|undefined|NaN/);
+    expect(r.minSample).toBe(Math.ceil(pl.min_nineties));
+  });
+
+  test("few minutes played are said to be an anecdote", () => {
+    setLocale("es");
+    const r = playerReading({ ...pl, nineties: 1.2, min_nineties: 5 }, "medio");
+    expect(r.sentence).toContain("Pocos minutos jugados (1 partidos completos)");
+    expect(r.n).toBeLessThan(r.minSample);
+  });
+
+  test("the last five say the values the server sent and their mean", () => {
+    setLocale("es");
+    const metric = pl.last5[0]!.values[0]!.key;
+    const r = lastFiveReading(pl.player.name, pl.last5, metric);
+    expect(r.sentence).toContain(pl.player.name);
+    expect(r.sentence).toMatch(/de media, [\d,]+/);
+  });
+
+  test("minutes: starts of appearances and the sum of the last ones", () => {
+    setLocale("es");
+    const r = minutesReading(pl);
+    expect(r.sentence).toContain(`titular en ${pl.starts} de ${pl.appearances} partidos`);
+    expect(r.sentence).toContain(
+      `sumó ${pl.recent_minutes.reduce((a, m) => a + m.minutes, 0)} minutos`,
+    );
+  });
+
+  test("two teams: the aspect where they differ most; two players: the figure", () => {
+    setLocale("es");
+    const r = compareRadarReading(
+      { name: "A", axes: body.radar },
+      {
+        name: "B",
+        axes: body.radar.map((x) => ({ ...x, percentile: 100 - (x.percentile as number) })),
+      },
+      20,
+    );
+    expect(r.sentence).toMatch(/^A y B se parecen menos en /);
+    const other = { ...pl, player: { ...pl.player, name: "Otro" } };
+    const p = comparePlayersReading(pl, other);
+    expect(p.sentence).toContain(pl.player.name);
+    expect(p.sentence).toContain("Otro");
+  });
+
+  test("the scatter sentence needs both points", () => {
+    setLocale("es");
+    const pt = { player_id: 1, shots_per90: 3.456, on_target_pct: 41.6 };
+    expect(scatterReading({ name: "A", point: pt }, { name: "B", point: null }, 10, 5)).toBeNull();
+    expect(
+      scatterReading(
+        { name: "A", point: pt },
+        { name: "B", point: { ...pt, shots_per90: 1 } },
+        10,
+        5,
+      )!.sentence,
+    ).toBe("A: 3,5 tiros por 90 minutos y 42 % a puerta; B: 1,0 y 42 %.");
+  });
+
+  test("a figure's place is null when the server sent no percentile", () => {
+    const f = { ...pl.figures[0]!, percentile: { missing_reason: "sin_datos" } } as never;
+    expect(figurePlace(f)).toBeNull();
   });
 });
 

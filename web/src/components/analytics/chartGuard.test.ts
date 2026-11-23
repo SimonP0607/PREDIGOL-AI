@@ -20,8 +20,6 @@ const BEFORE_PM_10_06 = [
   "product/odds/MovementPanel.tsx",
   "product/odds/explorer/MovementChart.tsx",
   "product/records/Recap.tsx",
-  "product/teams/stats/Compare.tsx",
-  "product/teams/stats/PlayerStatsHub.tsx",
   "routes/admin.backtesting.tsx",
   "routes/admin.models.tsx",
   "routes/admin.odds.tsx",
