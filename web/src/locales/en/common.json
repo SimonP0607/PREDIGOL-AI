@@ -1,6 +1,8 @@
 {
   "appName": "PrediGol",
   "tagline": "Football Intelligence",
+  "scrollStart": "Show the previous ones",
+  "scrollEnd": "Show the next ones",
   "loading": "Loading…",
   "retry": "Try again",
   "close": "Close",

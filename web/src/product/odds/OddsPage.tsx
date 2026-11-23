@@ -12,6 +12,7 @@ import { t, useI18n } from "@/lib/i18n";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { GlossaryLink } from "@/components/system/GlossaryTerm";
+import { ScrollStrip } from "@/components/ui/ScrollStrip";
 import {
   Card,
   EmptyState,
@@ -409,24 +410,6 @@ function MarketTabs({
   onChange: (market: MarketKey) => void;
 }) {
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
-  const bar = useRef<HTMLDivElement>(null);
-  // True while some tab is hidden past the right edge: the bar fades there to say so.
-  const [more, setMore] = useState(false);
-
-  useEffect(() => {
-    const el = bar.current;
-    if (!el) return;
-    const update = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
-    observer?.observe(el);
-    return () => {
-      el.removeEventListener("scroll", update);
-      observer?.disconnect();
-    };
-  }, []);
-
   function choose(index: number, focus: boolean) {
     const m = MARKETS[index];
     const el = tabs.current[index];
@@ -459,17 +442,13 @@ function MarketTabs({
   }
 
   return (
-    <div
-      ref={bar}
+    <ScrollStrip
       role="tablist"
       aria-label={t("odds.marketsLabel")}
       onKeyDown={onKeyDown}
       data-testid="odds-market-tabs"
       data-guide="odds-tabs"
-      className={cn(
-        "flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        more && "[mask-image:linear-gradient(to_right,#000_calc(100%_-_3rem),transparent)]",
-      )}
+      className="flex gap-1 rounded-xl border border-border bg-card p-1"
     >
       {MARKETS.map((m, i) => {
         const on = m === value;
@@ -498,7 +477,7 @@ function MarketTabs({
           </button>
         );
       })}
-    </div>
+    </ScrollStrip>
   );
 }
 
