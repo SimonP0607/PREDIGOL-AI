@@ -46,8 +46,9 @@ export function marketTakesParlay(
 export function blockText(block: PriceBlock | null): string | null {
   switch (block) {
     case "lookup":
-    case "server":
       return t("explorer.parlay.lookup");
+    case "server":
+      return t("explorer.parlay.server");
     case "stale":
       return t("explorer.parlay.stale");
     case "outlier":

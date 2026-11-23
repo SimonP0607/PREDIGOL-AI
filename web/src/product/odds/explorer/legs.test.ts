@@ -78,7 +78,7 @@ describe("what can be tapped in", () => {
 
   test("each block in words", () => {
     expect(blockText("lookup")).toBe("Solo consulta");
-    expect(blockText("server")).toBe("Solo consulta");
+    expect(blockText("server")).toBe("Mi parlay no admite este precio");
     expect(blockText("stale")).toBe("Antiguo · no entra al parlay");
     expect(blockText("outlier")).toBe("Los precios atípicos no van en un parlay");
     expect(blockText("quarter")).toContain("no van en un parlay");
