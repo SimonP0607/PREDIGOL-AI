@@ -299,6 +299,57 @@ test("the picker on a 320 px phone: nothing sideways, every control in a finger'
   }
 });
 
+for (const width of [320, 1440]) {
+  test(`the search finds its results right under the field, and «Mercados que lees» comes after them: ${width} px (AP-B01)`, async ({
+    page,
+  }) => {
+    test.setTimeout(150_000);
+    const admin = await owner();
+    const { id, email } = await account(admin, "phone");
+    try {
+      await page.setViewportSize({ width, height: width < 700 ? 800 : 900 });
+      const w = watch(page, { expect401: true, expectStatus: [403] });
+      await signIn(page, email);
+      await quietGuides(page.request);
+      await consents(page);
+      await expect(page).toHaveURL(/\/welcome$/);
+      const team = await todaysTeam(page.request);
+      await page.getByTestId("fav-search").fill(team.name.slice(0, 5));
+      const status = page.getByTestId("fav-status");
+      await expect(status).not.toHaveText("");
+      await expect(page.getByTestId("fav-team").first()).toBeVisible();
+      const gap = await page.evaluate(() => {
+        const field = document.querySelector('[data-testid="fav-search"]')?.getBoundingClientRect();
+        const first = document
+          .querySelector('[data-testid="fav-results"]')
+          ?.firstElementChild?.getBoundingClientRect();
+        return field && first ? first.top - field.bottom : null;
+      });
+      expect(gap, "the first result block is under the field").not.toBeNull();
+      expect(gap ?? 99, "less than 24 px from the field").toBeLessThan(24);
+      const order = await page.evaluate(() => {
+        const results = document.querySelector('[data-testid="fav-results"]');
+        const markets = document.querySelector('[data-testid="fav-markets"]');
+        return results && markets
+          ? Boolean(results.compareDocumentPosition(markets) & Node.DOCUMENT_POSITION_FOLLOWING)
+          : null;
+      });
+      expect(order, "the markets block comes after the results").toBe(true);
+      const axe = await new AxeBuilder({ page })
+        .withTags(WCAG)
+        .include('[data-testid="welcome"]')
+        .analyze();
+      expect(
+        axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+      ).toEqual([]);
+      await assertClean(page, w);
+    } finally {
+      await remove(admin, id, email);
+      await admin.dispose();
+    }
+  });
+}
+
 test("the guide of Picks, a match, the parlays and Mis picks: once on the first visit, skipped with Escape, never again, and «?» brings it back", async ({
   page,
 }) => {
