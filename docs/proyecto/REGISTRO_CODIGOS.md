@@ -391,6 +391,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-201 | Un solo Inicio para todos con la franja «Tus favoritos» (AP-I01, decisión D1), detrás de `FBI_HOME_UNIFIED`: encima va la franja de lo que la cuenta sigue (partidos, noticias, picks y jugadores, cada uno con su motivo y el enlace «Editar favoritos»); sin favoritos, la tarjeta «Elige tus equipos»; se retiran el selector «Para ti / Todo» y la cabecera «Lo mismo para todos», y de Perfil «Inicio por defecto» (la columna `display.home_default` se conserva). Apagado, Inicio es el de hoy. | en curso | este PR | BE-085 |
 | UX-202 | Partidos con el mismo diseño para todos y «Todos · Mis favoritos» (AP-P04): abre en «Todos» salvo que algún favorito juegue ese día; «Mis favoritos» incluye equipos, selecciones, ligas y el equipo actual de los jugadores seguidos, y cada partido lleva su motivo («Sigues a …»). Solo web: sin cambios de servidor ni de contrato. | en curso | este PR | UX-201 |
 | UX-203 | Bienvenida con emoción y sin texto de contrato (AP-B04, D12): barra de progreso, una luz que barre el campo una vez y escudos que se elevan al elegirlos (todo sin movimiento con «reducir movimiento»); el paso «Qué es PrediGol» pasa a tres tarjetas con icono y una frase, sin el párrafo legal, que se queda en el pie; el recuento de límites solo aparece cerca del límite. Solo web, sin cambios de servidor ni de contrato. | en curso | este PR | UX-202 |
+| UX-204 | Equipos como portada del fútbol (AP-E02): «Tus equipos» con escudos grandes y su próximo partido (lo que ya sabe `GET /today`), «Selecciones» como bloque propio con atajos a la búsqueda, y el directorio por región y país con nombres en español (país → liga → equipos → perfil; nunca Partidos). Solo web, sin cambios de servidor ni de contrato. | en curso | este PR | UX-203 |
 | FE-001 | Recharts 2.15 → 3.10 (el informe de herramientas gratuitas): los gráficos de analítica, del explorador de cuotas, de Resumen y de modelos, y el `chart.tsx` de shadcn. Cambios de tipos (en Recharts 3 `payload` y `label` ya no están en `TooltipProps`, `formatter` recibe `ValueType | undefined`, `dataKey` puede ser una función) sin cambiar lo que se dibuja: se comparó una página con los seis gráficos de analítica y el gráfico de movimiento del explorador (con su tooltip) renderizados con 2.15 y con 3.10, en Chromium, y salen iguales | en curso | este PR | — |
 | FE-002 | Sin usar: la sesión de Intelligence tomó FE-003 sin pedir el siguiente libre (18-nov-2026). No se reutiliza | sin usar | — | — |
 | FE-003 | Plan de estadísticas avanzadas (EA-202): en «Mercados → Probabilidades», la línea que se muestra de un total siempre tiene su botón entre las ocho visibles (visto en producción con los córners de Flamengo–Athletico) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #390 | BE-047 |
@@ -501,7 +502,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-204 · BE-086 · FE-010 · OPS-017 · DOC-013
+CI-020 · SEG-003 · UX-205 · BE-086 · FE-010 · OPS-017 · DOC-013
 
 IA-161
 

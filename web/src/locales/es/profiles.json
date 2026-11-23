@@ -91,7 +91,12 @@
     "competitions": "Competiciones por país",
     "leagueError": "No pudimos cargar los equipos de esta liga.",
     "leagueNone": "Esta competición todavía no tiene equipos cargados.",
-    "leagueTable": "Tabla y calendario"
+    "leagueTable": "Tabla y calendario",
+    "next": "{when} · vs {rival}",
+    "nextNone": "Sin partido a la vista",
+    "nations": "Selecciones",
+    "nationsHelp": "Toca una selección para buscarla; también puedes escribir su nombre arriba.",
+    "countries": "{n} países"
   },
   "teamMissing": "Este equipo no existe o no tiene datos."
 }
