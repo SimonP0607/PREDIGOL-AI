@@ -18,16 +18,6 @@ import { settle } from "./support";
  * («kind|path|address»). A width's test must find exactly the defects listed for it.
  */
 const KNOWN: Readonly<Record<string, { piece: string; widths: readonly number[] }>> = {
-  // The price chips of «Mejores cuotas» (selection · price · bookmaker) are wider than their cell on a phone.
-  "overflow|/matches/:id|[selectable-price] span.inline-flex.items-center.gap-1": {
-    piece: "AP-P06",
-    widths: [320, 390],
-  },
-  // The «Lo más probable» badge of the forecast pokes out of its row at 1024 px.
-  "overflow|/matches/:id|[forecast-outcome] span.inline-flex.shrink-0.items-center": {
-    piece: "AP-P01",
-    widths: [1024],
-  },
   // The day selector of Partidos is wider than the bar that holds it on a desk.
   "overflow|/matches|[day-nav] div.scroll-strip.-my-1.flex": {
     piece: "AP-P04",
