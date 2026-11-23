@@ -10,7 +10,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from fbi.api.contracts.common import Contract
-from fbi.api.contracts.personal import MarketKey
+from fbi.api.contracts.personal import FollowedMarketKey
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 
 WelcomeStep = Literal["football", "about"]
@@ -29,7 +29,7 @@ class FavoritesView(Contract):
     leagues: list[CompetitionBadge] = Field(description="The leagues the reader follows, in the order chosen.")
     teams: list[TeamBadge]
     players: list[PlayerBadge] = Field(description="The players the reader follows, in the order chosen (3.1).")
-    markets: list[MarketKey] = Field(description="The markets the reader follows, in the order chosen (3.1).")
+    markets: list[FollowedMarketKey] = Field(description="The markets the reader follows, in the order chosen (3.1).")
     catalog_markets: list[str] = Field(default_factory=list, description="The markets of a match's catalogue the reader "
                                        "follows (``corners_over_under.FT.match``: code, period, subject), in the order "
                                        "chosen (CUOTAS, BE-025). Apart from ``markets``, the five classic ones.")
@@ -53,7 +53,7 @@ class FavoritesIn(BaseModel):
     teams: list[int] = Field(default_factory=list, max_length=50)
     players: list[int] | None = Field(default=None, max_length=50, description="Left out: the players the reader follows "
                                       "stay (a page from before 3.1 never clears them); [] clears them.")
-    markets: list[MarketKey] | None = Field(default=None, max_length=10, description="Left out: the markets the reader "
+    markets: list[FollowedMarketKey] | None = Field(default=None, max_length=10, description="Left out: the markets the reader "
                                             "follows stay; [] clears them.")
     catalog_markets: list[str] | None = Field(default=None, max_length=20, description="Left out: the catalogue markets "
                                               "the reader follows stay (a page from before BE-025 never clears them); "

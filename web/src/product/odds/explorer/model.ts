@@ -275,6 +275,8 @@ export interface BoardPages extends Loadable<OddsBoardPage[]> {
 
 /** The reader's teams and leagues (product/favorites' FollowSet fits): «Mis equipos y ligas». */
 export interface ExplorerFollow {
+  /** The families the reader follows as markets (corners, cards), in their order: their tabs come right after «Principales». */
+  families?: readonly string[] | undefined;
   teams: ReadonlySet<number>;
   leagues: { has(id: number): boolean };
 }
