@@ -57,7 +57,7 @@
     "count": "{count} of 5",
     "partial_one": "Only {count} selection met the criteria today. We never pad the list.",
     "partial_other": "Only {count} selections met the criteria today. We never pad the list.",
-    "emptyBody": "We only publish a selection when our tests on past matches back it. If none does, the day stays empty.",
+    "emptyBody": "PrediGol only publishes a pick when it finds real value; if it does not, the day stays without picks.",
     "list": "Picks of the day",
     "reason": {
       "no_qualified_picks": "No PrediGol picks today",
@@ -534,7 +534,7 @@
   "roiSample_other": "over {n} settled",
   "unitsLink": "What is a unit?",
   "noPick": {
-    "honest": "No match met the conditions to publish a pick today. We would rather not publish than publish for the sake of it.",
+    "honest": "No picks today: we did not find enough value in the market.",
     "reviewing": "We are still going through today's matches",
     "reviewingBody": "Today's picks show here when the review is over. Meanwhile, today's matches already have their forecast and their analysis.",
     "noMatches": "There are no matches of the competitions we follow today, so there are no picks either.",
@@ -569,7 +569,8 @@
       "value": "No market showed an edge over the market price.",
       "risk": "The selections paid odds above our risk limit.",
       "context": "PrediGol Intelligence did not finish reviewing the matches' context in time."
-    }
+    },
+    "how": "How do we choose?"
   },
   "sample": {
     "countsOnly_one": "{n} settled: hit rate, units and return show from {min}.",

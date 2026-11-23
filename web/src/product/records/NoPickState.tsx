@@ -3,6 +3,7 @@
  * while the set does not exist yet, a day without matches - and, when the reason cannot be loaded, the empty state the
  * list always had with a retry: a failure never reads as a reason.
  */
+import { Link } from "@tanstack/react-router";
 import { Hourglass, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import { t } from "@/lib/i18n";
@@ -127,9 +128,13 @@ export function NoPickState({
           {view.why}
         </p>
       ) : null}
-      <p className="text-caption leading-snug text-subtle-foreground">
-        {t("records.daily.emptyBody")}
-      </p>
+      <Link
+        to="/transparency/methodology"
+        className="tap-y relative inline-flex items-center text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        data-testid="no-pick-how"
+      >
+        {t("records.noPick.how")}
+      </Link>
       {more}
     </Frame>
   );

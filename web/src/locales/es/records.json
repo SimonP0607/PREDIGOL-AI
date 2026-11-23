@@ -57,7 +57,7 @@
     "count": "{count} de 5",
     "partial_one": "Hoy solo {count} selección ha cumplido el criterio. Nunca rellenamos.",
     "partial_other": "Hoy solo {count} selecciones han cumplido el criterio. Nunca rellenamos.",
-    "emptyBody": "Solo publicamos una selección cuando nuestras pruebas con partidos pasados la respaldan. Si ninguna lo cumple, el día se queda vacío.",
+    "emptyBody": "PrediGol solo publica un pick cuando encuentra valor de verdad; si no lo encuentra, el día queda sin picks.",
     "list": "Picks del día",
     "reason": {
       "no_qualified_picks": "Hoy no hay picks de PrediGol",
@@ -534,7 +534,7 @@
   "roiSample_other": "sobre {n} liquidados",
   "unitsLink": "¿Qué es una unidad?",
   "noPick": {
-    "honest": "Hoy ningún partido cumplió las condiciones para publicar un pick. Preferimos no publicar a publicar por publicar.",
+    "honest": "Hoy no hay picks: no encontramos valor suficiente en el mercado.",
     "reviewing": "Todavía estamos revisando los partidos de hoy",
     "reviewingBody": "Los picks del día aparecen aquí cuando termina la revisión. Mientras tanto, los partidos de hoy ya tienen su pronóstico y su análisis.",
     "noMatches": "Hoy no hay partidos de las competiciones que seguimos, así que tampoco hay picks.",
@@ -569,7 +569,8 @@
       "value": "Ningún mercado mostró ventaja frente al precio del mercado.",
       "risk": "Las selecciones pagaban cuotas por encima de nuestro límite de riesgo.",
       "context": "PrediGol Intelligence no terminó a tiempo de revisar el contexto de los partidos."
-    }
+    },
+    "how": "¿Cómo elegimos?"
   },
   "sample": {
     "countsOnly_one": "{n} liquidado: los aciertos, las unidades y la rentabilidad se ven desde {min}.",
