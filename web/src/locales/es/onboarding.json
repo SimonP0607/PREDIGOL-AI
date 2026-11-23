@@ -32,6 +32,7 @@
     "searchLabel": "Busca una liga, un equipo o un jugador",
     "searchPlaceholder": "Al menos dos letras (tres para un jugador)",
     "searching": "Buscando…",
+    "idleTeam": "Todavía sin partidos que sigamos",
     "found_one": "{count} equipo encontrado",
     "found_other": "{count} equipos encontrados",
     "leagues": "Ligas",

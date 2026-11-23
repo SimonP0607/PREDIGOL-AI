@@ -150,6 +150,12 @@ SELECT t.id FROM core.teams t
                   AND f.kickoff_at > now() - make_interval(days => %(days)s))
 """
 
+KNOWN_TEAMS_SQL = "SELECT id FROM core.teams WHERE id = ANY(%s)"
+"""A team PrediGol has a profile for (AP-B06): any team of the base, whether or not a league it follows plays it now."""
+
+IDLE_TEAMS_SQL = FOLLOWABLE_TEAMS_SQL
+"""The followable-with-matches test, read the other way round: a followed team not in its answer has no match we follow."""
+
 APPEARANCE_SQL = """
 SELECT 1 FROM core.fixture_lineup_players lp
   JOIN core.fixtures f ON f.id = lp.fixture_id
@@ -174,6 +180,15 @@ def chosen(conn: psycopg.Connection[Any], user_id: int) -> Chosen | None:
         return None
     return Chosen(leagues=tuple(int(r[1]) for r in rows if r[0] == "league"),
                   teams=tuple(int(r[1]) for r in rows if r[0] == "team"))
+
+
+def teams_without_matches(conn: psycopg.Connection[Any], ids: Sequence[int]) -> list[int]:
+    """The teams among these with no match of a league PrediGol follows in the window (AP-B06): followed all the same, they
+    do not appear in Home's strip until one does, and Home says so. In the order given."""
+    if not ids:
+        return []
+    live = {int(r[0]) for r in conn.execute(IDLE_TEAMS_SQL, {"ids": list(ids), "days": TEAM_WINDOW_DAYS}).fetchall()}
+    return [i for i in ids if i not in live]
 
 
 def suggested(conn: psycopg.Connection[Any]) -> Chosen:
@@ -204,10 +219,9 @@ def validate(conn: psycopg.Connection[Any], leagues: Sequence[int], teams: Seque
         if missing := [i for i in want_leagues if i not in known]:
             raise CustomerError(422, "unknown_league", f"not a league PrediGol follows: {missing[0]}")
     if want_teams:
-        known = {int(r[0]) for r in conn.execute(FOLLOWABLE_TEAMS_SQL,
-                                                   {"ids": want_teams, "days": TEAM_WINDOW_DAYS}).fetchall()}
+        known = {int(r[0]) for r in conn.execute(KNOWN_TEAMS_SQL, (want_teams,)).fetchall()}
         if missing := [i for i in want_teams if i not in known]:
-            raise CustomerError(422, "unknown_team", f"not a team of a league PrediGol follows: {missing[0]}")
+            raise CustomerError(422, "unknown_team", f"not a team PrediGol knows: {missing[0]}")
     return Chosen(leagues=tuple(want_leagues), teams=tuple(want_teams))
 
 
