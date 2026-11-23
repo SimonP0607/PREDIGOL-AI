@@ -1,0 +1,23 @@
+{
+  "title": "Probar un correo",
+  "intro": "Mira el correo exacto de una plantilla, en el idioma y el ancho que elijas. Es el mismo texto y el mismo diseño con los que sale: no se envía nada a nadie, y los botones de las plantillas con enlace de un solo uso muestran una dirección de ejemplo.",
+  "template": "Plantilla",
+  "language": "Idioma",
+  "device": "Ancho",
+  "phone": "Móvil",
+  "desktop": "Escritorio",
+  "frame": "Vista previa del correo «{template}» en {language}",
+  "subject": "Asunto",
+  "button": "Botón: {link}",
+  "loading": "Preparando la vista previa…",
+  "sendTest": "Enviarme una prueba",
+  "sending": "Enviando…",
+  "queued": "Listo: la prueba quedó en la cola, hacia tu cuenta, en {language}. Sale con las reglas de siempre del envío.",
+  "alreadyQueued": "Esa prueba ya estaba en la cola.",
+  "notThisOne": "Este correo lleva un enlace de un solo uso: se puede ver, pero no se envía como prueba.",
+  "limit": "Ya pediste el máximo de pruebas esta hora. Vuelve a intentarlo más tarde.",
+  "failed": "No se pudo pedir la prueba. Inténtalo de nuevo.",
+  "limitNote": "Hasta 5 pruebas por hora, siempre a tu propia cuenta. Cada una queda en el registro de actividad.",
+  "queueFrame": "Cómo se ve",
+  "unavailable": "Este correo no se puede dibujar ahora mismo."
+}

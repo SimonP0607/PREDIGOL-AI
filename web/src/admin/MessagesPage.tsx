@@ -13,6 +13,8 @@ import { t } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Card, ErrorState } from "@/product/shared/States";
+import { EmailFrame, EmailPreview } from "./EmailPreview";
+import { t as te } from "./emailText";
 import { STATUSES, templateName } from "./messages";
 
 const TONE: Readonly<Record<MessageStatus, string>> = {
@@ -42,6 +44,7 @@ function Preview({ id }: { id: number }) {
   return (
     <div className="space-y-2 rounded-md bg-elevated/60 p-3" data-testid={`message-preview-${id}`}>
       <p className="text-sm font-semibold">{q.data.subject}</p>
+      <EmailFrame html={q.data.html} title={te("emailpreview.queueFrame")} />
       <pre className="whitespace-pre-wrap break-words font-sans text-xs">{q.data.text}</pre>
       {q.data.link ? (
         <p className="text-xs">
@@ -152,6 +155,7 @@ export function MessagesPage() {
           </button>
         }
       />
+      <EmailPreview />
       <Card className="space-y-4 p-4">
         {q.isPending ? (
           <Loader2 aria-hidden className="h-4 w-4 animate-spin" />

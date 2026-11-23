@@ -13,6 +13,7 @@ import "@/product/shared/availabilityText";
 import "@/components/analytics/evidenceText";
 import "@/components/analytics/stats/readText";
 import "@/admin/usageText";
+import "@/admin/emailText";
 import "@/product/competitions/text";
 import "@/product/match/stats/matchvizText";
 import "@/product/teams/stats/playerText";
