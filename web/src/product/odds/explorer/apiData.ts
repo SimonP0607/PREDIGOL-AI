@@ -135,6 +135,10 @@ export const API_EXPLORER_DATA: ExplorerData = {
     return opened(useQuery({ ...live.oddsMovement(fixtureId, movementParams(q)), enabled }));
   },
 
+  useAdmin(): boolean {
+    return useAuth().user?.role !== "USER";
+  },
+
   useFollow(): ExplorerFollow | null {
     // «Mis equipos y ligas» is a reader's: the owner's account and personalisation off have none
     const reader = useAuth().user?.role === "USER";

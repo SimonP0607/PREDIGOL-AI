@@ -24,6 +24,7 @@
   "searchPlaceholder": "Search matches, teams, competitions…",
   "searchEmpty": "Nothing matches that search.",
   "justNow": "just now",
+  "dataDelayed": "The data is running late; we are updating it.",
   "updated": "Updated {when}",
   "updatedAt": "Updated at {time}",
   "lastUpdate": "Last update",

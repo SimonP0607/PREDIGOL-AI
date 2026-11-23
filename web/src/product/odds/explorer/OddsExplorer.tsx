@@ -85,6 +85,7 @@ export function OddsExplorer({
   const [said, announce] = useAnnouncer();
   useSlipAnnouncer(announce);
   const follow = data.useFollow();
+  const admin = data.useAdmin();
 
   const families = data.useFamilies(familiesQuery(state), { paused, enabled: true });
   useGuideScreen("odds", { ready: guide === true && !families.isPending });
@@ -297,6 +298,7 @@ export function OddsExplorer({
             }
             paused={paused}
             onPause={pause}
+            admin={admin}
           />
         }
       />

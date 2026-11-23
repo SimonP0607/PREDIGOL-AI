@@ -105,7 +105,7 @@ const count = (markup: string, needle: string) => markup.split(needle).length - 
 
 describe("the board", () => {
   test("the family tabs with their matches, the market chips, one row per match", async () => {
-    const { markup, data } = await explorer();
+    const { markup, data } = await explorer({}, { admin: true });
     for (const name of [
       "Principales",
       "Goles",
@@ -134,6 +134,15 @@ describe("the board", () => {
     // each row's age, its own
     expect(count(markup, 'data-testid="explorer-freshness"')).toBe(5);
     expect(markup).toContain("Actualizado 11:59");
+  });
+
+  test("the hour of the last reading is the administrator's; a reader is not shown it unless the updates are paused", async () => {
+    const reader = (await explorer()).markup;
+    expect(reader).not.toContain('data-testid="explorer-updated"');
+    // each row's own age stays: it is the price's, not a notice about the page
+    expect(count(reader, 'data-testid="explorer-freshness"')).toBe(5);
+    const admin = (await explorer({}, { admin: true })).markup;
+    expect(admin).toContain('data-testid="explorer-updated"');
   });
 
   test("four figures that never mix: the best price and its bookmaker, the market's fair price and the difference, grey; no model figure", async () => {

@@ -1,5 +1,6 @@
 {
   "liveUpdated": "Live data updated {when}",
+  "liveUpdatedAt": "Live data from {time} · {when}",
   "liveNone": "No recent live data",
   "picks": {
     "seeAll": "See all",
