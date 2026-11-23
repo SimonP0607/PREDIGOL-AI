@@ -1589,5 +1589,29 @@
       "mine": "Your teams",
       "recent": "Latest"
     }
+  },
+  "keyFigures": {
+    "title": "Key figures",
+    "note": "The analysis's own figures, at a glance. Nothing new is calculated.",
+    "rank": "Position",
+    "rankValue": "#{rank}",
+    "gap": "Points to the zone",
+    "gapUp": "{count} to {zone}",
+    "gapDown": "{count} from {zone}",
+    "form": "Form",
+    "formLast": "Last {count}",
+    "xg": "xG for / against",
+    "rest": "Rest",
+    "restAtMost": "up to {days}",
+    "days_one": "{days} day",
+    "days_other": "{days} days",
+    "none": "—",
+    "tableTitle": "How the table would look",
+    "ifHomeWin": "If {team} win",
+    "ifDraw": "If they draw",
+    "ifAwayWin": "If {team} win",
+    "pointsPlaces": "{points} pts · {places}",
+    "sentences": "Show the analysis in sentences",
+    "sentencesHide": "Hide the sentences"
   }
 }
