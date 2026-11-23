@@ -5,7 +5,14 @@
  * a failure that never reads as a reason, and none of the words the plan keeps out of an empty day («valor», certainty).
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { setLocale } from "@/lib/i18n";
 import esRecords from "@/locales/es/records.json";
 import enRecords from "@/locales/en/records.json";
@@ -14,6 +21,16 @@ import enHome from "@/locales/en/home.json";
 import type { NoPick } from "@/lib/api/v1/types_today";
 import { noPickView, reasonText } from "./noPick";
 import { NoPickState } from "./NoPickState";
+
+/** The state inside a router: it links to the methodology. */
+async function inRouter(el: ReactElement): Promise<string> {
+  const router = createRouter({
+    routeTree: createRootRoute({ component: () => el }),
+    history: createMemoryHistory({ initialEntries: ["/picks"] }),
+  });
+  await router.load();
+  return renderToStaticMarkup(<RouterProvider router={router} />);
+}
 
 setLocale("es");
 afterEach(() => setLocale("es"));
@@ -43,7 +60,7 @@ function strings(node: unknown): string[] {
 }
 
 describe("the reason in the reader's words", () => {
-  test("the plan's own example, for a day no market beat", () => {
+  test("the plan's own example, for a day no market beat", async () => {
     expect(reasonText({ stage: "value", reason: "non_positive_ev" })).toBe(
       "Ningún mercado mostró ventaja frente al precio del mercado.",
     );
@@ -53,7 +70,7 @@ describe("the reason in the reader's words", () => {
     );
   });
 
-  test("a reason this page has no sentence for falls back on its stage, then on nothing", () => {
+  test("a reason this page has no sentence for falls back on its stage, then on nothing", async () => {
     expect(reasonText({ stage: "risk", reason: "a_reason_from_the_future" })).toBe(
       "Las selecciones pagaban cuotas por encima de nuestro límite de riesgo.",
     );
@@ -62,7 +79,7 @@ describe("the reason in the reader's words", () => {
     expect(reasonText({ stage: null, reason: null })).toBeNull();
   });
 
-  test("the states: published, being read, no matches, none with its reason", () => {
+  test("the states: published, being read, no matches, none with its reason", async () => {
     expect(noPickView(null)).toEqual({ kind: "generic" });
     expect(noPickView(day({ state: "picks" }))).toEqual({ kind: "generic" });
     expect(noPickView(day({ state: "reviewing" }))).toEqual({ kind: "reviewing" });
@@ -75,15 +92,17 @@ describe("the reason in the reader's words", () => {
 });
 
 describe("what the page says", () => {
-  test("none: the plan's sentence, word for word, and the reason under it", () => {
-    const html = renderToStaticMarkup(
+  test("none: the plan's sentence, word for word, and the reason under it", async () => {
+    const html = await inRouter(
       <NoPickState
         load={{ status: "ok", value: day({ stage: "value", reason: "non_positive_ev" }) }}
       />,
     );
     expect(text(html)).toContain(
-      "Hoy ningún partido cumplió las condiciones para publicar un pick. Preferimos no publicar a publicar por publicar.",
+      "Hoy no hay picks: no encontramos valor suficiente en el mercado.",
     );
+    expect(html).toContain('data-testid="no-pick-how"');
+    expect(html).toContain("/transparency/methodology");
     expect(text(html)).toContain(
       "Motivo: Ningún mercado mostró ventaja frente al precio del mercado.",
     );
@@ -91,55 +110,70 @@ describe("what the page says", () => {
     expect(html).toContain('data-reason="non_positive_ev"');
   });
 
-  test("a decided empty day carries what the caller adds (the way to «Cómo le va a PrediGol», A12); a day being read does not", () => {
+  test("a decided empty day carries what the caller adds (the way to «Cómo le va a PrediGol», A12); a day being read does not", async () => {
     const more = <a data-testid="more-link">más</a>;
     for (const value of [
       day({ stage: "value", reason: "non_positive_ev" }),
       day({ reason: "no_matches", matches: 0 }),
     ])
-      expect(
-        renderToStaticMarkup(<NoPickState load={{ status: "ok", value }} more={more} />),
-      ).toContain('data-testid="more-link"');
+      expect(await inRouter(<NoPickState load={{ status: "ok", value }} more={more} />)).toContain(
+        'data-testid="more-link"',
+      );
     expect(
-      renderToStaticMarkup(
+      await inRouter(
         <NoPickState load={{ status: "ok", value: day({ state: "reviewing" }) }} more={more} />,
       ),
     ).not.toContain('data-testid="more-link"');
   });
 
-  test("the set not chosen yet: «todavía estamos revisando», and no hour is promised", () => {
+  test("the set not chosen yet: «todavía estamos revisando», and no hour is promised", async () => {
     const html = text(
-      renderToStaticMarkup(
-        <NoPickState load={{ status: "ok", value: day({ state: "reviewing" }) }} />,
-      ),
+      await inRouter(<NoPickState load={{ status: "ok", value: day({ state: "reviewing" }) }} />),
     );
     expect(html).toContain("Todavía estamos revisando los partidos de hoy");
     expect(html).not.toMatch(/\d{1,2}[:.]\d{2}|\d+ ?h\b/);
   });
 
-  test("a failure to load the reason is said, with a retry - never as a reason", () => {
+  test("a failure to load the reason is said, with a retry - never as a reason", async () => {
     const html = text(
-      renderToStaticMarkup(
+      await inRouter(
         <NoPickState load={{ status: "error", error: new Error("x"), retry: () => {} }} />,
       ),
     );
     expect(html).toContain("No pudimos cargar el motivo.");
     expect(html).toContain("Reintentar");
-    expect(html).not.toContain("Preferimos no publicar");
+    expect(html).not.toContain("no encontramos valor suficiente");
   });
 });
 
 describe("what an empty day never says (plan section 24)", () => {
   const VETOED_ES = /\b(valor|seguro|segura|fijo|fija|garantizad[oa]s?|apuesta)\b/i;
   const VETOED_EN = /\b(value|sure|guaranteed|lock|bet)\b/i;
-  test("no «valor» and no certainty in Spanish", () => {
-    for (const s of strings({ noPick: esRecords.noPick, home: esHome })) {
+  test("no «valor» and no certainty in Spanish", async () => {
+    // The approved sentence of the day without picks (AP-K03) is the one place the word is said, and it is said whole.
+    const { honest, ...rest } = esRecords.noPick;
+    expect(honest).toBe("Hoy no hay picks: no encontramos valor suficiente en el mercado.");
+    for (const s of strings({ noPick: rest, home: esHome })) {
       expect(s).not.toMatch(VETOED_ES);
     }
   });
-  test("no «value» and no certainty in English", () => {
-    for (const s of strings({ noPick: enRecords.noPick, home: enHome })) {
+  test("no «value» and no certainty in English", async () => {
+    const { honest, ...rest } = enRecords.noPick;
+    expect(honest).toBe("No picks today: we did not find enough value in the market.");
+    for (const s of strings({ noPick: rest, home: enHome })) {
       expect(s).not.toMatch(VETOED_EN);
+    }
+  });
+});
+
+describe("no laboratory words in what the reader reads (AP-K03)", () => {
+  const LAB = /backtest|sin el margen/i;
+  test("Picks, the day without picks and the funnel, in both languages", async () => {
+    for (const s of strings({
+      es: [esRecords.noPick, esRecords.daily, esRecords.funnel],
+      en: [enRecords.noPick, enRecords.daily, enRecords.funnel],
+    })) {
+      expect(s).not.toMatch(LAB);
     }
   });
 });
