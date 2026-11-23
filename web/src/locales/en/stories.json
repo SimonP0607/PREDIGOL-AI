@@ -64,5 +64,64 @@
     "notFound": "We could not find this story. It may no longer be available.",
     "closed": "News is not open yet.",
     "noSources": "No sources to show."
+  },
+  "title": "News",
+  "subtitle": "The stories of football, how confirmed each is and where it comes from.",
+  "search": {
+    "label": "Search the news",
+    "placeholder": "Search a team, a player or a topic",
+    "submit": "Search",
+    "clear": "Clear the search",
+    "did": "We searched: {normalized}"
+  },
+  "front": {
+    "lead": "Top story",
+    "breaking": "Breaking",
+    "mine": "Your teams",
+    "mineEmpty": "Follow teams and players to see their stories here.",
+    "featured": "Featured",
+    "topics": "By topic",
+    "window": "Stories of the last {hours} hours",
+    "empty": "There are no stories in the last {hours} hours yet.",
+    "emptyBody": "When a source publishes something about a match or a team, it shows up here."
+  },
+  "filters": {
+    "label": "Filters",
+    "level": "How confirmed",
+    "category": "Topic",
+    "all": "All",
+    "mine": "Only what I follow",
+    "sort": "Order",
+    "since": "From",
+    "until": "To",
+    "clear": "Clear the filters",
+    "remove": "Remove the {name} filter",
+    "applied": "Filters applied",
+    "names": {
+      "q": "Text",
+      "team": "Team",
+      "player": "Player",
+      "competition": "Competition",
+      "country": "Country",
+      "from": "From",
+      "to": "To",
+      "category": "Topic",
+      "level": "Level",
+      "mine": "What I follow"
+    }
+  },
+  "sort": {
+    "reciente": "Most recent",
+    "relevante": "Most relevant"
+  },
+  "results": {
+    "total_one": "{count} story",
+    "total_other": "{count} stories",
+    "none": "We found no stories with these filters.",
+    "noneBody": "Try fewer filters or another name.",
+    "more": "Show more stories"
+  },
+  "card": {
+    "open": "Open the story"
   }
 }

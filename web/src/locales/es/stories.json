@@ -64,5 +64,64 @@
     "notFound": "No encontramos esta historia. Puede que ya no esté disponible.",
     "closed": "Las noticias todavía no están abiertas.",
     "noSources": "Sin fuentes que mostrar."
+  },
+  "title": "Noticias",
+  "subtitle": "Las historias del fútbol, con qué tan confirmadas están y de dónde salen.",
+  "search": {
+    "label": "Buscar en las noticias",
+    "placeholder": "Buscar un equipo, un jugador o un tema",
+    "submit": "Buscar",
+    "clear": "Quitar la búsqueda",
+    "did": "Buscamos: {normalized}"
+  },
+  "front": {
+    "lead": "Historia principal",
+    "breaking": "Última hora",
+    "mine": "Tus equipos",
+    "mineEmpty": "Sigue equipos y jugadores para ver aquí sus historias.",
+    "featured": "Destacadas",
+    "topics": "Por tema",
+    "window": "Historias de las últimas {hours} horas",
+    "empty": "Todavía no hay historias en las últimas {hours} horas.",
+    "emptyBody": "Cuando una fuente publique algo de un partido o un equipo, aparece aquí."
+  },
+  "filters": {
+    "label": "Filtros",
+    "level": "Qué tan confirmada",
+    "category": "Tema",
+    "all": "Todas",
+    "mine": "Solo lo que sigo",
+    "sort": "Orden",
+    "since": "Desde",
+    "until": "Hasta",
+    "clear": "Quitar los filtros",
+    "remove": "Quitar el filtro {name}",
+    "applied": "Filtros aplicados",
+    "names": {
+      "q": "Texto",
+      "team": "Equipo",
+      "player": "Jugador",
+      "competition": "Competición",
+      "country": "País",
+      "from": "Desde",
+      "to": "Hasta",
+      "category": "Tema",
+      "level": "Nivel",
+      "mine": "Lo que sigo"
+    }
+  },
+  "sort": {
+    "reciente": "Más recientes",
+    "relevante": "Más relevantes"
+  },
+  "results": {
+    "total_one": "{count} historia",
+    "total_other": "{count} historias",
+    "none": "No encontramos historias con estos filtros.",
+    "noneBody": "Prueba con menos filtros o con otro nombre.",
+    "more": "Ver más historias"
+  },
+  "card": {
+    "open": "Abrir la historia"
   }
 }
