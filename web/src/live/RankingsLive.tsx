@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { Numeric } from "@/components/primitives/Indicators";
 import { SelectFilter } from "@/components/system/Filters";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
-import { ApiErrorNotice, SectionView } from "@/components/system/LiveState";
+import { FailedOrSkeleton, ApiErrorNotice, SectionView } from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
 import type { RatingPool } from "@/lib/api/v1/types";
 import { int } from "@/lib/format";
@@ -47,7 +47,9 @@ export function RankingsLive() {
         title={t("admin.pages.rankings.title")}
         description={t("admin.pages.rankings.description")}
       />
-      {q.isError ? <ApiErrorNotice error={q.error} /> : null}
+      {q.isError && d ? (
+        <ApiErrorNotice error={q.error} onRetry={() => void q.refetch()} retrying={q.isFetching} />
+      ) : null}
       <div className="flex max-w-2xl flex-wrap gap-3">
         <div className="min-w-[12rem]">
           <SelectFilter
@@ -81,7 +83,13 @@ export function RankingsLive() {
         bodyClassName=""
       >
         {!d ? (
-          <TableSkeleton rows={8} cols={6} />
+          <FailedOrSkeleton
+            isError={q.isError}
+            error={q.error}
+            onRetry={() => void q.refetch()}
+            retrying={q.isFetching}
+            skeleton={<TableSkeleton rows={8} cols={6} />}
+          />
         ) : (
           <SectionView section={{ status: d.status, data: d.data, reason: d.reason }}>
             {(r) =>
