@@ -32,6 +32,26 @@ describe("the team's charts in the reader's language", () => {
     expect(html).not.toMatch(/bootstrap|Kaplan|pulso-v/i);
   });
 
+  test("the summary on top says form, strength and weak point with the contract's figures (AP-E03)", () => {
+    setLocale("es");
+    const first = body.figures.find((f) => typeof f.percentile === "number")!;
+    const spread = {
+      ...body,
+      figures: [
+        { ...first, key: "xg_for", percentile: 90 },
+        { ...first, key: "xg_against", percentile: 90, better: "menos" },
+        ...body.figures,
+      ],
+    } as TeamBody;
+    const html = renderToStaticMarkup(<TeamSections entity={entity} body={spread} />);
+    const at = html.indexOf('data-testid="stats-summary"');
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(html.indexOf('data-testid="stats-performance"'));
+    expect(html).toContain(`Forma: ${body.team.name} ha jugado ${body.record.matches} partidos`);
+    expect(html).toContain("Punto fuerte: xG a favor, mejor que el 90 % de su liga.");
+    expect(html).toContain("Punto débil: xG en contra, peor que el 90 % de su liga.");
+  });
+
   test("a chart with no figures is not drawn: the reason is said instead", () => {
     setLocale("es");
     const empty = {

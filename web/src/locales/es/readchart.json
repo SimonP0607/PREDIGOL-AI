@@ -121,5 +121,11 @@
       "read": "Tu mejor día fue el {best} ({bestProfit}) y el peor, el {worst} ({worstProfit}), entre {days} días con registros liquidados.",
       "one": "Hay {days} día con registros liquidados."
     }
+  },
+  "summary": {
+    "title": "En resumen",
+    "form": "Forma: {team} ha jugado {n} partidos con {won} ganados, {drawn} empatados y {lost} perdidos ({gf} goles a favor y {ga} en contra).",
+    "strength": "Punto fuerte: {fig}, {words}.",
+    "weakness": "Punto débil: {fig}, {words}."
   }
 }

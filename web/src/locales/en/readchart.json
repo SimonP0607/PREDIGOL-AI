@@ -121,5 +121,11 @@
       "read": "Your best day was {best} ({bestProfit}) and your worst, {worst} ({worstProfit}), among {days} days with settled records.",
       "one": "There is {days} day with settled records."
     }
+  },
+  "summary": {
+    "title": "In short",
+    "form": "Form: {team} has played {n} matches with {won} won, {drawn} drawn and {lost} lost ({gf} goals for and {ga} against).",
+    "strength": "Strength: {fig}, {words}.",
+    "weakness": "Weak point: {fig}, {words}."
   }
 }

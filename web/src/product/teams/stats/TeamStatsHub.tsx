@@ -25,6 +25,7 @@ import {
   radarReading,
   statesReading,
   survivalReading,
+  teamSummary,
   trendsReading,
   xgReading,
 } from "@/components/analytics/stats/howToRead";
@@ -147,6 +148,7 @@ export function TeamSections({ entity, body }: { entity: StatsEntity; body: Team
   const name = body.team.name;
   const matches = body.record.matches;
   const xg = xgReading(name, body.series);
+  const summary = teamSummary(name, body.record, body.figures);
   const trends = trendsReading(
     name,
     [...streaks, ...(matrix?.flatMap((c) => c.rows) ?? [])],
@@ -175,6 +177,18 @@ export function TeamSections({ entity, body }: { entity: StatsEntity; body: Team
   const common = { evidence: "E1", review: READER_REVIEW } as const;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      <section
+        className="space-y-1 rounded-2xl border border-border bg-card p-4 lg:col-span-2"
+        data-testid="stats-summary"
+        aria-label={r("readchart.summary.title")}
+      >
+        <h2 className="text-subheading">{r("readchart.summary.title")}</h2>
+        <ul className="space-y-1 text-small text-foreground-soft">
+          <li>{summary.form}</li>
+          {summary.strength ? <li>{summary.strength}</li> : null}
+          {summary.weakness ? <li>{summary.weakness}</li> : null}
+        </ul>
+      </section>
       <EvidenceChart
         {...common}
         title={r("readchart.perf.title")}
