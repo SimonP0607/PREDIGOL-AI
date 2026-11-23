@@ -645,6 +645,16 @@ function CompactPrice({
         <div title={blockText(block) ?? undefined}>
           <span className="sr-only">{description}</span>
           <span aria-hidden>{tile}</span>
+          {/* AP-C03: why this price does not go to «Mi parlay», in words and in view (a hover text never shows on a phone). */}
+          {block && block !== "stale" ? (
+            <span
+              aria-hidden
+              className="mt-0.5 block break-words text-micro leading-4 text-subtle-foreground"
+              data-testid="by-match-block-reason"
+            >
+              {blockText(block)}
+            </span>
+          ) : null}
         </div>
       )}
     </div>

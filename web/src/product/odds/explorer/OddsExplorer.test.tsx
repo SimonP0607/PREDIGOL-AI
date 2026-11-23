@@ -239,6 +239,10 @@ describe("an Asian handicap and the parlay", () => {
     expect(brighton).toContain("Brentford +0,25: mejor cuota");
     expect(brighton).not.toContain('data-testid="odds-add-to-parlay"');
     expect(brighton).toContain("no van en un parlay");
+    // AP-C03: the reason is in view beside the price, not only a hover text a phone never shows
+    expect(brighton).toContain('data-testid="explorer-block-reason"');
+    expect(count(brighton, 'data-testid="explorer-block-reason"')).toBe(2);
+    expect(count(rowOf(markup, 7820), 'data-testid="explorer-block-reason"')).toBe(0);
     expect(cellLabels(rowOf(markup, 7820))).toEqual(["Local -1,5", "Visitante +1,5"]);
     expect(count(rowOf(markup, 7820), 'data-testid="odds-add-to-parlay"')).toBe(2);
     expect(markup).toContain("Toca una cuota para agregarla a tu parlay o quitarla.");

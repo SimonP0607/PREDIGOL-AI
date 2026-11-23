@@ -231,7 +231,8 @@
     "count_other": "Mi parlay: {count} selecciones.",
     "added": "Agregada: {leg}.",
     "replaced": "Agregada: {leg}, en lugar de la otra selección de ese partido.",
-    "removed": "Quitada: {leg}."
+    "removed": "Quitada: {leg}.",
+    "server": "Mi parlay no admite este precio"
   },
   "compare": {
     "toggle": "Comparar casas",
