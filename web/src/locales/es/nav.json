@@ -76,10 +76,13 @@
     "noneHint": "Prueba con el nombre corto del equipo o de la competición.",
     "groups": {
       "team": "Equipos",
+      "national_team": "Selecciones",
+      "player": "Jugadores",
       "competition": "Competiciones",
       "fixture": "Partidos"
     },
-    "scope": "Por ahora busca equipos, competiciones y partidos.",
+    "didYouMean": "¿Quisiste decir…?",
+    "scope": "Busca equipos, selecciones, jugadores, competiciones y partidos.",
     "keys": "↑ ↓ para moverte · Intro para abrir · Esc para cerrar"
   }
 }
