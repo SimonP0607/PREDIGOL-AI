@@ -29,7 +29,8 @@ import { DailyItemCard } from "./DailyItemCard";
 import { DayNav } from "./DayNav";
 import { DEFAULT_DAILY_ORDER, orderDaily, type DailyOrder } from "./dailyOrder";
 import { FunnelLine } from "./FunnelLine";
-import type { NoPickLoad } from "./noPick";
+import { noPickView, type NoPickLoad } from "./noPick";
+import { DayHighlights } from "@/product/shared/DayHighlights";
 import { NoPickState } from "./NoPickState";
 import { TransparencyLink } from "@/product/transparency/TransparencyLink";
 
@@ -115,7 +116,16 @@ export function DailySetBlock({
       </Card>
     );
   } else if (items.length === 0 && noPick && !evaluation) {
-    body = <NoPickState load={noPick} more={<TransparencyLink />} />;
+    body = (
+      <>
+        <NoPickState load={noPick} more={<TransparencyLink />} />
+        {noPickView(noPick.status === "ok" ? noPick.value : null).kind === "none" ? (
+          <div className="mt-6">
+            <DayHighlights />
+          </div>
+        ) : null}
+      </>
+    );
   } else if (items.length === 0) {
     body = (
       <Card>
