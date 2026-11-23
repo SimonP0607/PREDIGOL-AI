@@ -14,7 +14,7 @@ import {
   squadGroups,
   teamLabel,
 } from "./model";
-import { byCountry } from "./TeamsPage";
+import { byCountry, byRegion, NATION_SHORTCUTS } from "./TeamsPage";
 
 const m = (id: number, home: number, away: number, score: [number, number] | null) =>
   ({
@@ -109,5 +109,56 @@ describe("AP-T02: the countries in the reader's language", () => {
     const groups = byCountry([c(1, "Spain"), c(2, "Colombia"), c(3, "Belgium"), c(4, "Germany")]);
     expect(groups.map((g) => g.label)).toEqual(["Colombia", "Alemania", "Bélgica", "España"]);
     expect(groups.map((g) => g.country)).toEqual(["Colombia", "Germany", "Belgium", "Spain"]);
+  });
+});
+
+describe("Equipos como portada (AP-E02)", () => {
+  const c = (id: number, country: string, code: string | null) =>
+    ({
+      id,
+      name: `C${id}`,
+      country,
+      country_code: code,
+      is_tracked: true,
+      tier: 1,
+    }) as CompetitionSummary;
+
+  test("los países se agrupan por región, la del lector primero, y no se inventa una región", () => {
+    setLocale("es");
+    const groups = byCountry([
+      c(1, "Spain", "ES"),
+      c(2, "Colombia", "CO"),
+      c(3, "Brazil", "BR"),
+      c(4, "Japan", "JP"),
+      c(5, "Atlantis", null),
+      c(6, "World", null),
+    ]);
+    const regions = byRegion(groups);
+    expect(regions.map((r) => r.region)).toEqual([
+      "sudamerica",
+      "europa",
+      "asia",
+      "internacional",
+      "otras",
+    ]);
+    expect(regions[0]!.countries.map((g) => g.country)).toEqual(["Colombia", "Brazil"]);
+    expect(regions[4]!.countries.map((g) => g.country)).toEqual(["Atlantis"]);
+  });
+
+  test("las selecciones de atajo salen con su nombre en español y en inglés", () => {
+    setLocale("es");
+    expect(NATION_SHORTCUTS.map((n) => countryName(n))).toEqual([
+      "Colombia",
+      "Brasil",
+      "Argentina",
+      "España",
+      "Inglaterra",
+      "Alemania",
+      "Países Bajos",
+      "Sudáfrica",
+    ]);
+    setLocale("en");
+    expect(countryName("Spain")).toBe("Spain");
+    setLocale("es");
   });
 });

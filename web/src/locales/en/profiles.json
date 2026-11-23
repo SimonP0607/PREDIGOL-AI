@@ -91,7 +91,12 @@
     "competitions": "Competitions by country",
     "leagueError": "We could not load this league's teams.",
     "leagueNone": "This competition has no teams loaded yet.",
-    "leagueTable": "Table and calendar"
+    "leagueTable": "Table and calendar",
+    "next": "{when} · vs {rival}",
+    "nextNone": "No match in sight",
+    "nations": "National teams",
+    "nationsHelp": "Tap a national team to search for it; you can also type its name above.",
+    "countries": "{n} countries"
   },
   "teamMissing": "This team does not exist or has no data."
 }
