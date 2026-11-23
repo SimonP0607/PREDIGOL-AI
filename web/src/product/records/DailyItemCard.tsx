@@ -15,8 +15,7 @@ import { t } from "@/lib/i18n";
 import { fmtPct } from "@/lib/i18n/format";
 import type { DailyItem } from "@/lib/api/v1/types_records";
 import { CompetitionTag, Matchup } from "@/components/football/Logos";
-import { EvBadge, Kickoff, OddsPill } from "@/product/shared/Bits";
-import { PriceNowLine } from "@/product/shared/PriceNowLine";
+import { EvBadge, Kickoff } from "@/product/shared/Bits";
 import { marketName, selectionLabel } from "@/product/shared/markets";
 import { AiNote } from "./AiNote";
 import { CorrectionNote } from "./CorrectionNote";
@@ -26,6 +25,7 @@ import { isLivePhase, matchPhaseOf } from "@/product/matches/status";
 import { MatchStateBadge, OriginLabel, ResultBadge, Units } from "./Badges";
 import { hasStarted } from "./model";
 import { whyLines } from "./cardWhy";
+import { PickPriceColumn } from "./PickPriceColumn";
 import { pickableOfItem } from "./pickable";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { SelectablePrice } from "@/product/odds/SelectablePrice";
@@ -146,14 +146,7 @@ export function DailyItemCard({
               <UserStatusBadge state={item} className="mt-1.5" />
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
-              <OddsPill odds={item.odds} best={!settled} size={compact ? "md" : "lg"} />
-              <span
-                className="text-caption text-muted-foreground"
-                data-testid="pick-reference-odds"
-              >
-                {t("records.card.referenceOdds")}
-              </span>
-              <PriceNowLine now={item.price_now} />
+              <PickPriceColumn item={item} settled={settled} compact={compact} />
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -163,7 +156,8 @@ export function DailyItemCard({
               </p>
             ) : null}
           </div>
-          <ul className="mt-2 space-y-1" data-testid="pick-why-lines">
+          <p className="mt-3 text-overline text-muted-foreground">{t("records.card.whyLabel")}</p>
+          <ul className="mt-1 space-y-1" data-testid="pick-why-lines">
             {why.map((line) => (
               <li key={line} className="text-xs leading-snug text-muted-foreground">
                 {line}
