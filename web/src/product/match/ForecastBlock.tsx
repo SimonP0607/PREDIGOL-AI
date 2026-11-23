@@ -2,7 +2,7 @@
  * PRONÓSTICO PREDIGOL (plan F5) - what PrediGol expects of the match, apart from whether it is well paid and from
  * what it recommends. Per core market (result, total goals, both teams to score) the probability of each outcome
  * with the interval the model measured, and whether it was calibrated: "Calibrada" only where a champion calibrator
- * exists, "Sin calibrar" - with the reason - everywhere else, so that the page never claims a correction it has not
+ * exists, "Estimación preliminar" - with the reason - everywhere else, so that the page never claims a correction it has not
  * proven.
  *
  * A forecast is not a price. A user sees no odds, no edge and no pick here: those are the decision layer's, and a
@@ -70,7 +70,7 @@ function Tag({ tone, children }: { tone: string; children: ReactNode }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-micro font-semibold leading-tight",
+        "inline-flex min-w-0 max-w-full items-center gap-1 break-words rounded-full border px-2 py-0.5 text-micro font-semibold leading-tight",
         tone,
       )}
     >

@@ -37,8 +37,8 @@
   "partialSubject": "los datos de jugador de esta competición",
   "goalsPrevented": "Goles evitados",
   "goalsPreventedWhy": "El dato del proveedor no pasó la comprobación de calidad: no se muestra hasta que la pase.",
-  "sourceMixed": "Fuente: estadísticas por jugador de cada partido (PrediGol) y penaltis parados como los mide API-Football.",
+  "sourceMixed": "Fuente: estadísticas por jugador de cada partido (PrediGol) y penaltis parados según los datos del partido.",
   "sourcePredigol": "Fuente: estadísticas por jugador de cada partido; la liga es la de los porteros de esta competición.",
-  "sourceProvider": "Dato de API-Football: lo mide el proveedor y PrediGol no lo recalcula.",
+  "sourceProvider": "Dato medido en el partido: PrediGol no lo recalcula.",
   "blockMissing": "Pocos partidos de esta competición traen estos datos ({matches} como mucho): no se muestran."
 }

@@ -94,15 +94,24 @@ describe("«Profundizar» opened: three rows with no gaps (plan Partidos y Match
     return { cls, holds: [...body.matchAll(/data-testid="stub-(\w+)"/g)].map((m) => m[1] ?? "") };
   }
 
-  test("row 1: form, table and head to head, aligned at the top and never stretched; two on a tablet, one on a phone", () => {
+  test("row 1: form, table and head to head, aligned at the top and never stretched; by the width of the container: one, two, three", () => {
     const r = row("deepen-row-context");
     expect(r.holds).toEqual(["form", "table", "h2h"]);
     expect(r.cls.split(" ")).toEqual(
-      expect.arrayContaining(["grid", "items-start", "md:grid-cols-2", "lg:grid-cols-3"]),
+      expect.arrayContaining([
+        "grid",
+        "items-start",
+        "grid-cols-1",
+        "@[40rem]:grid-cols-2",
+        "@[64rem]:grid-cols-3",
+      ]),
     );
+    // by the width of the container, never by the screen's: no md: / lg: columns (AP-P01)
+    expect(r.cls).not.toMatch(/(?:^|\s)(?:sm|md|lg|xl):grid-cols/);
     expect(r.cls.split(" ")).not.toContain("grid-cols-2");
-    // on a tablet the head to head takes the second row whole, not half of it
-    expect(html).toContain('class="min-w-0 md:col-span-2 lg:col-span-1"');
+    // the grid sits in its own container, and the head to head takes the second row whole, not half of it
+    expect(html).toContain('<div class="@container"><div class="grid grid-cols-1');
+    expect(html).toContain('class="min-w-0 @[40rem]:col-span-2 @[64rem]:col-span-1"');
   });
 
   test("row 2: the calendar alone, across the whole width", () => {
@@ -115,9 +124,10 @@ describe("«Profundizar» opened: three rows with no gaps (plan Partidos y Match
     const r = row("deepen-row-squads");
     expect(r.holds).toEqual(["absences", "lineups"]);
     expect(r.cls.split(" ")).toEqual(
-      expect.arrayContaining(["grid", "items-start", "md:grid-cols-2"]),
+      expect.arrayContaining(["grid", "items-start", "grid-cols-1", "@[40rem]:grid-cols-2"]),
     );
-    expect(r.cls).not.toContain("lg:grid-cols-3");
+    expect(r.cls).not.toMatch(/(?:^|\s)(?:sm|md|lg|xl):grid-cols/);
+    expect(r.cls).not.toContain("@[64rem]:grid-cols-3");
   });
 
   test("every cell may shrink below its content's width: nothing pushes the page sideways at 320 px", () => {

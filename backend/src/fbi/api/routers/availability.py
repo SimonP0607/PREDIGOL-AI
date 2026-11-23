@@ -1,5 +1,8 @@
 """C-16, availability (plan PM, PM-02-05): the matrix of what PrediGol has per competition, season, datum and market, and the seven
-states of a match. Read only. Every route answers 404 while ``FBI_AVAILABILITY`` is off (the default)."""
+states of a match. Read only. Every route answers 404 while ``FBI_AVAILABILITY`` is off (the default).
+
+Beside it, the owner's private evaluation board (PM-12-01, IA-153: the models by competition and coverage level that feed state 5, and
+the weekly board), 404 while ``FBI_EVALUATION_BOARD`` is off."""
 
 from __future__ import annotations
 
@@ -8,10 +11,12 @@ from typing import Annotated, Any
 import psycopg
 from fastapi import APIRouter, Depends, Path
 
+from fbi.api.contracts.evaluation_board import EvaluationBoard
 from fbi.api.contracts.intelligence.availability import Availability, AvailabilityPrivate
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope
 from fbi.api.services import availability as svc
+from fbi.api.services import evaluation_board
 
 router = APIRouter(tags=["availability"])
 admin_router = APIRouter(tags=["admin: availability"])
@@ -47,3 +52,10 @@ def get_matrix(conn: Db) -> Envelope[AvailabilityPrivate]:
 def get_changes(conn: Db) -> Envelope[AvailabilityPrivate]:
     """C-16, private projection: the changes of level and the shadow comparison's discrepancies of the last seven days."""
     return svc.changes(conn)
+
+
+@admin_router.get("/evaluation/board", response_model=Envelope[EvaluationBoard])
+def get_evaluation_board(conn: Db) -> Envelope[EvaluationBoard]:
+    """The newest weekly board (model, market and provider on the same matches; reliability and resolution apart) and the newest report
+    by competition and coverage level (plan PM, PM-12-01 and PM-12-06). 404 while ``FBI_EVALUATION_BOARD`` is off."""
+    return evaluation_board.board(conn)

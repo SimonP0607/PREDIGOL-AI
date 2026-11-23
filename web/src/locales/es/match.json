@@ -324,7 +324,7 @@
     "title": "Estadísticas del partido",
     "key": "Estadísticas clave",
     "all": "Ver todas",
-    "notStarted": "Las estadísticas del partido aparecerán cuando empiece. Mientras tanto, así llegan los dos equipos.",
+    "notStarted": "El partido aún no ha empezado: así llegan los dos equipos.",
     "season": "Temporada",
     "position": "{rank}.º en la tabla",
     "label": {
@@ -549,8 +549,8 @@
     "notAPick": "No es un pick ni una cuota de casa: ningún modelo ha superado al mercado todavía."
   },
   "providerPrediction": {
-    "title": "Predicción del proveedor (API-Football)",
-    "label": "Pronóstico propio de API-Football (Poisson, forma, comparación; sin cuotas). Auxiliar: no es el modelo de PrediGol ni el mercado, y nunca alimenta un modelo ni un pick.",
+    "title": "Pronóstico externo",
+    "label": "Pronóstico propio del proveedor de datos (a partir de goles, forma y comparación; sin cuotas). Auxiliar: no es el modelo de PrediGol ni el mercado, y nunca alimenta un modelo ni un pick.",
     "none": "La predicción del proveedor aún no se ha leído para este partido (se pide 48 h, 24 h y 3 h antes del inicio).",
     "home": "Local",
     "draw": "Empate",
@@ -651,7 +651,7 @@
     "block": {
       "absences": "bajas",
       "dossier": "contexto del partido",
-      "elo": "Elo",
+      "elo": "Fuerza de los equipos",
       "forecast": "pronóstico",
       "form": "forma",
       "h2h": "historial directo",
@@ -716,7 +716,7 @@
     "range": "entre {low} y {high}",
     "rangeNone": "sin rango medido",
     "calibrated": "Calibrada",
-    "uncalibrated": "Sin calibrar",
+    "uncalibrated": "Estimación preliminar",
     "basis": {
       "champion": "PrediGol corrigió la probabilidad del modelo con partidos ya jugados.",
       "no_champion": "Es la probabilidad del modelo tal cual: en este mercado todavía no hay una corrección comprobada.",
@@ -726,9 +726,9 @@
     "updated": "Actualizado {when}",
     "model": "Modelo: {model}",
     "models": {
-      "poisson": "Poisson (Maher)",
-      "dixon_coles": "Dixon-Coles",
-      "elo_ologit": "Elo (logit ordenado)"
+      "poisson": "Modelo de goles",
+      "dixon_coles": "Modelo de goles con ajuste de marcadores bajos",
+      "elo_ologit": "Modelo de fuerza de los equipos"
     },
     "admin": {
       "fairOdds": "cuota según PrediGol {odds}",
@@ -742,7 +742,7 @@
       "state": "estado",
       "selection": "selección",
       "familiesTitle": "Familias de este partido (investigación, solo administrador)",
-      "familiesNote": "Lo que pronostican las familias de goles por mitad, córners, tarjetas y amarillas: la cifra del modelo tal cual, sin calibrar y sin rango medido. Entre paréntesis, la cuota según PrediGol (1 / probabilidad). Es investigación: no es el pronóstico de arriba ni una recomendación.",
+      "familiesNote": "Lo que pronostican las familias de goles por mitad, córners, tarjetas y amarillas: una estimación preliminar, sin rango medido. Entre paréntesis, la cuota según PrediGol (1 / probabilidad). Es investigación: no es el pronóstico de arriba ni una recomendación.",
       "familyMarkets": "Mercados: {n}",
       "settledWith": "Se liquida con: {rule}",
       "noRule": "Ninguna regla de liquidación puede juzgar una apuesta en este mercado."
@@ -944,7 +944,7 @@
     "coverage": "{n} de {total} con dato",
     "noData": "Sin dato",
     "none": "Ninguno de los dos equipos tiene partidos terminados antes de este.",
-    "note": "Cada cifra cuenta solo los partidos que traen ese dato: no todas las ligas ni temporadas tienen tiros de esquina, tarjetas o xG.",
+    "note": "No todas las ligas ni temporadas tienen córners, tarjetas o xG.",
     "metric": {
       "wins": "Partidos ganados",
       "draws": "Empates",
@@ -1059,7 +1059,7 @@
       "draw": "el empate",
       "away": "la victoria de {team}"
     },
-    "uncalibrated": ", sin calibrar",
+    "uncalibrated": ", estimación preliminar",
     "match_intro": {
       "plain": "Partido de {competition}.",
       "round": "Partido de {competition} ({round}).",
@@ -1207,7 +1207,7 @@
       "dossier": "el informe del partido",
       "phase": "la fase de la competición"
     },
-    "uncalibrated_markets": "El pronóstico de {markets} está sin calibrar: es el número del propio modelo.",
+    "uncalibrated_markets": "El pronóstico de {markets} es una estimación preliminar: aún no se ha comprobado con suficientes resultados.",
     "markets": {
       "1X2": "resultado",
       "OU": "goles",
@@ -1229,7 +1229,7 @@
   "postmatch": {
     "title": "Pronóstico frente a resultado",
     "line": "PrediGol veía más probable «{outcome}» ({pct}{uncal}). Terminó {score}: {actual}.",
-    "uncalibrated": ", sin calibrar",
+    "uncalibrated": ", estimación preliminar",
     "hit": "Coincidió con el resultado",
     "miss": "No coincidió con el resultado",
     "said": "Pronóstico del {date}",

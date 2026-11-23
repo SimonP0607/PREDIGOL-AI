@@ -8,10 +8,13 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronDown, Clock, Globe2, Scale, SearchX, Trophy } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { isDelayed } from "@/lib/freshness";
 import { t, useI18n } from "@/lib/i18n";
-import { formatRelative } from "@/lib/time";
+import { formatRelative, formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { GlossaryLink } from "@/components/system/GlossaryTerm";
+import { ScrollStrip } from "@/components/ui/ScrollStrip";
 import {
   Card,
   EmptyState,
@@ -21,6 +24,7 @@ import {
   StaleNote,
 } from "@/product/shared/States";
 import { MARKETS, marketShort, type MarketKey } from "@/product/shared/markets";
+import { DataDelayed } from "@/product/shared/DataDelayed";
 import { prefersReducedMotion } from "@/product/shared/motion";
 import { Pager } from "@/product/shared/Pager";
 import { usePaged } from "@/product/shared/paging";
@@ -116,6 +120,7 @@ function FairExplainer() {
 
 export function OddsPage() {
   const { locale } = useI18n();
+  const admin = useAuth().user?.role !== "USER";
   const [market, setMarket] = useState<MarketKey>("1X2");
   const [hours, setHours] = useState<number>(DEFAULT_HOURS);
   const [filters, setFilters] = useState<OddsFilters>(NO_ODDS_FILTERS);
@@ -336,14 +341,16 @@ export function OddsPage() {
               testId="odds-window"
             />
           </div>
-          {ages ? (
+          {ages && admin ? (
             <span
               className="inline-flex items-center gap-1 text-caption text-muted-foreground"
               data-testid="odds-prices-age"
             >
               <Clock aria-hidden className="h-3 w-3" />
-              {agesText(ages)}
+              {agesText(ages)} · {formatTime(ages.newest)}
             </span>
+          ) : ages && isDelayed("day", ages.oldest) ? (
+            <DataDelayed testId="odds-prices-age" />
           ) : null}
         </div>
         {stale ? <StaleNote onRetry={() => void query.refetch()} /> : null}
@@ -409,24 +416,6 @@ function MarketTabs({
   onChange: (market: MarketKey) => void;
 }) {
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
-  const bar = useRef<HTMLDivElement>(null);
-  // True while some tab is hidden past the right edge: the bar fades there to say so.
-  const [more, setMore] = useState(false);
-
-  useEffect(() => {
-    const el = bar.current;
-    if (!el) return;
-    const update = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
-    observer?.observe(el);
-    return () => {
-      el.removeEventListener("scroll", update);
-      observer?.disconnect();
-    };
-  }, []);
-
   function choose(index: number, focus: boolean) {
     const m = MARKETS[index];
     const el = tabs.current[index];
@@ -459,17 +448,13 @@ function MarketTabs({
   }
 
   return (
-    <div
-      ref={bar}
+    <ScrollStrip
       role="tablist"
       aria-label={t("odds.marketsLabel")}
       onKeyDown={onKeyDown}
       data-testid="odds-market-tabs"
       data-guide="odds-tabs"
-      className={cn(
-        "flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        more && "[mask-image:linear-gradient(to_right,#000_calc(100%_-_3rem),transparent)]",
-      )}
+      className="flex gap-1 rounded-xl border border-border bg-card p-1"
     >
       {MARKETS.map((m, i) => {
         const on = m === value;
@@ -498,7 +483,7 @@ function MarketTabs({
           </button>
         );
       })}
-    </div>
+    </ScrollStrip>
   );
 }
 

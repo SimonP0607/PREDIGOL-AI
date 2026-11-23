@@ -62,6 +62,7 @@ describe("the boards joined match by match", () => {
         data.useBoard(
           {
             hours: 72,
+            day: null,
             country: null,
             competition: null,
             market: m.key,
@@ -126,5 +127,30 @@ describe("the view", () => {
       <ByMatchView data={fakeExplorerData({ pending: true })} guide={false} now={FAKE_NOW} />,
     );
     expect(page).not.toContain("Todavía no hay precios");
+  });
+});
+
+describe("the day (AP-C01)", () => {
+  test("the three boards ask for the chosen day and the tabs carry each day's matches", async () => {
+    const data = fakeExplorerData({ byDay: true });
+    const page = await html(
+      <ByMatchView data={data} guide={false} now={FAKE_NOW} day="tomorrow" />,
+    );
+    expect(data.calls.board.map((q) => q.day)).toEqual(["tomorrow", "tomorrow", "tomorrow"]);
+    expect(data.calls.families[0]).toMatchObject({ day: "tomorrow" });
+    expect(page).toContain('data-testid="by-match-day"');
+    for (const word of ["Hoy", "Mañana", "Pasado mañana", ", 2 partidos", ", 1 partido"]) {
+      expect(page).toContain(word);
+    }
+    expect(page).toContain('data-fixture="7821"');
+    expect(page).not.toContain('data-fixture="7819"');
+  });
+
+  test("without a day it opens on today", async () => {
+    const data = fakeExplorerData({ byDay: true });
+    const page = await html(<ByMatchView data={data} guide={false} now={FAKE_NOW} />);
+    expect(data.calls.board.map((q) => q.day)).toEqual(["today", "today", "today"]);
+    expect(page).toContain('data-fixture="7819"');
+    expect(page).not.toContain('data-fixture="7821"');
   });
 });

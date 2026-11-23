@@ -23,8 +23,14 @@ export function LegalPage({ document }: { document: LegalDocumentName }) {
     staleTime: 10 * 60_000,
   });
   if (doc.isPending) {
+    // The skeleton holds a screen's height (plan PM, PM-14-05; FE-007): measured on a phone, the footer showed under three short
+    // lines and the text pushed it away when it arrived - CLS 0.125, «necesita mejora». With the room kept, nothing moves.
     return (
-      <div className="mx-auto max-w-3xl space-y-3" aria-busy="true">
+      <div
+        className="mx-auto min-h-[100dvh] max-w-3xl space-y-3"
+        aria-busy="true"
+        data-testid="legal-pending"
+      >
         <div className="h-8 w-2/3 animate-pulse rounded bg-elevated" />
         <div className="h-4 w-full animate-pulse rounded bg-elevated" />
         <div className="h-4 w-5/6 animate-pulse rounded bg-elevated" />

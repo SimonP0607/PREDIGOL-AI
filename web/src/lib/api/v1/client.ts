@@ -19,6 +19,7 @@ import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { MarketProbs, StatsContext, StatsProfile, StatsScope } from "./types_stats";
 import type { Availability, AvailabilityPrivate } from "./types_availability";
 import type { ProviderUsage } from "./types_provider_usage";
+import type { EvaluationBoard } from "./types_evaluation_board";
 import type { SelectionFunnel } from "./types_funnel";
 import type { AgentsOverview, MatchState } from "./types_ai_agents";
 import type { AttributionOverview } from "./types_ai_attribution";
@@ -822,6 +823,8 @@ export const v1 = {
   /** BE-076 (plan PM, PM-04-05): the provider's requests by lane, endpoint and competition. 404 while FBI_USAGE_CONSOLE is off. */
   adminProviderUsage: (q: { until?: string | undefined; days?: number | undefined } = {}) =>
     getJson<Envelope<ProviderUsage>>("/admin/monitoring/provider-usage", q),
+  /** IA-153 (plan PM, PM-12-01): the owner's private evaluation board. 404 while FBI_EVALUATION_BOARD is off. */
+  adminEvaluationBoard: () => getJson<Envelope<EvaluationBoard>>("/admin/evaluation/board"),
   odds: () => getJson<Envelope<MatchSummary[]>>("/odds"),
   fixtureOdds: (id: number | string, market?: string) =>
     getJson<Envelope<FixtureOdds>>(`/odds/fixtures/${id}`, { market }),

@@ -311,7 +311,14 @@ export function ResearchV2Panel() {
   return (
     <Panel title={t("research.v2.title")} subtitle={t("research.v2.subtitle")} bodyClassName="">
       <div data-testid="research-v2">
-        {q.isError ? <ApiErrorNotice error={q.error} /> : null}
+        {q.isError ? (
+          <ApiErrorNotice
+            error={q.error}
+            onRetry={() => void q.refetch()}
+            retrying={q.isFetching}
+            className="m-4"
+          />
+        ) : null}
         {!d ? (
           q.isPending ? (
             <TableSkeleton rows={5} cols={6} />

@@ -15,6 +15,7 @@ import { formatOdds } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative, formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { CompetitionTag } from "@/components/football/Logos";
+import { ScrollStrip } from "@/components/ui/ScrollStrip";
 import { Segmented } from "@/components/ui/segmented";
 import { Card, EmptyState, ErrorState, PageTitle, SkeletonCards } from "@/product/shared/States";
 import { SlipCard } from "@/product/records/SlipCard";
@@ -24,7 +25,8 @@ import { StatusBar } from "../explorer/Status";
 import { blockText, explorerLeg, priceBlock } from "../explorer/legs";
 import { rowFreshness } from "../explorer/rows";
 import { priceDescription, selectionLabel } from "../explorer/selections";
-import type { BoardQuery, ExplorerData, OddsSelectionPrice } from "../explorer/model";
+import type { BoardQuery, DayKey, ExplorerData, OddsSelectionPrice } from "../explorer/model";
+import { DayTabs, dayLabel, nextDayWithPrices } from "../explorer/DayTabs";
 import {
   BY_MATCH_MARKETS,
   competitionChips,
@@ -38,13 +40,10 @@ import {
   type MatchLine,
 } from "./model";
 
-/** «Hoy», the next 48 h, the next 72 h: the API's window (at most 72 h). */
-const WINDOWS = [24, 48, 72] as const;
-type Window = (typeof WINDOWS)[number];
-
-function boardQuery(market: string, line: string, hours: number): BoardQuery {
+function boardQuery(market: string, line: string, day: DayKey): BoardQuery {
   return {
-    hours,
+    hours: 24, // a day names its own window: the server ignores the hours (AP-C01)
+    day,
     country: null,
     competition: null,
     market,
@@ -70,14 +69,21 @@ export function ByMatchView({
   modeSwitch,
   now = Date.now(),
   guide = true,
+  day: chosenDay,
+  onDay,
 }: {
   data: ExplorerData;
   /** «Por partido | Por mercado», shown under the title. */
   modeSwitch?: ReactNode;
   now?: number;
   guide?: boolean;
+  /** The day, kept in the URL by the screen (`h`); alone, the view keeps it itself. */
+  day?: DayKey;
+  onDay?: (day: DayKey) => void;
 }) {
-  const [hours, setHours] = useState<Window>(24);
+  const [ownDay, setOwnDay] = useState<DayKey>("today");
+  const day = chosenDay ?? ownDay;
+  const setDay = (next: DayKey) => (onDay ? onDay(next) : setOwnDay(next));
   const [competition, setCompetition] = useState<number | null>(null);
   const [valueOnly, setValueOnly] = useState(false);
   const [sort, setSort] = useState<ByMatchSort>("time");
@@ -89,17 +95,20 @@ export function ByMatchView({
 
   // Three boards, always in the same order (each member of ExplorerData is a hook).
   const result = data.useBoard(
-    boardQuery(BY_MATCH_MARKETS[0].key, BY_MATCH_MARKETS[0].line, hours),
+    boardQuery(BY_MATCH_MARKETS[0].key, BY_MATCH_MARKETS[0].line, day),
     live,
   );
   const goals = data.useBoard(
-    boardQuery(BY_MATCH_MARKETS[1].key, BY_MATCH_MARKETS[1].line, hours),
+    boardQuery(BY_MATCH_MARKETS[1].key, BY_MATCH_MARKETS[1].line, day),
     live,
   );
   const btts = data.useBoard(
-    boardQuery(BY_MATCH_MARKETS[2].key, BY_MATCH_MARKETS[2].line, hours),
+    boardQuery(BY_MATCH_MARKETS[2].key, BY_MATCH_MARKETS[2].line, day),
     live,
   );
+  // The matches of each day, for the tabs.
+  const families = data.useFamilies({ hours: 24, day, country: null, competition: null }, live);
+  const nextDay = nextDayWithPrices(day, families.data?.days);
   const boards = [result, goals, btts];
 
   const board = useMemo(
@@ -133,17 +142,8 @@ export function ByMatchView({
 
       {/* The day, the competitions, «Solo con valor» and the order (C06's row of controls). */}
       <div className="flex flex-wrap items-center gap-2" data-testid="by-match-controls">
-        <Segmented
-          label={t("odds.byMatch.window")}
-          value={String(hours)}
-          onChange={(v) => setHours(Number(v) as Window)}
-          options={WINDOWS.map((h) => ({
-            value: String(h),
-            label:
-              h === 24 ? t("explorer.filters.today") : t("explorer.filters.hours", { count: h }),
-          }))}
-        />
-        <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto py-1 [scrollbar-width:none]">
+        <DayTabs value={day} days={families.data?.days} onChange={setDay} testId="by-match-day" />
+        <ScrollStrip wrapperClassName="max-w-full" className="flex gap-2 py-1">
           {chips.slice(0, 6).map((c) => (
             <button
               key={c.id}
@@ -162,7 +162,7 @@ export function ByMatchView({
               {c.name}
             </button>
           ))}
-        </div>
+        </ScrollStrip>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {/* The box is drawn; the native checkbox lies invisibly over the whole label, so a finger finds 44 px. */}
           <label className="tap-y relative inline-flex h-9 cursor-pointer items-center gap-2 text-sm">
@@ -195,7 +195,7 @@ export function ByMatchView({
 
       {/* A phone and a tablet show one market per card: chosen here (C01). */}
       <div className="@container" data-testid="by-match-market-chips">
-        <div className="flex gap-2 overflow-x-auto py-1 [scrollbar-width:none] @[46rem]:hidden">
+        <ScrollStrip wrapperClassName="@[46rem]:hidden" className="flex gap-2 py-1">
           {BY_MATCH_MARKETS.map((m) => (
             <button
               key={m.key}
@@ -212,7 +212,7 @@ export function ByMatchView({
               {t(`odds.byMatch.markets.${m.key.replace(".", "_")}`)}
             </button>
           ))}
-        </div>
+        </ScrollStrip>
       </div>
 
       <p className="text-caption text-muted-foreground" data-testid="by-match-summary">
@@ -237,6 +237,21 @@ export function ByMatchView({
                 }
                 title={priced === 0 ? t("odds.byMatch.emptyTitle") : t("odds.byMatch.noneTitle")}
                 body={priced === 0 ? t("odds.byMatch.emptyBody") : t("odds.byMatch.noneBody")}
+                action={
+                  priced === 0 && nextDay ? (
+                    <button
+                      type="button"
+                      onClick={() => setDay(nextDay.key)}
+                      data-testid="by-match-next-day"
+                      className="tap-y relative inline-flex h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {t("explorer.empty.nextDay", {
+                        day: dayLabel(nextDay.key).toLowerCase(),
+                        count: nextDay.fixtures,
+                      })}
+                    </button>
+                  ) : undefined
+                }
               />
             </Card>
           ) : (

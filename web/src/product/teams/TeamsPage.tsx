@@ -1,11 +1,12 @@
 /**
  * «Equipos» (plan maestro unificado, UX-157; decision D-03): the destination the unified bar names, made only of pieces
  * that exist - the teams the reader follows (favourites), a search of clubs and national teams (GET /teams?q), and the
- * competitions PrediGol follows by country, each leading to its matches. No maqueta of its own: it is the door to the
- * profiles (maquetas 11-13). Shown only while FBI_PROFILES is on.
+ * competitions PrediGol follows by country, each opening onto its teams (AP-E01: country → league → teams → profile; no
+ * click of this page leads to Partidos). No maqueta of its own: it is the door to the profiles (maquetas 11-13). Shown only
+ * while FBI_PROFILES is on.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Search, Star } from "lucide-react";
 import { fieldVariants } from "@/components/ui/field";
@@ -13,15 +14,17 @@ import { TeamName } from "@/components/football/Logos";
 import { live } from "@/lib/api/v1/queries";
 import type { CompetitionSummary } from "@/lib/api/v1/types";
 import { useAuth, usePmReaderSwitches } from "@/lib/auth/AuthProvider";
-import { t } from "@/lib/i18n";
+import { intlTag, t } from "@/lib/i18n";
+import { useCountryAliases } from "@/lib/i18n/useCountryAliases";
 import { cn } from "@/lib/utils";
 import { Card, EmptyState, PageTitle, SkeletonCards } from "@/product/shared/States";
-import { isNation } from "./model";
+import { LeagueRow } from "./CompetitionTeams";
+import { countryName, isNation, teamLabel } from "./model";
 
 /** The competitions by country, the reader's own country (Colombia) first, then alphabetical. */
 export function byCountry(
   list: readonly CompetitionSummary[],
-): { country: string; competitions: CompetitionSummary[] }[] {
+): { country: string; label: string; competitions: CompetitionSummary[] }[] {
   const by = new Map<string, CompetitionSummary[]>();
   for (const c of list) {
     if (!c.is_tracked) continue;
@@ -29,9 +32,21 @@ export function byCountry(
     by.set(k, [...(by.get(k) ?? []), c]);
   }
   return [...by.entries()]
-    .sort(([a], [b]) => (a === "Colombia" ? -1 : b === "Colombia" ? 1 : a.localeCompare(b)))
     .map(([country, competitions]) => ({
       country,
+      label: countryName(country) ?? country,
+      competitions,
+    }))
+    .sort((a, b) =>
+      a.country === "Colombia"
+        ? -1
+        : b.country === "Colombia"
+          ? 1
+          : a.label.localeCompare(b.label, intlTag()),
+    )
+    .map(({ country, label, competitions }) => ({
+      country,
+      label,
       competitions: competitions.sort(
         (a, b) => (a.tier ?? 9) - (b.tier ?? 9) || a.name.localeCompare(b.name),
       ),
@@ -59,6 +74,16 @@ export function TeamsPage() {
   const term = useDebounced(q.trim());
   const favorites = useQuery({ ...live.favorites, enabled: open && reader });
   const found = useQuery({ ...live.teamSearch(term), enabled: open && term.length >= 2 });
+  // AP-B02: «España» also asks for «Spain»; one list, the national team first
+  const { aliases, merge } = useCountryAliases(term, open && term.length >= 2);
+  const aliased = useQueries({
+    queries: aliases.map((a) => ({ ...live.teamSearch(a), enabled: open })),
+  });
+  const teamsFound = merge(
+    found.data?.data ?? [],
+    aliased.map((a) => a.data?.data ?? []),
+    aliases,
+  );
   const comps = useQuery({ ...live.competitions, enabled: open });
   const groups = useMemo(() => byCountry(comps.data?.data ?? []), [comps.data]);
   if (!open)
@@ -90,7 +115,7 @@ export function TeamsPage() {
         <section aria-label={t("profiles.teams.results")}>
           {found.isPending ? (
             <SkeletonCards count={1} />
-          ) : (found.data?.data ?? []).length === 0 ? (
+          ) : teamsFound.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="teams-none">
               {t("profiles.teams.none", { q: term })}
             </p>
@@ -99,7 +124,7 @@ export function TeamsPage() {
               className="card-surface divide-y divide-border rounded-card"
               data-testid="teams-results"
             >
-              {(found.data?.data ?? []).slice(0, 20).map((team) => (
+              {teamsFound.slice(0, 20).map((team) => (
                 <li key={team.id}>
                   <Link
                     to={isNation(team) ? "/nations/$teamId" : "/teams/$teamId"}
@@ -107,13 +132,13 @@ export function TeamsPage() {
                     className={ROW}
                   >
                     <TeamName
-                      name={team.name}
+                      name={teamLabel(team)}
                       logo={team.logo_url}
                       size={22}
                       className="min-w-0 flex-1 font-semibold"
                     />
                     <span className="shrink-0 text-caption text-muted-foreground">
-                      {team.country}
+                      {countryName(team.country)}
                     </span>
                     <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-subtle-foreground" />
                   </Link>
@@ -174,7 +199,7 @@ export function TeamsPage() {
             {groups.map((g) => (
               <details key={g.country} className="group/c">
                 <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
-                  <span className="min-w-0 flex-1 text-sm font-semibold">{g.country}</span>
+                  <span className="min-w-0 flex-1 text-sm font-semibold">{g.label}</span>
                   <span className="numeric text-caption text-subtle-foreground">
                     {g.competitions.length}
                   </span>
@@ -185,23 +210,7 @@ export function TeamsPage() {
                 </summary>
                 <ul className="pb-2">
                   {g.competitions.map((c) => (
-                    <li key={c.id}>
-                      <Link
-                        {...(competitionPage
-                          ? {
-                              to: "/competitions/$competitionId",
-                              params: { competitionId: String(c.id) },
-                            }
-                          : { to: "/matches", search: { competition: c.id } })}
-                        className="flex min-h-11 items-center gap-3 px-6 py-2 text-sm hover:bg-elevated"
-                      >
-                        <span className="min-w-0 flex-1">{c.name}</span>
-                        <ChevronRight
-                          aria-hidden
-                          className="h-4 w-4 shrink-0 text-subtle-foreground"
-                        />
-                      </Link>
-                    </li>
+                    <LeagueRow key={c.id} competition={c} competitionPage={competitionPage} />
                   ))}
                 </ul>
               </details>

@@ -1,6 +1,8 @@
 {
   "appName": "PrediGol",
   "tagline": "Football Intelligence",
+  "scrollStart": "Ver los anteriores",
+  "scrollEnd": "Ver los siguientes",
   "loading": "Cargando…",
   "retry": "Reintentar",
   "close": "Cerrar",
@@ -22,6 +24,7 @@
   "searchPlaceholder": "Buscar partidos, equipos, competiciones…",
   "searchEmpty": "Sin resultados para esa búsqueda.",
   "justNow": "ahora mismo",
+  "dataDelayed": "Los datos van con retraso; los estamos actualizando.",
   "updated": "Actualizado {when}",
   "updatedAt": "Actualizado a las {time}",
   "lastUpdate": "Última actualización",

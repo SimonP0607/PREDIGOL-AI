@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from itertools import pairwise
 from typing import Any
 
 import pytest
@@ -13,6 +14,9 @@ from fbi.api import switches
 from fbi.api.contracts.auth import Me
 from fbi.api.problem import ApiError
 from fbi.api.services.odds_explorer import (
+    DAYS,
+    Window,
+    day_bounds,
     decode_cursor,
     encode_cursor,
     movement_points,
@@ -191,3 +195,37 @@ def test_the_explorer_is_off_unless_the_owner_says_on(value: str | None, on: boo
 
 def test_me_says_the_explorer_is_off_by_default() -> None:
     assert Me.model_fields["odds_explorer"].default is False
+
+
+# ── the days of Bogota (AP-C01) ─────────────────────────────────────────────────────────────────────────────────────
+
+LATE = datetime(2026, 11, 24, 3, 30, tzinfo=UTC)  # 22:30 of the 23rd in Bogota (UTC-5): UTC is already the 24th
+
+
+def test_days_follow_bogota_not_utc() -> None:
+    start, until = day_bounds("today", LATE)
+    assert start == LATE
+    assert until == datetime(2026, 11, 24, 5, 0, tzinfo=UTC)  # midnight of the 24th in Bogota
+    start, until = day_bounds("tomorrow", LATE)
+    assert start == datetime(2026, 11, 24, 5, 0, tzinfo=UTC) - timedelta(microseconds=1)
+    assert until == datetime(2026, 11, 25, 5, 0, tzinfo=UTC)
+    start, until = day_bounds("day_after", LATE)
+    assert start == datetime(2026, 11, 25, 5, 0, tzinfo=UTC) - timedelta(microseconds=1)
+    assert until == datetime(2026, 11, 26, 5, 0, tzinfo=UTC)
+
+
+def test_the_three_days_leave_no_gap_and_do_not_overlap() -> None:
+    moment = datetime(2026, 11, 23, 15, 0, tzinfo=UTC)
+    bounds = [day_bounds(day, moment) for day in DAYS]
+    for (_, end), (begin, _) in pairwise(bounds):
+        assert begin == end - timedelta(microseconds=1)  # (from, until]: a kick-off at midnight is in the next day only
+
+
+def test_a_day_replaces_the_hours_and_without_it_the_hours_rule() -> None:
+    moment = datetime(2026, 11, 23, 15, 0, tzinfo=UTC)
+    hours = Window(48, None, None).params(moment)
+    assert hours["now"] == moment
+    assert hours["until"] == moment + timedelta(hours=48)
+    day = Window(48, None, None, "tomorrow").params(moment)
+    assert day["now"] == datetime(2026, 11, 24, 5, 0, tzinfo=UTC) - timedelta(microseconds=1)
+    assert day["until"] == datetime(2026, 11, 25, 5, 0, tzinfo=UTC)

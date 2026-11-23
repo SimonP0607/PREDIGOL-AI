@@ -94,7 +94,7 @@ function goal(
 
 const EVENTS = [goal(1, 23, "home"), goal(2, 58, "away"), goal(3, 71, "home")];
 const TEAMS = { home: { name: "Atlético Cordillera" }, away: { name: "Real Altiplano" } };
-const SOURCE = "estadísticas del partido de API-Football";
+const SOURCE = "estadísticas del partido";
 
 describe("the funnel (pure)", () => {
   test("lámina I01: 16 · 6 · 2 against 9 · 3 · 1, goals from the events", () => {
@@ -162,8 +162,8 @@ describe("the cards", () => {
     expect(html).toContain("Embudo de remate");
     expect(html).toContain('data-evidence="E1"');
     expect(html).toContain('data-review="completa"');
-    expect(html).toContain("1 partido; estadísticas del partido de API-Football");
-    expect(html).toContain("Fuente: estadísticas del partido de API-Football · 1 partido.");
+    expect(html).toContain("1 partido; estadísticas del partido");
+    expect(html).toContain("Fuente: estadísticas del partido · 1 partido.");
     for (const s of ["Remates", "A puerta", "Goles", "100 %", "38 %", "13 %", "33 %", "11 %"]) {
       expect(html).toContain(s);
     }
@@ -181,7 +181,7 @@ describe("the cards", () => {
     );
     expect(html).toContain("Zona de remate · 2 zonas");
     expect(html).toContain("No es un mapa de tiros");
-    expect(html).toContain("xG de API-Football.");
+    expect(html).toContain("xG según los datos del partido.");
     expect(html).toContain("dentro · 63 %");
     expect(html).toContain("fuera · 38 %");
     expect(html).toContain("dentro · 44 %");
@@ -206,7 +206,7 @@ describe("the cards", () => {
   test("in English", () => {
     setLocale("en");
     const html = renderToStaticMarkup(
-      <ShotFunnelCard funnel={funnel} teams={TEAMS} source="match statistics from API-Football" />,
+      <ShotFunnelCard funnel={funnel} teams={TEAMS} source="match statistics" />,
     );
     expect(html).toContain("Shot funnel");
     expect(html).toContain("On target");

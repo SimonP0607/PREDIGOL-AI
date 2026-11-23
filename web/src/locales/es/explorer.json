@@ -283,7 +283,7 @@
     "active_other": "{count} filtros activos",
     "apply": "Aplicar",
     "clear": "Borrar filtros",
-    "window": "Empiezan en",
+    "window": "Día",
     "today": "Hoy",
     "hours": "{count} h",
     "country": "País",
@@ -301,7 +301,11 @@
     "from": "Desde",
     "to": "Hasta",
     "fairOnly": "Solo con cuota justa",
-    "mine": "Mis equipos y ligas"
+    "mine": "Mis equipos y ligas",
+    "tomorrow": "Mañana",
+    "dayAfter": "Pasado mañana",
+    "dayCount_one": ", {count} partido",
+    "dayCount_other": ", {count} partidos"
   },
   "sort": {
     "label": "Orden",
@@ -333,7 +337,8 @@
     "lineTitle": "Ningún partido tiene esta línea",
     "lineBody": "Vuelve a la línea principal de cada partido.",
     "notLoadedBody": "Ninguno de los partidos cargados coincide: «Cargar más» trae los siguientes.",
-    "widen": "Ver las próximas 72 h"
+    "widen": "Ver las próximas 72 h",
+    "nextDay": "Ver {day} ({count})"
   },
   "status": {
     "updated": "Actualizado {time}",

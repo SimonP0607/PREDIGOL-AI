@@ -226,6 +226,7 @@ export function DayView({ onOpen }: { onOpen: (id: number) => void }) {
           {parlays.length ? (
             <Note className="mt-2">{t("intel.day.parlays", { n: parlays.length })}</Note>
           ) : null}
+          <Note className="mt-2">{t("intel.day.v6Detail")}</Note>
         </Panel>
         <Panel title={t("intel.day.v5Title")}>
           {d.daily_set_v5.length === 0 ? (
@@ -250,6 +251,7 @@ export function DayView({ onOpen }: { onOpen: (id: number) => void }) {
               </tbody>
             </TableShell>
           )}
+          <Note className="mt-2">{t("intel.day.v5Detail")}</Note>
         </Panel>
       </div>
 

@@ -26,10 +26,12 @@ import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/St
 import {
   excerpt,
   formOf,
+  countryName,
   isNation,
   PROFILE_TABS,
   squadGroups,
   tableCompetition,
+  teamLabel,
   type FormItem,
   type ProfileTab,
 } from "./model";
@@ -399,7 +401,7 @@ export function TeamPage({ teamId, nation = false }: { teamId: string; nation?: 
   const kind = nation || isNation(detail.team) ? "nation" : "club";
   const venue = detail.venue;
   const facts = [
-    detail.team.country,
+    countryName(detail.team.country),
     venue ? [venue.name, venue.city].filter(Boolean).join(", ") : null,
     venue?.capacity ? t("profiles.capacity", { n: venue.capacity.toLocaleString() }) : null,
   ].filter((x): x is string => Boolean(x));
@@ -411,7 +413,7 @@ export function TeamPage({ teamId, nation = false }: { teamId: string; nation?: 
     >
       <EntityHeader
         kind={kind}
-        name={detail.team.name}
+        name={teamLabel(detail.team)}
         logo={detail.team.logo_url}
         facts={facts}
         actions={

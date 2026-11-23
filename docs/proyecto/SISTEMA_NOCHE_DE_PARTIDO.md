@@ -83,6 +83,30 @@ del plan EA), que exige tres cosas sin las que no compila:
 `components/ui/chart`) fuera de `EvidenceChart`. Las 14 gráficas que existían el 20-nov-2026 quedan en su lista, que solo puede
 encoger. Ninguna pieza del bloque 10 del plan PM se cierra sin las tres.
 
+## 2 quinquies. Ampliación del 23-nov-2026: S7 a S12 (plan de correcciones UX, AP-D02)
+
+Seis láminas nuevas en la página «0 · Sistema de diseño» del lienzo «Noche de partido». No crean otro sistema: ordenan lo que las
+pantallas nuevas del plan de correcciones necesitan y hoy no está escrito. Cada pieza de código del plan que las usa las cita.
+
+| Lámina | Qué fija | Piezas que la usan |
+| --- | --- | --- |
+| S7 · Gráficas de lector | Anatomía de una gráfica: título en palabras, ejes con nombre y unidad, leyenda, frase «Cómo leerlo», etiqueta de evidencia E0–E4 (sección 2 quater), estado «sin datos» (no se dibuja un eje vacío ni una línea en cero) y tabla equivalente | AP-P05, AP-T03, AP-E03 |
+| S8 · Recorridos | El recuadro de un recorrido rodea **el contenido real** con 6 px de margen, nunca la fila entera; dónde va la tarjeta; cómo se vuelve a medir al cambiar el tamaño o desplazarse | AP-P03, AP-Q03 |
+| S9 · Estados | Vacío, cargando, parcial, error de una parte y con retraso; avisa de un retraso solo pasado su umbral (marcador en vivo 5 min, cuotas 60 min, alineaciones 30 min, estadísticas y perfiles 24 h, noticias 6 h). Reutiliza `States.tsx`, `Unavailable.tsx` y `availabilityState.ts` (UX-173) | AP-I02, AP-P11, AP-N06 |
+| S10 · Movimiento | Bienvenida paso 1: luz sobre el césped (1 600 ms, una pasada), entrada de escudo (240 ms, 0,92 → 1,06 → 1), barra de progreso (320 ms), cambio de paso (200 ms, fundido). Solo `transform` y `opacity`; con «reducir movimiento», ninguna animación | AP-B04 |
+| S11 · Correo | Plantilla base de 600 px: cabecera con escudo y texto alternativo, tarjeta, botón de 44 px, pie legal y de baja, modo oscuro, estilos en línea, menos de 100 KB, legible sin imágenes y a lo sumo una imagen decorativa. Ocho variantes | AP-M01, AP-M02 |
+| S12 · Fichas desplazables | Filas de fichas: en teléfono se deslizan con desvanecido en el borde; desde 1024 px, flechas de 44 px solo si hay desborde y la ficha activa siempre a la vista; teclado ← → Inicio Fin; si caben todas, nada | AP-C02, AP-P08, AP-K01 |
+
+La guardia `controls` (UX-183: `web/e2e/controls.spec.ts`, `layoutguard.ts` y `web/src/lib/i18n/vetoedReader.test.ts`) vigila hoy los defectos
+que estas láminas corrigen; cada arreglo borra su línea de la lista de conocidos y el techo nunca sube.
+
+**Consolidación del lienzo (AP-D01, 23-nov-2026).** Una lámina vigente por pantalla y dispositivo. Las sustituidas no se borran: pasan a la
+página «99 · Históricas» con su mismo archivo y nombre y la nota «Sustituida por …». Ya están allí las 13 láminas de «Etapa 1 · Actual
+vs propuesta» y K02, K03, P08 y N01 a N04. Los perfiles de club, selección y jugador (Intelligence 11 a 13, Estadísticas V2 1 y 2,
+Innovación I05 e I06) viven en la página nueva «3b · Equipos y perfiles»; las láminas de Noticias vigentes (Intelligence 08, 09, 10 y 15) en
+la 7 y el detalle del pick (Intelligence 04) en la 4. El índice de trazabilidad (lámina ↔ ruta ↔ componente ↔ pieza) es la nota de la página 0, una sola tabla
+compartida con PM-14-11. El visor suelto de Intelligence queda como copia histórica con franja.
+
 ## 3. Pantallas
 
 | Área | Rutas | Qué cambió |

@@ -18,13 +18,15 @@ import statistics
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, cast
+from zoneinfo import ZoneInfo
 
 from fbi.api.cache import shared
 from fbi.api.contracts.odds_explorer import (
     BookState,
+    DayKey,
     MatchOddsBook,
     OddsBoardPage,
     OddsBoardRow,
@@ -33,6 +35,7 @@ from fbi.api.contracts.odds_explorer import (
     OddsBookmaker,
     OddsBookMarket,
     OddsBookPrices,
+    OddsDay,
     OddsFamilies,
     OddsFamily,
     OddsHealth,
@@ -142,15 +145,34 @@ def _info(market: Market, *, periods: Sequence[str], fixtures: int, max_books: i
                           fair=market.fair, parlay=market.parlay, fixtures=fixtures, max_books=max_books)
 
 
+BOGOTA = ZoneInfo("America/Bogota")
+
+DAYS: tuple[str, ...] = ("today", "tomorrow", "day_after")
+"""The days of Bogota the explorer offers (AP-C01): today, tomorrow and the day after."""
+
+
+def day_bounds(day: str, moment: datetime) -> tuple[datetime, datetime]:
+    """The window of one Bogota day as the queries read it, ``(from, until]``: today starts now (what has kicked off is not
+    a price to read); the others, at their midnight. ``until`` is the next midnight."""
+    offset = DAYS.index(day)
+    midnight = datetime.combine(moment.astimezone(BOGOTA).date() + timedelta(days=offset), time.min, tzinfo=BOGOTA)
+    start = midnight - timedelta(microseconds=1) if offset else moment
+    return start, midnight + timedelta(days=1)
+
+
 @dataclass(frozen=True, slots=True)
 class Window:
     hours: int
     country: str | None
     competition: int | None
+    day: str | None = None
 
     def params(self, moment: datetime) -> dict[str, Any]:
-        return {"now": moment, "until": moment + timedelta(hours=self.hours), "country": self.country,
-                "competition": self.competition}
+        if self.day is None:
+            start, until = moment, moment + timedelta(hours=self.hours)
+        else:  # the day replaces the hours: both can be sent, the day wins
+            start, until = day_bounds(self.day, moment)
+        return {"now": start, "until": until, "country": self.country, "competition": self.competition}
 
 
 # ── /odds/families ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -158,10 +180,10 @@ class Window:
 
 @shared(CACHE_SECONDS)
 def families(conn: Conn, *, hours: int, country: str | None = None, competition: int | None = None,
-             at: datetime | None = None) -> Envelope[OddsFamilies]:
+             day: str | None = None, at: datetime | None = None) -> Envelope[OddsFamilies]:
     """The families and markets with prices in the window, with how many matches and the most bookmakers each has."""
     moment = at or clock_now()
-    window = Window(hours, country, competition)
+    window = Window(hours, country, competition, day)
     definitions = _definitions(conn)
     defs: list[int] = []
     fams: list[str] = []
@@ -193,10 +215,24 @@ def families(conn: Conn, *, hours: int, country: str | None = None, competition:
                                               fixtures=int(held["fixtures"]), max_books=int(held["max_books"])))
     for family, markets in by_family.items():
         out.append(OddsFamily(key=family, fixtures=int(family_rows[family]["fixtures"]), markets=markets))
-    body = OddsFamilies(window_hours=hours, families=out, book_enabled=settings.odds.book_enabled, generated_at=moment)
+    body = OddsFamilies(window_hours=hours, window_day=cast(DayKey | None, day),
+                        days=_days(conn, country, competition, moment), families=out,
+                        book_enabled=settings.odds.book_enabled, generated_at=moment)
     if not out:
         return unavailable(body, "no_prices_in_window", status=DataStatus.EMPTY, count=0)
     return ok(body, count=len(out))
+
+
+def _days(conn: Conn, country: str | None, competition: int | None, moment: datetime) -> list[OddsDay]:
+    """The matches with prices of each of the three Bogota days (the tabs' counts), under the same country and competition
+    filters. A day without prices is still listed, with 0."""
+    first, _ = day_bounds(DAYS[0], moment)
+    _, last = day_bounds(DAYS[-1], moment)
+    rows = repo.day_counts(conn, {"now": first, "until": last, "country": country, "competition": competition})
+    held = {r["day"]: int(r["fixtures"]) for r in rows}
+    today = moment.astimezone(BOGOTA).date()
+    return [OddsDay(key=cast(DayKey, key), bogota_date=today + timedelta(days=i),
+                    fixtures=held.get(today + timedelta(days=i), 0)) for i, key in enumerate(DAYS)]
 
 
 # ── /odds/board ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -208,6 +244,7 @@ class BoardQuery:
     period: str = "FT"
     line: Decimal | None = None
     hours: int = 24
+    day: str | None = None
     country: str | None = None
     competition: int | None = None
     q: str | None = None
@@ -269,7 +306,7 @@ def _board_params(query: BoardQuery, market: Market, definitions: Mapping[int, i
                   fixtures: list[int] | None) -> dict[str, Any]:
     defs = [definitions[s.bet_id] for s in market.specs_of(query.period) if s.bet_id in definitions]
     line = query.line if market.has_line else None
-    return {**Window(query.hours, query.country, query.competition).params(moment), "defs": defs, "fixtures": fixtures,
+    return {**Window(query.hours, query.country, query.competition, query.day).params(moment), "defs": defs, "fixtures": fixtures,
             "q": _like(query.q), "line": None if line is None else format_number(line), "odds_min": query.odds_min,
             "odds_max": query.odds_max, "fair_only": query.fair_only,
             "bookmaker": None if query.bookmaker is None else str(query.bookmaker), "min_books": query.min_books}
@@ -309,7 +346,7 @@ def board(conn: Conn, query: BoardQuery, *, at: datetime | None = None) -> Envel
     moment = at or clock_now()
     market = _market(query.market, query.period)
     definitions = _definitions(conn)
-    window = Window(query.hours, query.country, query.competition)
+    window = Window(query.hours, query.country, query.competition, query.day)
     info = _market_info(conn, market, definitions, window, moment)
     keys = repo.board_keys(conn, _board_params(query, market, definitions, moment, None))
     if query.sort == "edge":

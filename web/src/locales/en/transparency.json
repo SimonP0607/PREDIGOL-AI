@@ -112,8 +112,8 @@
       "BTTS": "Both teams to score"
     },
     "calibrated": "Calibrated",
-    "uncalibrated": "Uncalibrated",
-    "uncalibratedNote": "We show the model's own number and label it «uncalibrated»: there is no validated calibration yet.",
+    "uncalibrated": "Preliminary estimate",
+    "uncalibratedNote": "We show the model's figure and label it «preliminary estimate»: there is no proven calibration yet.",
     "matches_one": "{count} match",
     "matches_other": "{count} matches",
     "calibratedOf": "{calibrated} of {matches} calibrated",
