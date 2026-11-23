@@ -18,7 +18,8 @@ import { t } from "@/lib/i18n";
 import { scrollCue, useScrollCue, type ScrollCue } from "@/lib/scrollCue";
 import { cn } from "@/lib/utils";
 
-const ON = '[aria-pressed="true"],[aria-selected="true"],[aria-current="true"],[aria-current="page"]';
+const ON =
+  '[aria-pressed="true"],[aria-selected="true"],[aria-current="true"],[aria-current="page"]';
 const MARGIN = 8;
 /** From 1024 px an arrow (44 px) lies over the strip's edge: the chip that is on must stay clear of it. */
 const ARROW_ROOM = 52;
@@ -54,7 +55,14 @@ type Props = Omit<ComponentProps<"div">, "ref"> & {
   wrapperClassName?: string | undefined;
 };
 
-export function ScrollStrip({ ref, className, wrapperClassName, children, onKeyDown, ...rest }: Props) {
+export function ScrollStrip({
+  ref,
+  className,
+  wrapperClassName,
+  children,
+  onKeyDown,
+  ...rest
+}: Props) {
   const strip = useRef<HTMLDivElement | null>(null);
   const [cue, setCue] = useState<ScrollCue>({ start: false, end: false });
   useScrollCue(strip);
@@ -82,7 +90,8 @@ export function ScrollStrip({ ref, className, wrapperClassName, children, onKeyD
         { left: c.left, right: c.right },
         window.matchMedia("(min-width: 1024px)").matches ? ARROW_ROOM : MARGIN,
       );
-      if (to !== null) el.scrollTo({ left: Math.max(0, to), behavior: reduced() ? "auto" : "smooth" });
+      if (to !== null)
+        el.scrollTo({ left: Math.max(0, to), behavior: reduced() ? "auto" : "smooth" });
     };
     update();
     reveal();
@@ -115,7 +124,10 @@ export function ScrollStrip({ ref, className, wrapperClassName, children, onKeyD
   function move(direction: 1 | -1) {
     const el = strip.current;
     if (!el) return;
-    el.scrollBy({ left: direction * pageStep(el.clientWidth), behavior: reduced() ? "auto" : "smooth" });
+    el.scrollBy({
+      left: direction * pageStep(el.clientWidth),
+      behavior: reduced() ? "auto" : "smooth",
+    });
   }
 
   // Left and right between chips, for a row of buttons that is not a tablist (the tablist's own handler calls
@@ -139,12 +151,7 @@ export function ScrollStrip({ ref, className, wrapperClassName, children, onKeyD
     "absolute top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border-strong bg-card/95 text-foreground shadow-sm transition-colors hover:bg-elevated lg:flex";
   return (
     <div className={cn("relative min-w-0", wrapperClassName)} data-strip-arrows="">
-      <div
-        {...rest}
-        ref={setRef}
-        onKeyDown={keys}
-        className={cn("scroll-strip", className)}
-      >
+      <div {...rest} ref={setRef} onKeyDown={keys} className={cn("scroll-strip", className)}>
         {children}
       </div>
       {cue.start ? (
