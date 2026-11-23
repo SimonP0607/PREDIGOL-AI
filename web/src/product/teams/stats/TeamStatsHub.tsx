@@ -14,7 +14,22 @@ import type { StatsContext, StatsEntity, StatsScope, TeamBody } from "@/lib/api/
 import { t } from "@/lib/i18n";
 import { formatRelative } from "@/lib/time";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/States";
+import { EvidenceChart } from "@/components/analytics/EvidenceChart";
+import { READER_REVIEW } from "@/components/analytics/readerReview";
 import { ChartCard, ChipChoice } from "@/components/analytics/stats/ChartCard";
+import {
+  halvesReading,
+  intervalsReading,
+  performanceReading,
+  pulseReading,
+  radarReading,
+  statesReading,
+  survivalReading,
+  teamSummary,
+  trendsReading,
+  xgReading,
+} from "@/components/analytics/stats/howToRead";
+import { t as r } from "@/components/analytics/stats/readText";
 import { PercentileBars } from "@/components/analytics/stats/PercentileBars";
 import { PulseChart } from "@/components/analytics/stats/PulseChart";
 import { MirrorBins } from "@/components/analytics/stats/MirrorBins";
@@ -30,13 +45,13 @@ const STREAK_KEYS = ["btts", "over_2_5", "scores_first", "clean_sheet", "win"];
 
 function Missingly({ value }: { value: unknown }) {
   return isMissing(value) ? (
-    <p className="text-caption text-subtle-foreground">{missingText(value)}</p>
+    <p className="text-small text-subtle-foreground">{missingText(value)}</p>
   ) : null;
 }
 
 export function StatsFooter({ entity }: { entity: StatsEntity }) {
   return (
-    <p className="text-caption text-subtle-foreground" data-testid="stats-footer">
+    <p className="text-small text-subtle-foreground" data-testid="stats-footer">
       {t("stats.source", { version: entity.calc_version })} ·{" "}
       {t("stats.updated", { when: formatRelative(entity.computed_at) })}
     </p>
@@ -85,7 +100,7 @@ function Controls({
         }))}
       />
       {entity.available_competitions.length > 1 ? (
-        <label className="flex min-h-11 items-center gap-2 text-caption text-muted-foreground">
+        <label className="flex min-h-11 items-center gap-2 text-small text-muted-foreground">
           <span>{t("stats.competitionLabel")}</span>
           <select
             className="min-h-11 rounded-lg border border-border bg-elevated px-2 text-foreground"
@@ -100,10 +115,19 @@ function Controls({
           </select>
         </label>
       ) : null}
-      <span className="text-caption text-subtle-foreground sm:ml-auto">
+      <span className="text-small text-subtle-foreground sm:ml-auto">
         {sampleText(entity.matches)}
       </span>
     </div>
+  );
+}
+
+/** The chart's card when the contract sent no figure for it: its question and the reason, never an empty drawing (AP-E03). */
+function NoData({ title, value, testId }: { title: string; value: unknown; testId: string }) {
+  return (
+    <ChartCard title={title} testId={testId}>
+      <Missingly value={value} />
+    </ChartCard>
   );
 }
 
@@ -121,20 +145,66 @@ export function TeamSections({ entity, body }: { entity: StatsEntity; body: Team
   const halves = present(body.halves);
   const matrix = present(body.matrix);
   const streaks = body.trends.items.filter((r) => STREAK_KEYS.includes(r.key));
+  const name = body.team.name;
+  const matches = body.record.matches;
+  const xg = xgReading(name, body.series);
+  const summary = teamSummary(name, body.record, body.figures);
+  const trends = trendsReading(
+    name,
+    [...streaks, ...(matrix?.flatMap((c) => c.rows) ?? [])],
+    matches,
+  );
+  const trendsBody = (
+    <div className="space-y-2">
+      {matrix ? (
+        <>
+          <h3 className="text-small font-semibold text-muted-foreground">
+            {t("stats.matrixTitle")}
+          </h3>
+          <TrendMatrix columns={matrix} keys={MATRIX_KEYS} />
+        </>
+      ) : null}
+      <h3 className="pt-1 text-small font-semibold text-muted-foreground">
+        {t("stats.streaksTitle")}
+      </h3>
+      <div className="space-y-2">
+        {streaks.map((row) => (
+          <WilsonRow key={row.key} label={t(`stats.trend.${row.key}`)} row={row} />
+        ))}
+      </div>
+    </div>
+  );
+  const common = { evidence: "E1", review: READER_REVIEW } as const;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <ChartCard
-        title={t("stats.performance")}
-        subtitle={t("stats.performanceSub", {
-          unit: t("stats.unit.por_partido"),
-          teams: teams && !isMissing(teams) ? teams.entities : "—",
-        })}
-        footer={t("stats.leagueMark")}
+      <section
+        className="space-y-1 rounded-2xl border border-border bg-card p-4 lg:col-span-2"
+        data-testid="stats-summary"
+        aria-label={r("readchart.summary.title")}
+      >
+        <h2 className="text-subheading">{r("readchart.summary.title")}</h2>
+        <ul className="space-y-1 text-small text-foreground-soft">
+          <li>{summary.form}</li>
+          {summary.strength ? <li>{summary.strength}</li> : null}
+          {summary.weakness ? <li>{summary.weakness}</li> : null}
+        </ul>
+      </section>
+      <EvidenceChart
+        {...common}
+        title={r("readchart.perf.title")}
+        axes={r("readchart.perf.axis")}
+        reading={performanceReading(
+          name,
+          figures,
+          matches,
+          teams && !isMissing(teams) ? teams.entities : "—",
+        )}
+        terms={["percentile"]}
         testId="stats-performance"
         actions={
           <button
             type="button"
-            className="min-h-11 rounded-lg px-2 text-caption font-semibold text-primary hover:underline"
+            className="min-h-11 rounded-lg px-2 text-small font-semibold text-primary hover:underline"
             onClick={() => setAllFigures((v) => !v)}
             aria-expanded={allFigures}
           >
@@ -143,24 +213,32 @@ export function TeamSections({ entity, body }: { entity: StatsEntity; body: Team
         }
       >
         <PercentileBars figures={figures} />
-      </ChartCard>
-      <ChartCard
-        title={t("stats.states")}
-        subtitle={states ? t("stats.statesSub", { n: states.matches_with_data }) : undefined}
-        testId="stats-states"
-      >
-        {states ? <StateBar states={states} /> : <Missingly value={body.states} />}
-      </ChartCard>
-      <ChartCard
-        title={t("stats.pulseTitle")}
-        subtitle={t("stats.pulseSub")}
-        method={t("stats.pulseMethod")}
-        footer={t("stats.pulseNote")}
-        testId="stats-pulse"
-      >
-        {pulseFor ? (
+      </EvidenceChart>
+      {states ? (
+        <EvidenceChart
+          {...common}
+          title={r("readchart.states.title")}
+          axes={r("readchart.states.axis")}
+          reading={statesReading(name, states)}
+          testId="stats-states"
+        >
+          <StateBar states={states} />
+        </EvidenceChart>
+      ) : (
+        <NoData title={r("readchart.states.title")} value={body.states} testId="stats-states" />
+      )}
+      {pulseFor ? (
+        <EvidenceChart
+          {...common}
+          title={r("readchart.pulse.title")}
+          axes={r("readchart.pulse.axis")}
+          reading={pulseReading(name, pulseFor, pulseAgainst)}
+          terms={["goalPulse"]}
+          footer={r("readchart.pulse.note")}
+          testId="stats-pulse"
+        >
           <PulseChart
-            label={t("stats.pulseTitle")}
+            label={r("readchart.pulse.title")}
             series={[
               { name: t("stats.pulseFor"), pulse: pulseFor, color: "var(--color-primary)" },
               ...(pulseAgainst
@@ -175,88 +253,114 @@ export function TeamSections({ entity, body }: { entity: StatsEntity; body: Team
                 : []),
             ]}
           />
-        ) : (
-          <Missingly value={body.pulse_for} />
-        )}
-      </ChartCard>
-      <ChartCard
-        title={t("stats.intervalsTitle")}
-        subtitle={t("stats.intervalsSub")}
-        testId="stats-intervals"
-      >
-        {intervals ? <MirrorBins intervals={intervals} /> : <Missingly value={body.intervals} />}
-      </ChartCard>
-      <ChartCard
-        title={t("stats.survivalTitle")}
-        subtitle={t("stats.survivalSub")}
-        testId="stats-survival"
-      >
-        {survival ? (
-          <>
-            <SurvivalCurve
-              series={[
-                { name: body.team.name, points: survival.points, color: "var(--color-primary)" },
-                {
-                  name: t("stats.survivalLeague"),
-                  points: survival.league_points,
-                  color: "var(--color-subtle-foreground)",
-                  dashed: true,
-                },
-              ]}
-            />
-            <p className="text-caption text-muted-foreground">
-              {isMissing(survival.median_first_goal)
-                ? t("stats.survivalNone")
-                : t("stats.survivalMedian", { label: survival.median_first_goal })}
-              {!isMissing(survival.level_at_half)
-                ? ` · ${t("stats.levelAtHalf", { pct: `${Math.round(survival.level_at_half * 100)} %` })}`
-                : null}
-            </p>
-          </>
-        ) : (
-          <Missingly value={body.survival} />
-        )}
-      </ChartCard>
-      <ChartCard title={t("stats.xgTitle")} subtitle={t("stats.xgSub")} testId="stats-xg">
-        <XgLine series={body.series} />
-      </ChartCard>
-      <ChartCard title={t("stats.halves")} testId="stats-halves">
-        {halves ? <Halves halves={halves} /> : <Missingly value={body.halves} />}
-      </ChartCard>
-      <ChartCard
-        title={t("stats.radarTitle")}
-        subtitle={t("stats.radarSub")}
-        method={t("stats.radarFormula")}
+        </EvidenceChart>
+      ) : (
+        <NoData title={r("readchart.pulse.title")} value={body.pulse_for} testId="stats-pulse" />
+      )}
+      {intervals ? (
+        <EvidenceChart
+          {...common}
+          title={r("readchart.intervals.title")}
+          axes={r("readchart.intervals.axis")}
+          reading={intervalsReading(name, intervals)}
+          testId="stats-intervals"
+        >
+          <MirrorBins intervals={intervals} />
+        </EvidenceChart>
+      ) : (
+        <NoData
+          title={r("readchart.intervals.title")}
+          value={body.intervals}
+          testId="stats-intervals"
+        />
+      )}
+      {survival ? (
+        <EvidenceChart
+          {...common}
+          title={r("readchart.survival.title")}
+          axes={r("readchart.survival.axis")}
+          reading={survivalReading(name, survival)}
+          testId="stats-survival"
+        >
+          <SurvivalCurve
+            series={[
+              { name, points: survival.points, color: "var(--color-primary)" },
+              {
+                name: t("stats.survivalLeague"),
+                points: survival.league_points,
+                color: "var(--color-subtle-foreground)",
+                dashed: true,
+              },
+            ]}
+          />
+        </EvidenceChart>
+      ) : (
+        <NoData
+          title={r("readchart.survival.title")}
+          value={body.survival}
+          testId="stats-survival"
+        />
+      )}
+      {xg ? (
+        <EvidenceChart
+          {...common}
+          title={r("readchart.xg.title")}
+          axes={r("readchart.xg.axis")}
+          reading={xg}
+          terms={["xg"]}
+          testId="stats-xg"
+        >
+          <XgLine series={body.series} />
+        </EvidenceChart>
+      ) : (
+        <ChartCard title={r("readchart.xg.title")} testId="stats-xg">
+          <p className="text-small text-subtle-foreground">{r("readchart.xg.empty")}</p>
+        </ChartCard>
+      )}
+      {halves ? (
+        <EvidenceChart
+          {...common}
+          title={r("readchart.halves.title")}
+          axes={r("readchart.halves.axis")}
+          reading={halvesReading(name, halves)}
+          testId="stats-halves"
+        >
+          <Halves halves={halves} />
+        </EvidenceChart>
+      ) : (
+        <NoData title={r("readchart.halves.title")} value={body.halves} testId="stats-halves" />
+      )}
+      <EvidenceChart
+        {...common}
+        title={r("readchart.radar.title")}
+        axes={r("readchart.radar.axis")}
+        reading={radarReading(name, body.radar, matches)}
+        terms={["percentile"]}
+        footer={r("readchart.radar.how")}
         testId="stats-radar"
       >
-        <RadarBars
-          sides={[{ name: body.team.name, axes: body.radar, color: "var(--color-primary)" }]}
-        />
-      </ChartCard>
-      <ChartCard
-        title={t("stats.trendsTitle")}
-        subtitle={t("stats.trendsSub")}
-        className="lg:col-span-2"
-        testId="stats-trends"
-      >
-        {matrix ? (
-          <>
-            <h3 className="text-caption font-semibold text-muted-foreground">
-              {t("stats.matrixTitle")}
-            </h3>
-            <TrendMatrix columns={matrix} keys={MATRIX_KEYS} />
-          </>
-        ) : null}
-        <h3 className="pt-1 text-caption font-semibold text-muted-foreground">
-          {t("stats.streaksTitle")}
-        </h3>
-        <p className="text-caption text-subtle-foreground">{t("stats.streaksSub")}</p>
-        <div className="space-y-2">
-          {streaks.map((r) => (
-            <WilsonRow key={r.key} label={t(`stats.trend.${r.key}`)} row={r} />
-          ))}
-        </div>
-      </ChartCard>
+        <RadarBars sides={[{ name, axes: body.radar, color: "var(--color-primary)" }]} />
+      </EvidenceChart>
+      {trends ? (
+        <EvidenceChart
+          {...common}
+          title={r("readchart.trends.title")}
+          axes={r("readchart.trends.axis")}
+          reading={trends}
+          className="lg:col-span-2"
+          testId="stats-trends"
+        >
+          {trendsBody}
+        </EvidenceChart>
+      ) : (
+        <ChartCard
+          title={r("readchart.trends.title")}
+          className="lg:col-span-2"
+          testId="stats-trends"
+        >
+          {trendsBody}
+        </ChartCard>
+      )}
       <div className="lg:col-span-2">
         <StatsFooter entity={entity} />
       </div>
@@ -305,9 +409,7 @@ export function TeamStatsHub({ teamId }: { teamId: string }) {
   return (
     <div className="flex flex-col gap-4" data-testid="team-stats-hub">
       {data.data.freshness.stale ? (
-        <p className="rounded-xl bg-warning-soft p-3 text-caption text-warning">
-          {t("stats.stale")}
-        </p>
+        <p className="rounded-xl bg-warning-soft p-3 text-small text-warning">{t("stats.stale")}</p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <Controls
@@ -322,7 +424,7 @@ export function TeamStatsHub({ teamId }: { teamId: string }) {
         <Link
           to="/compare/teams"
           search={{ a: Number(teamId) }}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-elevated px-3 text-caption font-semibold text-foreground-soft hover:border-primary"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-elevated px-3 text-small font-semibold text-foreground-soft hover:border-primary"
           data-testid="stats-compare"
         >
           <ArrowLeftRight aria-hidden className="h-4 w-4" /> {t("stats.compareWith")}

@@ -75,7 +75,7 @@ export function PulseChart({
               x={PAD.left - 4}
               y={y(v) + 3}
               textAnchor="end"
-              fontSize="9"
+              fontSize="12"
               fill="var(--color-subtle-foreground)"
             >
               {v}
@@ -130,14 +130,14 @@ export function PulseChart({
             x={x[i]}
             y={H - 4}
             textAnchor="middle"
-            fontSize="9"
+            fontSize="12"
             fill="var(--color-subtle-foreground)"
           >
             {series[0]?.pulse.bins[i]?.label.replace("-", "–") ?? ""}
           </text>
         ))}
       </svg>
-      <figcaption className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-caption text-muted-foreground">
+      <figcaption className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-small text-muted-foreground">
         {series.map((s) => (
           <span key={s.name} className="inline-flex items-center gap-1">
             <span aria-hidden style={{ color: s.color }}>

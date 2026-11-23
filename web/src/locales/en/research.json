@@ -176,6 +176,15 @@
       "subtitle": "Validation log loss on {season}, on the fixtures every candidate predicted. Chosen: ξ={xi}, penalty={penalty}.",
       "extended": "The best candidate sat on the edge of the initial grid, so the grid was extended by a rule fixed in advance (validation scores only).",
       "corner": "ξ (per day) \\ penalty"
+    },
+    "guide": {
+      "title": "How to read this screen",
+      "what": "What it is",
+      "whatBody": "It is the exam of the models on past seasons, match by match and without seeing the future: each prediction uses only what was known before the match started.",
+      "how": "How to read it",
+      "howBody": "The lower the error, the better. In each grid, the green number is the combination chosen on the validation season.",
+      "decides": "What it decides",
+      "decidesBody": "Which model may generate picks: only one that beats the market in the test season. The results against the market are in Models."
     }
   },
   "settings": {

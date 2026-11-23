@@ -28,6 +28,10 @@ import { DASH, fmtInt, formatOdds, fmtPct, localFixed } from "@/lib/i18n/format"
 import { getTimeZone, zonedInstant } from "@/lib/time";
 import { live } from "@/lib/api/v1/queries";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
+import { EvidenceChart } from "@/components/analytics/EvidenceChart";
+import type { TextReading } from "@/components/analytics/evidence";
+import { READER_REVIEW } from "@/components/analytics/readerReview";
+import { t as rt } from "@/components/analytics/stats/readText";
 import { Card, ErrorState, SectionHeader, SkeletonBlock } from "@/product/shared/States";
 import { useReducedMotion } from "@/product/shared/motion";
 import { ChipGroup } from "@/product/picks/Controls";
@@ -40,7 +44,7 @@ const PERIODS: readonly number[] = [30, 90, 0];
 const POSITIVE = "var(--color-positive)";
 const NEGATIVE = "var(--color-negative)";
 const GRID = "var(--color-border)";
-const TICK = { fill: "var(--color-subtle-foreground)", fontSize: 10 };
+const TICK = { fill: "var(--color-subtle-foreground)", fontSize: 12 };
 const TOOLTIP = {
   contentStyle: {
     background: "var(--color-card)",
@@ -69,6 +73,14 @@ function shortDay(day: string): string {
   }
   return f.format(new Date(zonedInstant(day, 12)));
 }
+
+/** The reading sentence of a recap chart: its sample is the settled records (the page shows charts from `MIN_SAMPLE`). */
+const sentence = (text: string, settled: number): TextReading => ({
+  kind: "text",
+  sentence: text,
+  n: settled,
+  minSample: MIN_SAMPLE,
+});
 
 const units = (n: number) => fmtUnits(Math.round(n * 100) / 100);
 
@@ -103,25 +115,48 @@ function Counted({ value, format }: { value: number | null; format: (n: number) 
   return <>{value === null ? DASH : format(value)}</>;
 }
 
-function ChartCard({
+/** A chart of the recap: the evidence card with its reading sentence, its axes in words and a table for a screen reader. */
+function RecapChart({
   title,
-  subtitle,
+  axes,
+  reading,
+  caption,
+  rows,
   children,
   testId,
 }: {
   title: string;
-  subtitle?: string | undefined;
+  axes: string;
+  reading: TextReading;
+  caption: string;
+  rows: ReadonlyArray<{ day: string; value: string }>;
   children: ReactNode;
   testId: string;
 }) {
   return (
-    <Card className="p-4" as="article">
-      <h3 className="font-display text-sm font-semibold">{title}</h3>
-      {subtitle ? <p className="mt-0.5 text-caption text-muted-foreground">{subtitle}</p> : null}
-      <div className="mt-3 h-52" data-testid={testId}>
+    <EvidenceChart
+      evidence="E1"
+      review={READER_REVIEW}
+      title={title}
+      axes={axes}
+      reading={reading}
+      terms={["units"]}
+    >
+      <div className="h-52" data-testid={testId}>
         {children}
       </div>
-    </Card>
+      <table className="sr-only">
+        <caption>{caption}</caption>
+        <tbody>
+          {rows.map((x) => (
+            <tr key={x.day}>
+              <th scope="row">{shortDay(x.day)}</th>
+              <td>{x.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </EvidenceChart>
   );
 }
 
@@ -186,9 +221,19 @@ function Cumulative({ r, animate }: { r: RecapData; animate: boolean }) {
   const color = last >= 0 ? POSITIVE : NEGATIVE;
   const data = r.days.map((d) => ({ ...d, label: shortDay(d.day) }));
   return (
-    <ChartCard
-      title={t("records.recap.cumulative.title")}
-      subtitle={t("records.recap.cumulative.subtitle")}
+    <RecapChart
+      title={rt("readchart.recap.cumulative.title")}
+      axes={rt("readchart.recap.cumulative.axis")}
+      reading={sentence(
+        rt("readchart.recap.cumulative.read", {
+          total: units(last),
+          n: fmtInt(r.settled),
+          days: fmtInt(r.days.length),
+        }),
+        r.settled,
+      )}
+      caption={t("records.recap.cumulative.title")}
+      rows={r.days.map((d) => ({ day: d.day, value: units(d.total) }))}
       testId="recap-cumulative"
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -225,25 +270,30 @@ function Cumulative({ r, animate }: { r: RecapData; animate: boolean }) {
           />
         </AreaChart>
       </ResponsiveContainer>
-    </ChartCard>
+    </RecapChart>
   );
 }
 
 function PerDay({ r, animate }: { r: RecapData; animate: boolean }) {
   const data = r.days.map((d) => ({ ...d, label: shortDay(d.day) }));
   return (
-    <ChartCard
-      title={t("records.recap.daily.title")}
-      subtitle={
+    <RecapChart
+      title={rt("readchart.recap.daily.title")}
+      axes={rt("readchart.recap.daily.axis")}
+      reading={sentence(
         r.bestDay && r.worstDay
-          ? t("records.recap.daily.subtitle", {
+          ? rt("readchart.recap.daily.read", {
               best: shortDay(r.bestDay.day),
               bestProfit: units(r.bestDay.profit),
               worst: shortDay(r.worstDay.day),
               worstProfit: units(r.worstDay.profit),
+              days: fmtInt(r.days.length),
             })
-          : undefined
-      }
+          : rt("readchart.recap.daily.one", { days: fmtInt(r.days.length) }),
+        r.settled,
+      )}
+      caption={t("records.recap.daily.title")}
+      rows={r.days.map((d) => ({ day: d.day, value: units(d.profit) }))}
       testId="recap-daily"
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -278,7 +328,7 @@ function PerDay({ r, animate }: { r: RecapData; animate: boolean }) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </ChartCard>
+    </RecapChart>
   );
 }
 

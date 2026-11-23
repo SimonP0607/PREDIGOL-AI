@@ -45,49 +45,70 @@ export function XgLine({ series, testId }: { series: MatchPoint[]; testId?: stri
     a: isMissing(p.xg_against_avg5) ? null : p.xg_against_avg5,
   }));
   return (
-    <div className="h-44 w-full" data-testid={testId}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={data}
-          margin={{ top: 6, right: 8, left: -18, bottom: 0 }}
-          accessibilityLayer
-        >
-          <CartesianGrid stroke="var(--color-border)" vertical={false} />
-          <XAxis
-            dataKey="i"
-            tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
-            tickLine={false}
-            width={40}
-          />
-          <Tooltip
-            {...tooltipStyle}
-            labelFormatter={(_, p) => String(p?.[0]?.payload?.opponent ?? "")}
-            formatter={(v: unknown, name: unknown) => [localFixed(Number(v), 2), String(name)]}
-          />
-          <Line
-            type="monotone"
-            dataKey="f"
-            name={t("stats.xgFor")}
-            stroke="var(--color-primary)"
-            strokeWidth={2.5}
-            dot={false}
-            connectNulls
-          />
-          <Line
-            type="monotone"
-            dataKey="a"
-            name={t("stats.xgAgainst")}
-            stroke="var(--color-negative)"
-            strokeWidth={2}
-            dot={false}
-            connectNulls
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div data-testid={testId}>
+      <div className="h-44 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={data}
+            margin={{ top: 6, right: 8, left: -18, bottom: 0 }}
+            accessibilityLayer
+          >
+            <CartesianGrid stroke="var(--color-border)" vertical={false} />
+            <XAxis
+              dataKey="i"
+              tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
+              tickLine={false}
+              width={40}
+            />
+            <Tooltip
+              {...tooltipStyle}
+              labelFormatter={(_, p) => String(p?.[0]?.payload?.opponent ?? "")}
+              formatter={(v: unknown, name: unknown) => [localFixed(Number(v), 2), String(name)]}
+            />
+            <Line
+              type="monotone"
+              dataKey="f"
+              name={t("stats.xgFor")}
+              stroke="var(--color-primary)"
+              strokeWidth={2.5}
+              dot={false}
+              connectNulls
+            />
+            <Line
+              type="monotone"
+              dataKey="a"
+              name={t("stats.xgAgainst")}
+              stroke="var(--color-negative)"
+              strokeWidth={2}
+              dot={false}
+              connectNulls
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{t("stats.xgTitle")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("stats.xgMatch")}</th>
+            <th scope="col">{t("stats.xgFor")}</th>
+            <th scope="col">{t("stats.xgAgainst")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => (
+            <tr key={d.i}>
+              <th scope="row">{d.opponent}</th>
+              <td>{d.f === null ? "—" : localFixed(d.f, 2)}</td>
+              <td>{d.a === null ? "—" : localFixed(d.a, 2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -106,7 +127,7 @@ export function StateBar({ states }: { states: GameStates }) {
         <span className="bg-border-strong" style={{ width: `${share(states.minutes_level)}%` }} />
         <span className="bg-negative" style={{ width: `${share(states.minutes_trailing)}%` }} />
       </div>
-      <p className="flex flex-wrap gap-3 text-caption text-muted-foreground">
+      <p className="flex flex-wrap gap-3 text-small text-muted-foreground">
         <span>
           <span aria-hidden className="text-positive">
             ●
@@ -129,11 +150,11 @@ export function StateBar({ states }: { states: GameStates }) {
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-elevated p-3">
           <div className="numeric-lg text-positive">{states.points_rescued}</div>
-          <div className="text-caption text-muted-foreground">{t("stats.rescued")}</div>
+          <div className="text-small text-muted-foreground">{t("stats.rescued")}</div>
         </div>
         <div className="rounded-xl bg-elevated p-3">
           <div className="numeric-lg text-negative">{states.points_ceded}</div>
-          <div className="text-caption text-muted-foreground">{t("stats.ceded")}</div>
+          <div className="text-small text-muted-foreground">{t("stats.ceded")}</div>
         </div>
       </div>
     </div>
@@ -159,7 +180,7 @@ export function Halves({ halves }: { halves: HalfSplit }) {
   return (
     <div className="space-y-2">
       {rows.map((r) => (
-        <div key={r.label} className="grid grid-cols-[5rem_1fr] items-center gap-2 text-caption">
+        <div key={r.label} className="grid grid-cols-[5rem_1fr] items-center gap-2 text-small">
           <span className="text-muted-foreground">{r.label}</span>
           <div className="space-y-1">
             {[
@@ -209,14 +230,14 @@ export function LastFive({ strip, metric }: { strip: StripItem[]; metric: string
                   style={{ height: `${typeof v === "number" ? (100 * v) / max : 0}%` }}
                 />
               </span>
-              <span className="w-full truncate text-center text-[11px] text-subtle-foreground">
+              <span className="w-full truncate text-center text-small text-subtle-foreground">
                 {s.opponent.name}
               </span>
             </div>
           );
         })}
       </div>
-      <p className="text-caption text-muted-foreground">
+      <p className="text-small text-muted-foreground">
         {t("stats.last5Mean")}:{" "}
         <span className="numeric">{mean === null ? "—" : localFixed(mean, 1)}</span>
       </p>
@@ -230,15 +251,29 @@ export function MinutesBars({
   items: { fixture_id: number; minutes: number; starter: boolean }[];
 }) {
   return (
-    <div className="flex h-16 items-end gap-1" aria-hidden>
-      {items.map((m) => (
-        <span
-          key={m.fixture_id}
-          className={cn("flex-1 rounded-t-md", m.starter ? "bg-primary" : "bg-primary-dim/60")}
-          style={{ height: `${Math.max(6, (100 * Math.min(m.minutes, 95)) / 95)}%` }}
-          title={`${m.minutes}'`}
-        />
-      ))}
+    <div>
+      <div className="flex h-16 items-end gap-1" aria-hidden>
+        {items.map((m) => (
+          <span
+            key={m.fixture_id}
+            className={cn("flex-1 rounded-t-md", m.starter ? "bg-primary" : "bg-primary-dim/60")}
+            style={{ height: `${Math.max(6, (100 * Math.min(m.minutes, 95)) / 95)}%` }}
+            title={`${m.minutes}'`}
+          />
+        ))}
+      </div>
+      <table className="sr-only">
+        <caption>{t("stats.minutesTitle")}</caption>
+        <tbody>
+          {items.map((m, i) => (
+            <tr key={m.fixture_id}>
+              <th scope="row">{i + 1}</th>
+              <td>{m.minutes}&apos;</td>
+              <td>{m.starter ? t("stats.starter") : t("stats.substitute")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -253,33 +288,65 @@ export function VolumeAccuracy({
   testId?: string;
 }) {
   return (
-    <div className="h-56 w-full" data-testid={testId}>
-      <ResponsiveContainer width="100%" height="100%">
-        <ScatterChart margin={{ top: 8, right: 10, left: -12, bottom: 4 }} accessibilityLayer>
-          <CartesianGrid stroke="var(--color-border)" />
-          <XAxis
-            type="number"
-            dataKey="shots_per90"
-            name={t("stats.scatterX")}
-            tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
-          />
-          <YAxis
-            type="number"
-            dataKey="on_target_pct"
-            name={t("stats.scatterY")}
-            domain={[0, 100]}
-            tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
-          />
-          <ZAxis range={[28, 28]} />
-          <Tooltip {...tooltipStyle} />
-          <Scatter data={background} fill="var(--color-border-strong)" />
-          {players.map((p) =>
-            p.point ? (
-              <Scatter key={p.name} name={p.name} data={[p.point]} fill={p.color} shape="circle" />
-            ) : null,
-          )}
-        </ScatterChart>
-      </ResponsiveContainer>
+    <div data-testid={testId}>
+      <div className="h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart margin={{ top: 8, right: 10, left: -12, bottom: 4 }} accessibilityLayer>
+            <CartesianGrid stroke="var(--color-border)" />
+            <XAxis
+              type="number"
+              dataKey="shots_per90"
+              name={t("stats.scatterX")}
+              tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
+            />
+            <YAxis
+              type="number"
+              dataKey="on_target_pct"
+              name={t("stats.scatterY")}
+              domain={[0, 100]}
+              tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
+            />
+            <ZAxis range={[28, 28]} />
+            <Tooltip {...tooltipStyle} />
+            <Scatter
+              data={background}
+              fill="var(--color-border-strong)"
+              isAnimationActive={false}
+            />
+            {players.map((p) =>
+              p.point ? (
+                <Scatter
+                  key={p.name}
+                  name={p.name}
+                  data={[p.point]}
+                  fill={p.color}
+                  shape="circle"
+                  isAnimationActive={false}
+                />
+              ) : null,
+            )}
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+      <table className="sr-only">
+        <caption>{t("stats.scatterTitle")}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{t("stats.scatterPlayer")}</th>
+            <th scope="col">{t("stats.scatterX")}</th>
+            <th scope="col">{t("stats.scatterY")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {players.map((p) => (
+            <tr key={p.name}>
+              <th scope="row">{p.name}</th>
+              <td>{p.point ? localFixed(p.point.shots_per90, 1) : "—"}</td>
+              <td>{p.point ? localFixed(p.point.on_target_pct, 0) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

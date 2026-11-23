@@ -33,15 +33,13 @@ export function ChartCard({
       <header className="flex flex-wrap items-start gap-2">
         <div className="min-w-0 flex-1">
           <h2 className="text-subheading">{title}</h2>
-          {subtitle ? (
-            <p className="mt-0.5 text-caption text-subtle-foreground">{subtitle}</p>
-          ) : null}
+          {subtitle ? <p className="mt-0.5 text-small text-subtle-foreground">{subtitle}</p> : null}
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
       </header>
       {children}
       {method ? (
-        <details className="group text-caption text-subtle-foreground">
+        <details className="group text-small text-subtle-foreground">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden">
             <Info aria-hidden className="h-3.5 w-3.5" />
             <span className="underline-offset-2 group-open:underline">{title}</span>
@@ -49,7 +47,7 @@ export function ChartCard({
           <p className="pt-1 leading-relaxed">{method}</p>
         </details>
       ) : null}
-      {footer ? <div className="text-caption text-subtle-foreground">{footer}</div> : null}
+      {footer ? <div className="text-small text-subtle-foreground">{footer}</div> : null}
     </section>
   );
 }
@@ -85,7 +83,7 @@ export function ChipChoice<T extends string>({
             aria-checked={on}
             onClick={() => onChange(o.value)}
             className={cn(
-              "inline-flex min-h-11 items-center rounded-lg border px-3 text-caption font-semibold transition-colors",
+              "inline-flex min-h-11 items-center rounded-lg border px-3 text-small font-semibold transition-colors",
               on
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-elevated text-foreground-soft hover:border-border-strong",

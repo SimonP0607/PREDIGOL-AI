@@ -24,9 +24,13 @@ import { formatOdds, fmtSignedPct } from "@/lib/i18n/format";
 import { dayKey, formatDate, formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { EvidenceChart } from "@/components/analytics/EvidenceChart";
+import { READER_REVIEW } from "@/components/analytics/readerReview";
+import { t as r } from "@/components/analytics/stats/readText";
 import { selectionLabel } from "@/product/shared/markets";
 import { boardSelections, selectionLine } from "./board";
 import { bestPriceLines, oddsDomain, oddsTicks, timeExtent, type MovePoint } from "./movement";
+import { movementReading } from "./movementReading";
 
 /** One series per chart, so one hue for all of them; the caption names the selection. */
 const LINE = "var(--color-info)";
@@ -74,29 +78,45 @@ export function MovementPanel({
   } else if (!extent) {
     body = <p className="mt-2 text-xs text-muted-foreground">{t("odds.movement.empty")}</p>;
   } else {
-    body = (
+    const titled = lines.map((l) => ({
+      selection: l.selection,
+      points: l.points,
+      title: selectionLabel({
+        market_key: market.market_key,
+        selection: l.selection,
+        line: selectionLine(market.market_key, l.selection, market.line),
+        home: home.name,
+        away: away.name,
+      }),
+    }));
+    const reading = movementReading(titled);
+    const charts = (
       <div
         className={cn(
-          "mt-3 grid gap-2.5",
+          "grid gap-2.5",
           lines.length >= 3 ? "sm:grid-cols-3" : lines.length === 2 && "sm:grid-cols-2",
         )}
       >
-        {lines.map((l) => (
-          <SelectionChart
-            key={l.selection}
-            title={selectionLabel({
-              market_key: market.market_key,
-              selection: l.selection,
-              line: selectionLine(market.market_key, l.selection, market.line),
-              home: home.name,
-              away: away.name,
-            })}
-            points={l.points}
-            extent={extent}
-          />
+        {titled.map((l) => (
+          <SelectionChart key={l.selection} title={l.title} points={l.points} extent={extent} />
         ))}
       </div>
     );
+    if (reading)
+      return (
+        <div id={id} data-testid="odds-movement" className="mt-3">
+          <EvidenceChart
+            evidence="E1"
+            review={READER_REVIEW}
+            title={r("readchart.movement.title")}
+            axes={r("readchart.movement.axis")}
+            reading={reading}
+          >
+            {charts}
+          </EvidenceChart>
+        </div>
+      );
+    body = <div className="mt-3">{charts}</div>;
   }
 
   return (
@@ -107,7 +127,7 @@ export function MovementPanel({
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <h4 className="font-display text-xs font-semibold">{t("odds.movement.title")}</h4>
-        <p className="text-caption text-subtle-foreground">{t("odds.movement.help")}</p>
+        <p className="text-small text-subtle-foreground">{t("odds.movement.help")}</p>
       </div>
       {body}
     </div>
@@ -139,7 +159,7 @@ function SelectionChart({
         <span className="flex shrink-0 flex-col items-end">
           <span className="numeric text-sm font-semibold">{formatOdds(last.odds)}</span>
           {change !== null ? (
-            <span className="numeric inline-flex items-center gap-1 text-caption text-muted-foreground">
+            <span className="numeric inline-flex items-center gap-1 text-small text-muted-foreground">
               <Trend aria-hidden className="h-3 w-3" />
               {t("odds.movement.from", { odds: formatOdds(first.odds) })} · {fmtSignedPct(change)}
             </span>
@@ -172,7 +192,7 @@ function SelectionChart({
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => formatOdds(v)}
-              tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
+              tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
             />
             <Tooltip
               content={<MoveTooltip />}
@@ -243,10 +263,10 @@ function TimeTick({
       dy="0.71em"
       textAnchor={anchor}
       fill="var(--color-subtle-foreground)"
-      fontSize={10}
+      fontSize={12}
       className="numeric"
     >
-      {sameDay ? formatTime(v) : stamp(v)}
+      {sameDay ? formatTime(v) : formatDate(v)}
     </text>
   );
 }
@@ -287,8 +307,8 @@ function MoveTooltip({
   return (
     <div className="rounded-md border border-border-strong bg-popover px-2.5 py-1.5 shadow-lg">
       <div className="numeric text-sm font-semibold text-foreground">{formatOdds(point.odds)}</div>
-      <div className="text-caption text-muted-foreground">{point.bookmaker}</div>
-      <div className="numeric text-caption text-subtle-foreground">{stamp(point.t)}</div>
+      <div className="text-small text-muted-foreground">{point.bookmaker}</div>
+      <div className="numeric text-small text-subtle-foreground">{stamp(point.t)}</div>
     </div>
   );
 }

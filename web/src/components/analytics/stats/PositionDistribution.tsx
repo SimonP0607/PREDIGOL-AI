@@ -1,10 +1,11 @@
 /**
  * A point on the distribution of its position (plan EA, catalogue n.º 6; V2·2, V2·4): the shade is p10-p90 of the position's players
- * in the league (p25-p75 darker), the tick its median, the dot(s) the player(s). Shows whether a difference is large or noise.
+ * in the league (p25-p75 darker), the tick its median, the dot(s) the player(s); under it, where each one sits in words (AP-T03). Shows whether a difference is large or noise.
  */
 import { isMissing } from "@/lib/api/v1/types_intelligence";
 import type { StatFigure } from "@/lib/api/v1/types_stats";
-import { figName, figValue, percentileText } from "./format";
+import { figName, figValue } from "./format";
+import { figurePlace } from "./howToRead";
 
 export interface DistPlayer {
   name: string;
@@ -33,13 +34,9 @@ export function DistributionRow({ players, testId }: { players: DistPlayer[]; te
   const at = (v: number) => `${Math.min(100, Math.max(0, ((v - base) / span) * 100))}%`;
   return (
     <div className="space-y-1" data-testid={testId}>
-      <div className="flex items-baseline justify-between gap-2 text-caption">
+      <div className="flex items-baseline justify-between gap-2 text-small">
         <span className="text-foreground-soft">{figName(first.key)}</span>
-        <span className="numeric">
-          {players
-            .map((p) => `${figValue(p.figure)} (${percentileText(p.figure.percentile)})`)
-            .join(" · ")}
-        </span>
+        <span className="numeric">{players.map((p) => figValue(p.figure)).join(" · ")}</span>
       </div>
       <div className="relative h-4 rounded-full bg-elevated" aria-hidden>
         {dist && !isMissing(dist) ? (
@@ -68,6 +65,15 @@ export function DistributionRow({ players, testId }: { players: DistPlayer[]; te
           ),
         )}
       </div>
+      <p className="text-small text-subtle-foreground">
+        {players
+          .map((p) => {
+            const place = figurePlace(p.figure);
+            return place === null ? null : players.length > 1 ? `${p.name}: ${place}` : place;
+          })
+          .filter((x) => x !== null)
+          .join(" · ")}
+      </p>
     </div>
   );
 }

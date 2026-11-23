@@ -110,7 +110,19 @@ export interface MatchReading {
   minSample: number;
 }
 
-export type Reading = RateReading | MeanReading | MatchReading;
+/**
+ * A reading sentence a chart's own module writes from the contract's figures (AP-T03): the team's pulse, the goals of each interval,
+ * the percentiles in words. The sentence is finished text in the reader's language and the figures in it come from the contract
+ * already computed; `n` and `minSample` only cap the level (under the minimum a chart is an anecdote, E0).
+ */
+export interface TextReading {
+  kind: "text";
+  sentence: string;
+  n: number;
+  minSample: number;
+}
+
+export type Reading = RateReading | MeanReading | MatchReading | TextReading;
 
 function asPct(x: number): number {
   return x <= 1 ? x * 100 : x;
@@ -123,6 +135,7 @@ export function cappedLevel(level: EvidenceLevel, reading: Reading): EvidenceLev
 
 /** The reading sentence: what the chart shows, with its sample and its interval, in the reader's language. */
 export function readingSentence(r: Reading): string {
+  if (r.kind === "text") return r.sentence;
   const n = localInt(r.n);
   if (r.kind === "match")
     return t("evidence.sentence.match", { subject: r.subject, n, source: r.source });

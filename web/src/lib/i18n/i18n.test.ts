@@ -11,6 +11,7 @@ import { hasKey, setLocale, translate } from "./index";
 // The namespaces added when their screen loads (`addCatalog`): imported here so every check below sees them.
 import "@/product/shared/availabilityText";
 import "@/components/analytics/evidenceText";
+import "@/components/analytics/stats/readText";
 import "@/admin/usageText";
 import "@/product/competitions/text";
 import "@/product/match/stats/matchvizText";
