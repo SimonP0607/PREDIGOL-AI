@@ -448,6 +448,13 @@ export const live = {
     queryFn: () => v1.adminProviderUsage({ until, days }),
     refetchInterval: MINUTE,
   }),
+  /** Computed once a week: an hour is as fresh as it gets. A 404 (switch off) is not retried. */
+  adminEvaluationBoard: {
+    queryKey: ["v1", "admin", "evaluation", "board"],
+    queryFn: v1.adminEvaluationBoard,
+    staleTime: 60 * MINUTE,
+    retry: false,
+  },
   odds: { queryKey: ["v1", "odds"], queryFn: v1.odds },
   fixtureOdds: (id: string, market?: string) => ({
     queryKey: ["v1", "fixture-odds", id, market ?? "all"],
