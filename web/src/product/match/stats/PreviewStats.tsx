@@ -11,12 +11,23 @@ import { LiveApiError } from "@/lib/api/v1/client";
 import { present } from "@/lib/api/v1/types_intelligence";
 import type { StatsScope, TeamBody } from "@/lib/api/v1/types_stats";
 import { t } from "@/lib/i18n";
+import { EvidenceChart } from "@/components/analytics/EvidenceChart";
+import { READER_REVIEW } from "@/components/analytics/readerReview";
 import { ChartCard, ChipChoice } from "@/components/analytics/stats/ChartCard";
+import {
+  compareRadarReading,
+  figurePlace,
+  intervalsReading,
+  pulseReading,
+  survivalReading,
+  together,
+} from "@/components/analytics/stats/howToRead";
+import { t as r } from "@/components/analytics/stats/readText";
 import { PulseChart } from "@/components/analytics/stats/PulseChart";
 import { MirrorBins } from "@/components/analytics/stats/MirrorBins";
 import { SurvivalCurve } from "@/components/analytics/stats/SurvivalCurve";
 import { RadarBars } from "@/components/analytics/stats/RadarBars";
-import { figName, figValue, percentileText } from "@/components/analytics/stats/format";
+import { figName, figValue } from "@/components/analytics/stats/format";
 import { StatsFooter } from "@/product/teams/stats/TeamStatsHub";
 import { teamColor } from "@/product/teams/stats/shared";
 
@@ -38,7 +49,7 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
   if (q.isPending) return null;
   if (q.isError) {
     if (q.error instanceof LiveApiError && q.error.status === 404)
-      return <p className="text-caption text-subtle-foreground">{t("stats.previewNone")}</p>;
+      return <p className="text-small text-subtle-foreground">{t("stats.previewNone")}</p>;
     return null;
   }
   const entities = q.data.data.entities;
@@ -53,6 +64,11 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
   const intervals = present(chosen.intervals);
   const sh = present(home.survival);
   const sa = present(away.survival);
+  const common = { evidence: "E1", review: READER_REVIEW } as const;
+  const pulseReadings = [home, away]
+    .map((b) => ({ b, p: present(b.pulse_for) }))
+    .filter((x) => x.p !== null)
+    .map((x) => pulseReading(x.b.team.name, x.p!, present(x.b.pulse_against)));
   return (
     <section
       className="space-y-4"
@@ -62,7 +78,7 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="text-subheading">{t("stats.previewTitle")}</h2>
-          <p className="text-caption text-subtle-foreground">
+          <p className="text-small text-subtle-foreground">
             {t("stats.previewSub", { home: home.team.name, away: away.team.name })}
           </p>
         </div>
@@ -78,18 +94,23 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {pulses.length ? (
-          <ChartCard
-            title={t("stats.pulseTitle")}
-            footer={t("stats.pulseNote")}
-            method={t("stats.pulseMethod")}
+          <EvidenceChart
+            {...common}
+            title={r("readchart.pulse.title")}
+            axes={r("readchart.pulse.axis")}
+            reading={together(pulseReadings)}
+            terms={["goalPulse"]}
+            footer={r("readchart.pulse.note")}
           >
-            <PulseChart label={t("stats.pulseTitle")} series={pulses} />
-          </ChartCard>
+            <PulseChart label={r("readchart.pulse.title")} series={pulses} />
+          </EvidenceChart>
         ) : null}
         {intervals ? (
-          <ChartCard
-            title={`${t("stats.intervalsTitle")} · ${chosen.team.name}`}
-            subtitle={t("stats.intervalsSub")}
+          <EvidenceChart
+            {...common}
+            title={`${r("readchart.intervals.title")} · ${chosen.team.name}`}
+            axes={r("readchart.intervals.axis")}
+            reading={intervalsReading(chosen.team.name, intervals)}
             actions={
               <ChipChoice
                 value={String(side) as "0" | "1"}
@@ -103,10 +124,10 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
             }
           >
             <MirrorBins intervals={intervals} />
-          </ChartCard>
+          </EvidenceChart>
         ) : null}
-        <ChartCard title={t("stats.performance")} subtitle={t("stats.compareEach")}>
-          <ul className="space-y-1.5 text-caption">
+        <ChartCard title={r("readchart.compare.figuresTitle")}>
+          <ul className="space-y-1.5 text-small">
             {CROSS_FIGURES.map((k) => {
               const fh = home.figures.find((f) => f.key === k);
               const fa = away.figures.find((f) => f.key === k);
@@ -116,11 +137,11 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
                   <span className="truncate text-foreground-soft">{figName(k)}</span>
                   <span className="numeric" style={{ color: teamColor(0) }}>
                     {figValue(fh)}{" "}
-                    <span className="text-subtle-foreground">{percentileText(fh.percentile)}</span>
+                    <span className="text-subtle-foreground">{figurePlace(fh) ?? "—"}</span>
                   </span>
                   <span className="numeric" style={{ color: teamColor(1) }}>
                     {figValue(fa)}{" "}
-                    <span className="text-subtle-foreground">{percentileText(fa.percentile)}</span>
+                    <span className="text-subtle-foreground">{figurePlace(fa) ?? "—"}</span>
                   </span>
                 </li>
               );
@@ -128,7 +149,7 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
           </ul>
         </ChartCard>
         <ChartCard title={t("stats.previewTrends")} footer={t("stats.previewTrendsNote")}>
-          <ul className="space-y-1.5 text-caption">
+          <ul className="space-y-1.5 text-small">
             {CROSS_TRENDS.map((k) => {
               const rh = home.trends.items.find((r) => r.key === k);
               const ra = away.trends.items.find((r) => r.key === k);
@@ -146,19 +167,34 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
           </ul>
         </ChartCard>
         {sh && sa ? (
-          <ChartCard title={t("stats.survivalTitle")} subtitle={t("stats.survivalSub")}>
+          <EvidenceChart
+            {...common}
+            title={r("readchart.survival.title")}
+            axes={r("readchart.survival.axis")}
+            reading={together([
+              survivalReading(home.team.name, sh),
+              survivalReading(away.team.name, sa),
+            ])}
+          >
             <SurvivalCurve
               series={[
                 { name: home.team.name, points: sh.points, color: teamColor(0) },
                 { name: away.team.name, points: sa.points, color: teamColor(1) },
               ]}
             />
-          </ChartCard>
+          </EvidenceChart>
         ) : null}
-        <ChartCard
-          title={t("stats.radarTitle")}
-          subtitle={t("stats.radarSub")}
-          method={t("stats.radarFormula")}
+        <EvidenceChart
+          {...common}
+          title={r("readchart.compareRadar.title")}
+          axes={r("readchart.radar.axis")}
+          reading={compareRadarReading(
+            { name: home.team.name, axes: home.radar },
+            { name: away.team.name, axes: away.radar },
+            Math.min(home.record.matches, away.record.matches),
+          )}
+          terms={["percentile"]}
+          footer={r("readchart.radar.how")}
         >
           <RadarBars
             sides={[
@@ -166,7 +202,7 @@ export function PreviewStats({ fixtureId }: { fixtureId: string }) {
               { name: away.team.name, axes: away.radar, color: teamColor(1) },
             ]}
           />
-        </ChartCard>
+        </EvidenceChart>
       </div>
       {entities[0] ? <StatsFooter entity={entities[0]} /> : null}
     </section>

@@ -23,6 +23,7 @@ import {
   minutesReading,
   playerReading,
   scatterReading,
+  together,
   halvesReading,
   intervalsReading,
   performanceReading,
@@ -210,6 +211,19 @@ describe("the sentences of a player's charts and of the comparisons", () => {
   test("a figure's place is null when the server sent no percentile", () => {
     const f = { ...pl.figures[0]!, percentile: { missing_reason: "sin_datos" } } as never;
     expect(figurePlace(f)).toBeNull();
+  });
+});
+
+describe("two teams of one match", () => {
+  test("the readings of home and away are said one after the other and the smaller sample caps the level", () => {
+    setLocale("es");
+    const a = halvesReading("Local", { ...present(body.halves)!, matches_with_data: 9 });
+    const b = halvesReading("Visitante", { ...present(body.halves)!, matches_with_data: 3 });
+    const both = together([a, b]);
+    expect(both.sentence.startsWith("Local ha marcado")).toBe(true);
+    expect(both.sentence).toContain("Visitante ha marcado");
+    expect(both.n).toBe(3);
+    expect(both.minSample).toBe(5);
   });
 });
 
