@@ -20,7 +20,11 @@
       "transparencyLink": "How PrediGol is doing",
       "enter": "Enter PrediGol",
       "tour": "Take the tour (5 steps)",
-      "howItWorks": "How PrediGol works"
+      "howItWorks": "How PrediGol works",
+      "lead": "Three things worth knowing before you go in.",
+      "analysisTitle": "The analysis of your matches",
+      "picksTitle": "Picks only when there is value",
+      "transparencyTitle": "We tell you how we are doing"
     },
     "failed": "We could not save. Try again or skip this step."
   },

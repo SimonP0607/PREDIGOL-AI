@@ -155,6 +155,50 @@ export function LiveTile({ label, price }: { label: string; price: LivePrice | n
   );
 }
 
+/**
+ * One selection as a compact row (AP-P06, board «Match Center · Resumen»): the selection and who offers it on
+ * the left, the price - the same SelectablePrice - on the right. One row per selection, so it reads the same in
+ * the 400 px side column of the desktop and on a phone. Also the market-row piece of AP-P08.
+ */
+export function PriceRow({
+  label,
+  price,
+  choose,
+}: {
+  label: string;
+  price: BestPrice | null;
+  choose?: Choose | undefined;
+}) {
+  return (
+    <li className="flex min-h-11 items-center justify-between gap-3 border-t border-border/60 py-1 first:border-t-0">
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-sm font-medium">{label}</span>
+        <span className="truncate text-micro leading-4 text-subtle-foreground">
+          {price ? price.bookmaker : t("match.prices.noPrice")}
+        </span>
+      </span>
+      {price ? (
+        choose ? (
+          <SelectablePrice sel={choose(price)} />
+        ) : (
+          <OddsPill odds={price.odds} />
+        )
+      ) : (
+        <span className="numeric text-sm text-subtle-foreground">—</span>
+      )}
+    </li>
+  );
+}
+
+function RowList({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <h3 className="mb-0.5 text-label text-subtle-foreground">{title}</h3>
+      <ul className="m-0 list-none p-0">{children}</ul>
+    </div>
+  );
+}
+
 function TileRow({ title, children, cols }: { title: string; children: ReactNode; cols: 2 | 3 }) {
   return (
     <div>
@@ -201,40 +245,40 @@ export function QuickPricesBlock({ ctx }: { ctx: MatchCtx }) {
       ) : (
         <div className="space-y-3.5">
           {one ? (
-            <TileRow title={marketName("1X2")} cols={3}>
+            <RowList title={marketName("1X2")}>
               {one.cells.map((c, i) => (
-                <PriceTile
+                <PriceRow
                   key={i}
                   label={tileLabel("1X2", ["Home", "Draw", "Away"][i] ?? "", null, sides)}
                   price={c}
                   choose={choose}
                 />
               ))}
-            </TileRow>
+            </RowList>
           ) : null}
           {ou ? (
-            <TileRow title={t("match.prices.ou25", { line: fmtLine(2.5) })} cols={2}>
+            <RowList title={t("match.prices.ou25", { line: fmtLine(2.5) })}>
               {ou.cells.map((c, i) => (
-                <PriceTile
+                <PriceRow
                   key={i}
                   label={tileLabel("OU", i === 0 ? "Over" : "Under", 2.5, sides)}
                   price={c}
                   choose={choose}
                 />
               ))}
-            </TileRow>
+            </RowList>
           ) : null}
           {btts ? (
-            <TileRow title={marketName("BTTS")} cols={2}>
+            <RowList title={marketName("BTTS")}>
               {btts.cells.map((c, i) => (
-                <PriceTile
+                <PriceRow
                   key={i}
                   label={tileLabel("BTTS", i === 0 ? "Yes" : "No", null, sides)}
                   price={c}
                   choose={choose}
                 />
               ))}
-            </TileRow>
+            </RowList>
           ) : null}
           <PriceStatusNotes ctx={ctx} />
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border/70 pt-2">

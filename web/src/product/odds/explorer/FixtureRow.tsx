@@ -110,6 +110,12 @@ export function PriceCell({
             {t("explorer.price.outlier")}
           </span>
         ) : null}
+        {!tappable && (block === "server" || block === "started" || block === "quarter") ? (
+          // AP-C03: the reason beside the price, in words - a phone never shows a hover text.
+          <span className="break-words text-subtle-foreground" data-testid="explorer-block-reason">
+            {why}
+          </span>
+        ) : null}
         {fair ? (
           // Two pieces that never break inside: «justa 1,92» and «· +1,6 %» (its full words are the hint).
           <span className="numeric text-subtle-foreground" title={edge ?? undefined}>

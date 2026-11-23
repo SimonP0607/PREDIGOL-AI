@@ -324,7 +324,6 @@
     "title": "Match stats",
     "key": "Key stats",
     "all": "See all",
-    "notStarted": "The match has not started yet: here is how both teams arrive.",
     "season": "Season",
     "position": "#{rank} in the table",
     "label": {
@@ -1468,6 +1467,10 @@
       "home": "Home",
       "away": "Away",
       "general": "About the match"
+    },
+    "teamLatest": {
+      "note": "This match has no news of its own yet. Here is the latest of each side, with its date.",
+      "of": "Latest news of {team}"
     }
   },
   "catalog": {
@@ -1590,5 +1593,29 @@
       "mine": "Your teams",
       "recent": "Latest"
     }
+  },
+  "keyFigures": {
+    "title": "Key figures",
+    "note": "The analysis's own figures, at a glance. Nothing new is calculated.",
+    "rank": "Position",
+    "rankValue": "#{rank}",
+    "gap": "Points to the zone",
+    "gapUp": "{count} to {zone}",
+    "gapDown": "{count} from {zone}",
+    "form": "Form",
+    "formLast": "Last {count}",
+    "xg": "xG for / against",
+    "rest": "Rest",
+    "restAtMost": "up to {days}",
+    "days_one": "{days} day",
+    "days_other": "{days} days",
+    "none": "—",
+    "tableTitle": "How the table would look",
+    "ifHomeWin": "If {team} win",
+    "ifDraw": "If they draw",
+    "ifAwayWin": "If {team} win",
+    "pointsPlaces": "{points} pts · {places}",
+    "sentences": "Show the analysis in sentences",
+    "sentencesHide": "Hide the sentences"
   }
 }

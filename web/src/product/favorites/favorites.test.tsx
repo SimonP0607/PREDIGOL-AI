@@ -16,7 +16,7 @@ import type { CompetitionBadge, TeamBadge } from "@/lib/api/v1/types_product";
 import type { Today } from "@/lib/api/v1/types_today";
 import { whyText } from "@/product/home/why";
 import { afterWelcome } from "@/product/welcome/next";
-import { FavoritesPicker } from "./FavoritesPicker";
+import { FavoritesPicker, nearLimit } from "./FavoritesPicker";
 import { catalogKeyName } from "./catalogName";
 import { validEvent } from "@/lib/track";
 import type { FavoritesView } from "@/lib/api/v1/types_favorites";
@@ -226,8 +226,8 @@ describe("the picker as it renders", () => {
       leagues: [league(1, "Liga BetPlay")],
       teams: [team(7, "Santa Fe")],
     });
-    expect(html).toContain("1 de 10 ligas");
-    expect(html).toContain("1 de 20 equipos");
+    // far from every limit the counts stay quiet (AP-B04); they speak when one is within two
+    expect(html).not.toContain("fav-counts");
     expect(html).toContain('aria-label="Quitar Santa Fe"');
     expect(html.match(/data-testid="fav-league"/g)?.length).toBe(2);
     expect(html.match(/aria-pressed="true"/g)?.length).toBe(1);
@@ -523,5 +523,14 @@ describe("a catalogue market in the reader's words", () => {
     expect(catalogKeyName("goals_btts.1H.match")).toContain("1.ª parte");
     const strange = catalogKeyName("bet_999.FT.match");
     expect(strange).not.toContain("bet_999");
+  });
+});
+
+describe("nearLimit (AP-B04): the counts speak only close to a limit", () => {
+  const limits = { leagues: 10, teams: 20, players: 20, markets: 7, catalog: 10 };
+  test("2 de 10 es ruido; 8 de 10 es un aviso", () => {
+    expect(nearLimit({ ...EMPTY, leagues: [league(1, "A"), league(2, "B")] }, limits)).toBe(false);
+    const eight = Array.from({ length: 8 }, (_, i) => league(i + 1, `L${i}`));
+    expect(nearLimit({ ...EMPTY, leagues: eight }, limits)).toBe(true);
   });
 });

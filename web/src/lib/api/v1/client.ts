@@ -905,6 +905,7 @@ export const v1 = {
     getJson<Envelope<NewsFeed | null>>("/news", {
       ...(q.mine ? { mine: "true" } : {}),
       ...(q.status ? { status: q.status } : {}),
+      ...(q.team ? { team: String(q.team) } : {}),
       ...(q.offset ? { offset: String(q.offset) } : {}),
     }),
   todayNews: (scope: "mine" | "general" = "mine") =>

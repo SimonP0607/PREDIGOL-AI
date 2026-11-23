@@ -40,6 +40,8 @@ import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { HelpfulVote } from "@/product/feedback/HelpfulVote";
 import type { MatchCtx } from "@/product/match/context";
 import { factText } from "./text";
+import { KeyFiguresView } from "./KeyFigures";
+import { keyFigures } from "./figuresModel";
 import { useReading, type ReadingLoad } from "./useReading";
 
 /** The six sections of the structured reading: the ones the full analysis shows. */
@@ -271,6 +273,23 @@ function Frame({
   );
 }
 
+/**
+ * The analysis in sentences. With key figures above it, the sentences stay below, folded (AP-P07): the same text as ever,
+ * one tap away; without figures there is nothing to fold behind, so they are shown as before.
+ */
+function Sentences({ folded, children }: { folded: boolean; children: ReactNode }) {
+  if (!folded) return <>{children}</>;
+  return (
+    <details className="group space-y-5" data-testid="reading-sentences">
+      <summary className="tap-y relative inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        <span className="group-open:hidden">{t("match.keyFigures.sentences")}</span>
+        <span className="hidden group-open:inline">{t("match.keyFigures.sentencesHide")}</span>
+      </summary>
+      <div className="space-y-5 pt-3">{children}</div>
+    </details>
+  );
+}
+
 /** Once the match is over, the way from what was read before it to what happened (plan UX, B4). */
 function ToPostmatch({ onClick }: { onClick: () => void }) {
   return (
@@ -357,6 +376,7 @@ export function ReadingView({
           </span>
         }
       >
+        <KeyFiguresView reading={reading} teams={teams} />
         <NarrativeBody narrative={narrative} teams={teams} />
         {apart.map((s) => (
           <SectionView key={s.key} section={s} />
@@ -390,9 +410,12 @@ export function ReadingView({
           {t("match.readingBlock.incomplete")}
         </p>
       ) : null}
-      {reading.sections.filter(isBase).map((s) => (
-        <SectionView key={s.key} section={s} />
-      ))}
+      <KeyFiguresView reading={reading} teams={teams} />
+      <Sentences folded={keyFigures(reading, teams) !== null}>
+        {reading.sections.filter(isBase).map((s) => (
+          <SectionView key={s.key} section={s} />
+        ))}
+      </Sentences>
       {footer}
       {afterMatch ? <ToPostmatch onClick={afterMatch} /> : null}
     </Frame>

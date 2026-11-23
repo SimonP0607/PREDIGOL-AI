@@ -146,8 +146,10 @@ test("a new account: from its first entry to «Hoy en tus ligas» with its favou
     // «Qué es PrediGol»: three sentences, then Inicio
     await expect(welcome).toHaveAttribute("data-step", "about");
     await expect(page.getByTestId("welcome-about").locator("li")).toHaveCount(3);
-    // what PrediGol is, in the one sentence every screen says (plan de cierre UX, 1.1)
-    await expect(page.getByTestId("welcome-what")).toHaveText(t.common.what);
+    // the legal notice no longer sits in a paragraph of the step (AP-B04, D12): it stays in the foot of the page
+    await expect(page.getByTestId("welcome-what")).toHaveCount(0);
+    await expect(page.getByTestId("disclaimer")).toBeVisible();
+    await expect(page.getByTestId("welcome-bar")).toHaveAttribute("aria-valuenow", "2");
     await page.getByTestId("welcome-enter").click();
     await expect(page).toHaveURL(/\/home$/);
     const block = page.getByTestId("home-today");
