@@ -34,9 +34,9 @@ describe("Mi parlay no declara «sin IA»", () => {
   });
 
   test("las claves retiradas no existen", () => {
-    expect((esRecords as { slip: Record<string, unknown> }).slip.noAi).toBeUndefined();
-    expect((enRecords as { slip: Record<string, unknown> }).slip.noAi).toBeUndefined();
-    expect((esOdds as { byMatch: Record<string, unknown> }).byMatch.noAi).toBeUndefined();
-    expect((enOdds as { byMatch: Record<string, unknown> }).byMatch.noAi).toBeUndefined();
+    expect((esRecords as { slip: Record<string, unknown> }).slip["noAi"]).toBeUndefined();
+    expect((enRecords as { slip: Record<string, unknown> }).slip["noAi"]).toBeUndefined();
+    expect((esOdds as { byMatch: Record<string, unknown> }).byMatch["noAi"]).toBeUndefined();
+    expect((enOdds as { byMatch: Record<string, unknown> }).byMatch["noAi"]).toBeUndefined();
   });
 });
