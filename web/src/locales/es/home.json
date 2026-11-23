@@ -238,5 +238,12 @@
     "title": "Elige tus equipos",
     "body": "Te mostramos primero sus partidos y noticias; los picks son los mismos para todos.",
     "action": "Elegir equipos"
+  },
+  "dayHighlights": {
+    "title": "Lo más interesante de hoy",
+    "label": "Análisis del día · no es un pick",
+    "yours": "Tuyo",
+    "forecast": "Pronóstico de PrediGol",
+    "how": "Elegimos por lo que se juegan los equipos y por tus favoritos, nunca por la cuota. Es algo para leer, no una recomendación."
   }
 }

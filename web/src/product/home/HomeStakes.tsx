@@ -59,7 +59,7 @@ function Rows({
 }
 
 /** The sentences of a match's reasons: the ones the client can word, in the server's order. */
-function Reasons({ reasons }: { reasons: HomeReason[] }) {
+export function Reasons({ reasons }: { reasons: HomeReason[] }) {
   const lines = reasons.map(reasonText).filter((x): x is string => x !== null);
   if (lines.length === 0) return null;
   return (

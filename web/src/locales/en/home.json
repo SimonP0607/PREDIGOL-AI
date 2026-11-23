@@ -238,5 +238,12 @@
     "title": "Choose your teams",
     "body": "We show their matches and news first; the picks are the same for everyone.",
     "action": "Choose teams"
+  },
+  "dayHighlights": {
+    "title": "Worth a look today",
+    "label": "Analysis of the day · not a pick",
+    "yours": "Yours",
+    "forecast": "PrediGol's forecast",
+    "how": "We choose by what the teams play for and by your favourites, never by the price. It is something to read, not a recommendation."
   }
 }
