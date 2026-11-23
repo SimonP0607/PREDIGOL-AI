@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 /**
- * Plan F5, PRONÓSTICO PREDIGOL in the Resumen: a probability and the interval around it, "Sin calibrar" wherever no
+ * Plan F5, PRONÓSTICO PREDIGOL in the Resumen: a probability and the interval around it, "Estimación preliminar" wherever no
  * champion calibrator exists, no price anywhere for a user, and nothing at all for a user until the owner decides.
  * The Admin Console's preview alone sees the fair odds and, folded away, the value and the picks of the match and,
  * in a block of its own, what the families forecast for it (plan F10.17b): research, never shown to a user.
@@ -219,7 +219,7 @@ describe("what a user sees once the owner lets users see the forecast", () => {
   });
 
   test("calibrated only where a champion calibrator exists, and the others say so, with the reason", () => {
-    expect(out.match(/Sin calibrar/g)?.length).toBe(2);
+    expect(out.match(/Estimación preliminar/g)?.length).toBe(2);
     expect(out.match(/Calibrada/g)?.length).toBe(1);
     expect(out).toContain("todavía no hay una corrección comprobada");
     expect(out).toContain("necesita un precio reciente");
@@ -229,7 +229,7 @@ describe("what a user sees once the owner lets users see the forecast", () => {
   });
 
   test("the model and when it was said", () => {
-    expect(out).toContain("Modelo: Dixon-Coles");
+    expect(out).toContain("Modelo: Modelo de goles con ajuste de marcadores bajos");
     expect(out).toContain("Actualizado");
   });
 
@@ -566,7 +566,7 @@ describe("what the families forecast, in the preview's block of their own", () =
 
   test("every market of the families says it is not calibrated, and none reads as a recommendation", () => {
     expect(block.match(/data-calibration="UNCALIBRATED"/g)?.length).toBe(5);
-    expect(block.match(/Sin calibrar/g)?.length).toBe(5);
+    expect(block.match(/Estimación preliminar/g)?.length).toBe(5);
     expect(block).not.toContain("Calibrada");
     expect(block).not.toContain("Lo más probable");
     expect(block).not.toContain("entre 4"); // no interval anywhere: the families measure none
@@ -636,7 +636,7 @@ describe("what the families forecast, in the preview's block of their own", () =
     expect(corners).toMatch(/Over 9\.5\s55%/);
     expect(corners).toContain("Graded with: Corners of the match");
     expect(seen).toContain("Markets: 2");
-    expect(seen).not.toContain("Sin calibrar");
+    expect(seen).not.toContain("Estimación preliminar");
     expect(seen).not.toContain("Se liquida");
   });
 });
@@ -696,12 +696,12 @@ describe("in English", () => {
     setLocale("en");
     const out = render(userSees(), false);
     expect(out).toContain("PrediGol forecast");
-    expect(out).toContain("Uncalibrated");
+    expect(out).toContain("Preliminary estimate");
     expect(out).toContain("Calibrated");
     expect(out).toContain("Most likely");
     expect(out).toContain("Over 2.5");
     expect(out).toMatch(/between 44%\sand 60%/);
-    expect(out).not.toContain("Sin calibrar");
+    expect(out).not.toContain("Estimación preliminar");
   });
 });
 
@@ -788,9 +788,9 @@ describe("the words and the bar", () => {
   test("a basis this page does not know is blank, a model it does not know is named as it is", () => {
     expect(basisNote("some_future_basis")).toBe("");
     expect(basisNote("champion").length).toBeGreaterThan(10);
-    expect(modelLabel("poisson")).toBe("Poisson (Maher)");
-    expect(modelLabel("dixon_coles")).toBe("Dixon-Coles");
-    expect(modelLabel("elo_ologit")).toBe("Elo (logit ordenado)");
+    expect(modelLabel("poisson")).toBe("Modelo de goles");
+    expect(modelLabel("dixon_coles")).toBe("Modelo de goles con ajuste de marcadores bajos");
+    expect(modelLabel("elo_ologit")).toBe("Modelo de fuerza de los equipos");
     expect(modelLabel("some_future_model")).toBe("some_future_model");
   });
 });

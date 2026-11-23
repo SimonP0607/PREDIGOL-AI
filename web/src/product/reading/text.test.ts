@@ -187,11 +187,11 @@ describe("what the sentences say", () => {
 
   test("the result PrediGol expects, labelled when uncalibrated", () => {
     expect(factText(SAMPLES[2]!)).toBe(
-      "PrediGol ve como resultado más probable la victoria de Millonarios (52 %, sin calibrar).",
+      "PrediGol ve como resultado más probable la victoria de Millonarios (52 %, estimación preliminar).",
     );
     setLocale("en");
     expect(factText(SAMPLES[2]!)).toBe(
-      "PrediGol sees a Millonarios win as the likeliest result (52%, uncalibrated).",
+      "PrediGol sees a Millonarios win as the likeliest result (52%, preliminary estimate).",
     );
   });
 

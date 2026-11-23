@@ -5,7 +5,7 @@
 import { Fragment, useRef, type KeyboardEvent } from "react";
 import { t } from "@/lib/i18n";
 import { fmtInt } from "@/lib/i18n/format";
-import { useScrollCue } from "@/lib/scrollCue";
+import { ScrollStrip } from "@/components/ui/ScrollStrip";
 import { cn } from "@/lib/utils";
 import { prefersReducedMotion } from "@/product/shared/motion";
 import { chipTitle, familyName } from "./markets";
@@ -25,7 +25,6 @@ export function FamilyTabs({
 }) {
   const bar = useRef<HTMLDivElement>(null);
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
-  useScrollCue(bar);
 
   function go(index: number) {
     const tab = tabs[index];
@@ -63,14 +62,14 @@ export function FamilyTabs({
   }
 
   return (
-    <div
+    <ScrollStrip
       ref={bar}
       role="tablist"
       aria-label={t("explorer.tabsLabel")}
       onKeyDown={onKeyDown}
       data-testid="explorer-tabs"
       data-guide="odds-tabs"
-      className="scroll-strip flex gap-1 rounded-xl border border-border bg-card p-1"
+      className="flex gap-1 rounded-xl border border-border bg-card p-1"
     >
       {tabs.map((tab, i) => {
         const on = tab.key === active;
@@ -106,7 +105,7 @@ export function FamilyTabs({
           </button>
         );
       })}
-    </div>
+    </ScrollStrip>
   );
 }
 

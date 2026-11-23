@@ -123,6 +123,7 @@ export function MarketCard({
   onLine,
   onClear,
   onWiden,
+  widenLabel,
   className,
 }: {
   view: ExplorerView;
@@ -142,6 +143,8 @@ export function MarketCard({
   onClear: () => void;
   /** Look further ahead (72 h), offered when nothing is priced; null at the widest window. */
   onWiden: (() => void) | null;
+  /** What the button says: «Ver mañana (12)» (AP-C01); the older «próximas 72 h» without it. */
+  widenLabel?: string | undefined;
   className?: string | undefined;
 }) {
   const titleId = useId();
@@ -199,7 +202,7 @@ export function MarketCard({
           ) : filtered ? (
             <EmptyAction onClick={onClear}>{t("explorer.filters.clear")}</EmptyAction>
           ) : onWiden ? (
-            <EmptyAction onClick={onWiden}>{t("explorer.empty.widen")}</EmptyAction>
+            <EmptyAction onClick={onWiden}>{widenLabel ?? t("explorer.empty.widen")}</EmptyAction>
           ) : undefined
         }
       />

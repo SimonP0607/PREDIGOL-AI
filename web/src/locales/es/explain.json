@@ -40,7 +40,7 @@
     "why_pick": "¿Por qué este pick?",
     "glossary": "Glosario"
   },
-  "uncalibrated": ", sin calibrar",
+  "uncalibrated": ", estimación preliminar",
   "source": {
     "model": "según PrediGol",
     "market": "según el mercado, sin margen"
@@ -75,7 +75,7 @@
     "forecast_market": "{market}: lo más probable es «{likely}» ({pct}{uncal}). El resto: {others}.",
     "forecast_market_even": "{market}: {others}.",
     "forecast_calibrated": "«Calibrada» quiere decir que esas probabilidades se comprobaron contra resultados: cuando PrediGol dijo 60 %, pasó cerca de 6 de cada 10 veces.",
-    "forecast_uncalibrated": "«Sin calibrar» quiere decir que es el número del modelo, todavía sin comprobar contra suficientes resultados: tómalo con más cautela.",
+    "forecast_uncalibrated": "«Estimación preliminar» quiere decir que es la cifra del modelo, todavía sin comprobar con suficientes resultados: tómala con más cautela.",
     "forecast_not_pick": "Un pronóstico no es un pick: el resultado más probable puede pagar poco. Solo hay pick cuando la cuota paga más de lo que ese resultado vale.",
     "risks_hidden": "PrediGol no muestra ahora la lectura de este partido.",
     "risks_intro": "Lo que podría torcer el partido, según los datos de PrediGol:",

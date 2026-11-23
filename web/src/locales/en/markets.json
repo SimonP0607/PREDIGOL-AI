@@ -62,7 +62,7 @@
     }
   },
   "gate": {
-    "not_qualified": "The model has not beaten the market in its backtest",
+    "not_qualified": "The model has not yet beaten the market in tests on past matches",
     "model_retired": "Model retired",
     "not_scheduled": "The match is no longer scheduled",
     "outside_window": "Outside the time window",

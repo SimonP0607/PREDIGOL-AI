@@ -10,6 +10,7 @@ import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { SkeletonCards } from "@/product/shared/States";
 import { OddsPage } from "./OddsPage";
+import type { DayKey } from "./explorer/model";
 
 const ExplorerScreen = lazy(() =>
   import("./ExplorerScreen").then((m) => ({ default: m.ExplorerScreen })),
@@ -69,6 +70,10 @@ function TwoViews({ status }: { status: React.ReactNode }) {
   const search = useSearch({ strict: false }) as Record<string, unknown>;
   const navigate = useNavigate();
   const view: View = search["v"] === "mercado" ? "mercado" : "partido";
+  // «Hoy · Mañana · Pasado mañana» lives in the URL too (`h`, AP-C01): the same key as the explorer's, so the day survives the
+  // switch between the two views.
+  const day: DayKey =
+    search["h"] === "tomorrow" || search["h"] === "day_after" ? search["h"] : "today";
   const modeSwitch = (
     <Segmented
       label={t("odds.byMatch.mode.label")}
@@ -77,7 +82,10 @@ function TwoViews({ status }: { status: React.ReactNode }) {
       onChange={(next: View) =>
         void navigate({
           to: "/odds",
-          search: next === "mercado" ? { v: "mercado" } : {},
+          search: {
+            ...(next === "mercado" ? { v: "mercado" } : {}),
+            ...(day !== "today" ? { h: day } : {}),
+          },
           resetScroll: false,
         })
       }
@@ -93,7 +101,17 @@ function TwoViews({ status }: { status: React.ReactNode }) {
         {view === "mercado" ? (
           <ExplorerScreen modeSwitch={modeSwitch} />
         ) : (
-          <ByMatchScreen modeSwitch={modeSwitch} />
+          <ByMatchScreen
+            modeSwitch={modeSwitch}
+            day={day}
+            onDay={(next) =>
+              void navigate({
+                to: "/odds",
+                search: next === "today" ? {} : { h: next },
+                resetScroll: false,
+              })
+            }
+          />
         )}
       </Suspense>
       {status}

@@ -6,6 +6,9 @@
  */
 import type { MatchSummary, TeamDetail, TeamSummary } from "@/lib/api/v1/types";
 import type { PlayerSummary, TableRow } from "@/lib/api/v1/types_center";
+import { t } from "@/lib/i18n";
+import "@/product/competitions/text";
+import { countryFromEnglish } from "@/product/matches/country";
 
 export type ProfileTab = "summary" | "matches" | "squad" | "stats" | "news";
 export const PROFILE_TABS: readonly ProfileTab[] = ["summary", "matches", "squad", "stats", "news"];
@@ -19,6 +22,22 @@ export function isNation(team: Pick<TeamSummary, "name" | "country">): boolean {
   return (
     Boolean(team.country) && team.name.trim().toLowerCase() === team.country!.trim().toLowerCase()
   );
+}
+
+/**
+ * A country the provider names in English («Belgium», «Brazil», «World») in the reader's language (AP-T02): «Bélgica»,
+ * «Brasil», «Mundo». A name that cannot be matched with certainty stays as the provider wrote it (a group needs a label).
+ */
+export function countryName(country: string | null | undefined): string | null {
+  const name = (country ?? "").trim();
+  if (!name) return null;
+  if (name.toLowerCase() === "world") return t("competitions.world");
+  return countryFromEnglish(name) ?? name;
+}
+
+/** A national side is named after its country: in the reader's language too. A club keeps its name. */
+export function teamLabel(team: Pick<TeamSummary, "name" | "country">): string {
+  return isNation(team) ? (countryFromEnglish(team.name) ?? team.name) : team.name;
 }
 
 export type Result = "W" | "D" | "L";

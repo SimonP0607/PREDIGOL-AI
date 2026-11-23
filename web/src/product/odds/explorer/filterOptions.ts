@@ -2,7 +2,6 @@
 import { t } from "@/lib/i18n";
 import { countryLabel } from "@/product/matches/country";
 import type { BoardSort, CompetitionBadge } from "./model";
-import type { ExplorerWindow } from "./state";
 
 export interface FilterOptions {
   countries: ReadonlyArray<{ key: string; label: string }>;
@@ -45,10 +44,6 @@ export function filterOptions(
       .sort(byLabel),
     follow,
   };
-}
-
-export function windowLabel(w: ExplorerWindow): string {
-  return w === "today" ? t("explorer.filters.today") : t("explorer.filters.hours", { count: w });
 }
 
 export function sortLabel(s: BoardSort): string {

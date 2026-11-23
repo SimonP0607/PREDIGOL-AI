@@ -9,6 +9,7 @@
 import { fold, TERM_KEYS, termAnchor, termName, termShort, GLOSSARY_PATH } from "@/lib/glossary";
 import { t } from "@/lib/i18n";
 import { FAQ_GROUPS, faqAnchor, faqAnswer, faqQuestion, type FaqId } from "./faq";
+import { NO_REACH, type Reach } from "./reach";
 import { HOW_CARD_IDS, HOW_PATH, cardAnchor, type HowCardId } from "./howItWorks";
 
 export type AssistantSource = "faq" | "glossary" | "how";
@@ -137,13 +138,13 @@ function faqGroupOf(id: FaqId): string {
 }
 
 /** Every text the assistant may answer with, as the help shows it now. `faqShown`: the questions on the page (push). */
-function candidates(faqShown: readonly FaqId[]): AssistantAnswer[] {
+function candidates(faqShown: readonly FaqId[], reach: Reach): AssistantAnswer[] {
   const faq = faqShown.map((id): AssistantAnswer => {
     return {
       source: "faq",
       id,
       title: faqQuestion(id),
-      text: faqAnswer(id),
+      text: faqAnswer(id, reach),
       origin: `${t("support.assistant.from.faq")} · ${faqGroupOf(id)}`,
       to: "/help",
       hash: faqAnchor(id),
@@ -170,12 +171,16 @@ function candidates(faqShown: readonly FaqId[]): AssistantAnswer[] {
   return [...faq, ...glossary, ...how];
 }
 
-export function ask(query: string, faqShown: readonly FaqId[]): AssistantResult {
+export function ask(
+  query: string,
+  faqShown: readonly FaqId[],
+  reach: Reach = NO_REACH,
+): AssistantResult {
   if (query.trim().length === 0) return { kind: "empty" };
   if (isBlocked(query)) return { kind: "blocked" };
   const words = assistantWords(query);
   if (words.length === 0) return { kind: "none" };
-  const ranked = candidates(faqShown)
+  const ranked = candidates(faqShown, reach)
     .map((answer, order) => ({ answer, order, points: score(words, answer.title, answer.text) }))
     .filter((r) => r.points > 0)
     .sort((a, b) => b.points - a.points || a.order - b.order)

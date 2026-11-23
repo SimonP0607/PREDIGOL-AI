@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 /**
  * Inicio's blocks from GET /today (plan UX, A9; section 24), rendered: the matches of the suggested leagues with why they
- * show («Sugerida»), the forecast labelled («sin calibrar») and a line of the reading; an empty day that says so and
+ * show («Sugerida»), the forecast labelled («estimación preliminar») and a line of the reading; an empty day that says so and
  * names the next matches; a failure with its retry - never an empty list -; the context of the next matches with the
  * reference of each fact; and the results, each to its Postpartido.
  */
@@ -136,7 +136,7 @@ describe("1 · Hoy en las ligas sugeridas", () => {
     expect(page).toContain("Sugerida");
     expect(markup).toContain('data-testid="today-why"');
     expect(page).toContain("Pronóstico: gana Millonarios 52 %");
-    expect(page).toContain("sin calibrar");
+    expect(page).toContain("estimación preliminar");
     expect(markup).toContain('data-testid="today-headline"');
     expect(page).toContain("no es una recomendación");
     expect(page).toContain("Actualizado a las");

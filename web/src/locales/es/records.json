@@ -57,7 +57,7 @@
     "count": "{count} de 5",
     "partial_one": "Hoy solo {count} selección ha cumplido el criterio. Nunca rellenamos.",
     "partial_other": "Hoy solo {count} selecciones han cumplido el criterio. Nunca rellenamos.",
-    "emptyBody": "Solo elegimos selecciones de modelos que han superado al mercado, sin el margen de las casas, en su propio backtest. Un día sin ninguna se queda vacío.",
+    "emptyBody": "Solo publicamos una selección cuando nuestras pruebas con partidos pasados la respaldan. Si ninguna lo cumple, el día se queda vacío.",
     "list": "Picks del día",
     "reason": {
       "no_qualified_picks": "Hoy no hay picks de PrediGol",
@@ -68,6 +68,7 @@
     "today": "Hoy",
     "yesterdayOpen": "Ayer · aún por terminar",
     "order": "Ordenar los picks",
+    "byBest": "Mejores primero",
     "byTime": "Por hora",
     "byValue": "Por valor"
   },
@@ -151,7 +152,6 @@
     "priceNow": "Precio actual",
     "noPrice": "Sin precio",
     "note": "La cuota de cada selección es el mejor precio actual que conocemos; la guardamos con el parlay.",
-    "noAi": "Cálculo instantáneo · sin IA",
     "summary": {
       "title": "Resumen de tu parlay",
       "estimated": "Probabilidad estimada",
@@ -191,8 +191,7 @@
       "rules": "Reglas",
       "ruleCount": "De {min} a {max} selecciones, una por partido.",
       "ruleReplace": "Si agregas otra selección de un mismo partido, reemplaza a la anterior.",
-      "ruleKickoff": "Nada después del inicio del partido.",
-      "noAi": "La cuota combinada, la probabilidad y la dependencia se calculan al instante con datos que ya tenemos. Ninguna IA analiza tu parlay."
+      "ruleKickoff": "Nada después del inicio del partido."
     },
     "error": {
       "leg_count": "Un parlay necesita entre {min} y {max} selecciones.",
@@ -551,7 +550,7 @@
       "no_consensus": "Las casas no coincidían lo suficiente en el precio de las selecciones.",
       "few_bookmakers": "Muy pocas casas ofrecían las selecciones.",
       "price_outlier": "La mejor cuota de las selecciones se alejaba demasiado del resto del mercado.",
-      "not_qualified": "Las selecciones venían de modelos que todavía no han superado al mercado en su propio backtest.",
+      "not_qualified": "Las selecciones venían de modelos que todavía no han superado al mercado en sus pruebas con partidos pasados.",
       "model_retired": "Las selecciones venían de un modelo retirado.",
       "no_interval": "El modelo no tenía medido el rango de su probabilidad para esas selecciones.",
       "non_positive_ev": "Ningún mercado mostró ventaja frente al precio del mercado.",

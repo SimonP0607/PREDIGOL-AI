@@ -21,7 +21,7 @@
   },
   "calibration": {
     "calibrated": "Calibrated",
-    "uncalibrated": "Not calibrated"
+    "uncalibrated": "Preliminary estimate"
   },
   "confidence": {
     "high": "High confidence",

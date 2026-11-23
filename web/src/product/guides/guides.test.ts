@@ -13,7 +13,7 @@ import enGuides from "@/locales/en/guides.json";
 import esGuides from "@/locales/es/guides.json";
 import type { GuideIn, GuideKey, GuideState } from "@/lib/api/v1/types_guides";
 import type { Me } from "@/lib/api/v1/types_auth";
-import { anotherLayerOpen, placeCard, resolvable } from "./anchors";
+import { anotherLayerOpen, placeCard, resolvable, unionBox } from "./anchors";
 import { MAX_SKIPS, blockedBy, owed, type Facts } from "./eligibility";
 import { cardsOf, firstFrom, neighbour, numbered } from "./navigation";
 import { PROFILE_STEPS, profileParts, profileTitle, type ProfileFacts } from "./profileText";
@@ -588,5 +588,33 @@ describe("the texts", () => {
       expect((esGuides.names as Record<string, string>)[def.key]).toBeTruthy();
       expect((enGuides.names as Record<string, string>)[def.key]).toBeTruthy();
     }
+  });
+});
+
+describe("the frame of an anchor (AP-P03)", () => {
+  const row = { top: 100, left: 16, width: 358, height: 40 };
+
+  test("a row as wide as the screen with three chips in it is framed around the chips", () => {
+    const chips = [
+      { top: 104, left: 16, width: 60, height: 32 },
+      { top: 104, left: 84, width: 72, height: 32 },
+      { top: 104, left: 164, width: 64, height: 32 },
+    ];
+    expect(unionBox(row, chips)).toEqual({ top: 104, left: 16, width: 212, height: 32 });
+  });
+
+  test("a strip that scrolls: what lies past its box is not framed", () => {
+    const strip = { top: 0, left: 10, width: 300, height: 40 };
+    const chips = [
+      { top: 4, left: 10, width: 200, height: 32 },
+      { top: 4, left: 218, width: 200, height: 32 },
+    ];
+    expect(unionBox(strip, chips)).toEqual({ top: 4, left: 10, width: 300, height: 32 });
+  });
+
+  test("nothing to measure (or nothing inside the box): the element's own box", () => {
+    expect(unionBox(row, [])).toEqual(row);
+    expect(unionBox(row, [{ top: 500, left: 500, width: 10, height: 10 }])).toEqual(row);
+    expect(unionBox(row, [{ top: 110, left: 20, width: 0, height: 0 }])).toEqual(row);
   });
 });

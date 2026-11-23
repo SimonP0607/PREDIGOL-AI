@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Card, EmptyState, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
 import { MAX_TEXT } from "@/product/support/report";
 import { ReportButton } from "./HelpPage";
+import { reachOf, reachPhrase, type Reach } from "./reach";
 import { fieldVariants } from "@/components/ui/field";
 import { BACK_LINK } from "@/components/layout/nav";
 
@@ -67,12 +68,20 @@ export function TicketPage({ ticketId }: { ticketId: number }) {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4" data-testid="ticket-page">
       {back}
-      <Thread ticket={ticket} enabled={q.data.enabled} />
+      <Thread ticket={ticket} enabled={q.data.enabled} reach={reachOf(q.data.contact)} />
     </div>
   );
 }
 
-function Thread({ ticket, enabled }: { ticket: SupportTicket; enabled: boolean }) {
+function Thread({
+  ticket,
+  enabled,
+  reach,
+}: {
+  ticket: SupportTicket;
+  enabled: boolean;
+  reach: Reach;
+}) {
   const closed = ticket.status === "closed";
   return (
     <>
@@ -136,7 +145,9 @@ function Thread({ ticket, enabled }: { ticket: SupportTicket; enabled: boolean }
       ) : enabled ? (
         <Reply ticket={ticket} />
       ) : (
-        <p className="text-sm text-muted-foreground">{t("support.ticket.readOnly")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t("support.ticket.readOnly", { reach: reachPhrase(reach) })}
+        </p>
       )}
     </>
   );

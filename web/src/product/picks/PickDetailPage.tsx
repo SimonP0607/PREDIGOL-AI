@@ -21,6 +21,7 @@ import { HelpfulVote } from "@/product/feedback/HelpfulVote";
 import { ASK_BUTTON, OddsPill, ProbCompare } from "@/product/shared/Bits";
 import { marketName } from "@/product/shared/markets";
 import { EmptyState, ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { readerLines } from "@/lib/i18n/format";
 import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
 import { reasonText } from "@/product/shared/userStatus";
 import { useTransparencyOpen } from "@/product/transparency/useTransparencyOpen";
@@ -48,9 +49,11 @@ function Block({ id, title, children }: { id: string; title: string; children: R
 }
 
 function Lines({ lines }: { lines: string[] }) {
+  const shown = readerLines(lines);
+  if (shown.length === 0) return null;
   return (
     <ul className="space-y-2">
-      {lines.map((line, i) => (
+      {shown.map((line, i) => (
         <li key={i} className="text-sm leading-relaxed text-foreground/90">
           {line}
         </li>
@@ -70,7 +73,8 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 function Detail({ e, pickId }: { e: PickExplanation; pickId: number }) {
   const transparency = useTransparencyOpen();
-  const context = contextLines(e);
+  // what the server wrote is checked before it is drawn: no rumour, no foreign script (AP-T02)
+  const context = readerLines(contextLines(e));
   const risks = riskLines(e);
   const day = dayText(e);
   // the gold card is the recommendation's (the rule of the pick's card): recommended, and still worth its price
@@ -132,10 +136,10 @@ function Detail({ e, pickId }: { e: PickExplanation; pickId: number }) {
         ) : null}
       </Block>
 
-      {risks.length > 0 || (e.review?.risks.length ?? 0) > 0 ? (
+      {risks.length > 0 || readerLines(e.review?.risks).length > 0 ? (
         <Block id="risks" title={t("picks.detail.risks")}>
           {risks.length > 0 ? <Lines lines={risks} /> : null}
-          {e.review && e.review.risks.length > 0 ? (
+          {e.review && readerLines(e.review.risks).length > 0 ? (
             <div className="space-y-1.5">
               <p className="text-xs font-semibold text-muted-foreground">
                 {t("picks.why.risks.review")}

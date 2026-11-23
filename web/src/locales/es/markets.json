@@ -62,7 +62,7 @@
     }
   },
   "gate": {
-    "not_qualified": "El modelo no ha superado al mercado en su backtest",
+    "not_qualified": "El modelo aún no ha superado al mercado en las pruebas con partidos pasados",
     "model_retired": "Modelo retirado",
     "not_scheduled": "El partido ya no está programado",
     "outside_window": "Fuera de la ventana de tiempo",

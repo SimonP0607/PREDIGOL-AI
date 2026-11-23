@@ -25,7 +25,13 @@ import { Numeric } from "@/components/primitives/Indicators";
 import { SegmentedTabs } from "@/components/system/Filters";
 import { InfoTip, MetricLabel } from "@/components/system/InfoTip";
 import { useLiveQuery } from "@/components/system/dataSourcesContext";
-import { ApiErrorNotice, Nullable, SectionView, StatusNotice } from "@/components/system/LiveState";
+import {
+  ApiErrorNotice,
+  FailedOrSkeleton,
+  Nullable,
+  SectionView,
+  StatusNotice,
+} from "@/components/system/LiveState";
 import { live } from "@/lib/api/v1/queries";
 import type {
   BacktestSessionSummary,
@@ -112,6 +118,16 @@ export function ModelsLive() {
   const tested = models.filter((m) => m.latest_backtest?.primary);
   const beating = tested.filter((m) => m.latest_backtest?.primary?.verdict === "better");
   const session = d?.backtest.status === "ok" ? d.backtest.data : null;
+  // Each section of the page fails and retries on its own (AP-A02): the question is the same one, so the retry is shared.
+  const pending = (rows: number, cols: number) => (
+    <FailedOrSkeleton
+      isError={q.isError}
+      error={q.error}
+      onRetry={() => void q.refetch()}
+      retrying={q.isFetching}
+      skeleton={<TableSkeleton rows={rows} cols={cols} />}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -119,7 +135,9 @@ export function ModelsLive() {
         title={t("admin.pages.models.title")}
         description={t("admin.pages.models.description")}
       />
-      {q.isError ? <ApiErrorNotice error={q.error} /> : null}
+      {q.isError && d ? (
+        <ApiErrorNotice error={q.error} onRetry={() => void q.refetch()} retrying={q.isFetching} />
+      ) : null}
       {session && tested.length ? (
         beating.length ? (
           <WarningBanner tone="info">
@@ -150,7 +168,7 @@ export function ModelsLive() {
         bodyClassName=""
       >
         {!d ? (
-          <TableSkeleton rows={4} cols={6} />
+          pending(4, 6)
         ) : (
           <div className="divide-y divide-border">
             <SectionView section={d.backtest}>
@@ -190,7 +208,7 @@ export function ModelsLive() {
         bodyClassName=""
       >
         {!d ? (
-          <TableSkeleton rows={4} cols={8} />
+          pending(4, 8)
         ) : (
           <SectionView section={d.models}>
             {() => <Leaderboard models={models} baselines={d.historical_baselines} />}
@@ -205,7 +223,7 @@ export function ModelsLive() {
         subtitle={t("research.models.betting.subtitle")}
         bodyClassName=""
       >
-        {!d ? <TableSkeleton rows={3} cols={7} /> : <BettingTable models={tested} />}
+        {!d ? pending(3, 7) : <BettingTable models={tested} />}
         <div className="border-t border-border px-4 py-3 text-caption text-muted-foreground">
           <ShadowPicksLine />
         </div>
@@ -995,6 +1013,19 @@ function ShadowPicksLine() {
   const q = useLiveQuery(live.performance);
   const d = q.data?.data;
   if (!q.data || !d) {
+    if (q.isError)
+      return (
+        <span className="text-subtle-foreground" data-testid="shadow-failed">
+          {t("research.models.shadow.label")} — {t("research.models.shadow.failed")}{" "}
+          <button
+            type="button"
+            onClick={() => void q.refetch()}
+            className="font-medium text-foreground underline underline-offset-2"
+          >
+            {t("admin.state.retry")}
+          </button>
+        </span>
+      );
     return <span className="text-subtle-foreground">{t("research.models.shadow.loading")}</span>;
   }
   if (q.data.status !== "ok" || d.roi_pct === null) {

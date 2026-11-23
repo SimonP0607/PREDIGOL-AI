@@ -31,7 +31,7 @@ const FULL: ExplorerState = {
   market: "corners.total",
   period: "1H",
   line: "4.5",
-  window: "today",
+  window: "tomorrow",
   q: "Brighton",
   country: "England",
   competition: 39,
@@ -64,7 +64,7 @@ describe("round trips", () => {
       m: "corners.total",
       p: "1H",
       l: "4.5",
-      h: "today",
+      h: "tomorrow",
       q: "Brighton",
       c: "England",
       comp: "39",
@@ -85,9 +85,16 @@ describe("round trips", () => {
   });
 
   test("each window and each order", () => {
-    for (const window of ["today", 24, 48, 72] as const) {
+    for (const window of ["today", "tomorrow", "day_after", 48, 72] as const) {
       expect(viaUrl({ ...DEFAULT_EXPLORER_STATE, window }).window).toBe(window);
     }
+    // a link written before the days: the old default, 24 h, is «Hoy»
+    expect(parseExplorerSearch({ h: "24" }).window).toBe("today");
+    expect(DEFAULT_EXPLORER_STATE.window).toBe("today");
+    expect(serializeExplorerState({ ...DEFAULT_EXPLORER_STATE, window: "tomorrow" })).toEqual({
+      h: "tomorrow",
+    });
+    expect(serializeExplorerState(DEFAULT_EXPLORER_STATE)).toEqual({});
     for (const sort of ["time", "competition", "edge"] as const) {
       expect(viaUrl({ ...DEFAULT_EXPLORER_STATE, sort }).sort).toBe(sort);
     }
@@ -195,7 +202,7 @@ describe("what each choice does to the state", () => {
       "corners.total",
       "1H",
       "4.5",
-      "today",
+      "tomorrow",
     ]);
   });
 
@@ -209,11 +216,25 @@ describe("what each choice does to the state", () => {
 describe("what the API is asked for", () => {
   const tabs = buildTabs(fakeFamilies().families);
 
-  test("«Hoy» asks for the next 24 h; the board names the market, period and line on show", () => {
-    const view = resolveView(tabs, FULL);
-    expect(familiesQuery(FULL)).toEqual({ hours: 24, country: "England", competition: 39 });
-    expect(boardQuery(FULL, view)).toEqual({
+  test("a day asks for that day; an old link's 48 h asks for its hours (AP-C01)", () => {
+    expect(familiesQuery({ ...FULL, window: "tomorrow" })).toMatchObject({
+      day: "tomorrow",
       hours: 24,
+    });
+    expect(familiesQuery({ ...FULL, window: 48 })).toMatchObject({ day: null, hours: 48 });
+  });
+
+  test("«Hoy» asks for today; the board names the market, period and line on show", () => {
+    const view = resolveView(tabs, FULL);
+    expect(familiesQuery({ ...FULL, window: "today" })).toEqual({
+      hours: 24,
+      day: "today",
+      country: "England",
+      competition: 39,
+    });
+    expect(boardQuery({ ...FULL, window: "today" }, view)).toEqual({
+      hours: 24,
+      day: "today",
       country: "England",
       competition: 39,
       market: "corners.total",

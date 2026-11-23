@@ -1,7 +1,7 @@
 {
   "title": "Familias en shadow",
   "subtitle": "Córners, tarjetas, amarillas y goles por mitad: lo que deciden en sombra, cómo se liquida cada apuesta y qué aprenden. Solo lectura.",
-  "explain": "Las familias deciden en shadow, con versiones propias: sus decisiones nunca son un pick, su estado llega como mucho a Investigación y su stake es cero. Aquí se lee la última palabra de cada modelo sobre cada mercado de cada partido (las revisiones de cada hora son la misma apuesta vista de nuevo), la regla que la liquida, lo que pasó y lo que el post-mortem y la memoria sacaron de ella. La probabilidad de una familia es la cifra de su modelo, sin calibrar: no es una recomendación.",
+  "explain": "Las familias deciden en shadow, con versiones propias: sus decisiones nunca son un pick, su estado llega como mucho a Investigación y su stake es cero. Aquí se lee la última palabra de cada modelo sobre cada mercado de cada partido (las revisiones de cada hora son la misma apuesta vista de nuevo), la regla que la liquida, lo que pasó y lo que el post-mortem y la memoria sacaron de ella. La probabilidad de una familia es la cifra de su modelo, una estimación preliminar: no es una recomendación.",
   "versions": "Versiones: pronóstico {forecast} · decisión {decision} · liquidación {outcome} · post-mortem {postmortem} · memoria {memory}",
   "mode": {
     "label": "Ciclo",
@@ -90,7 +90,7 @@
   "reason": {
     "family_research": "Familia en investigación",
     "family_shadow_only": "La familia solo mide",
-    "not_calibrated": "Sin calibrar",
+    "not_calibrated": "Estimación preliminar",
     "data": "Datos insuficientes",
     "model": "El modelo no pasa",
     "no_price": "Sin precio",
@@ -194,7 +194,7 @@
     "market": "Mercado y selección",
     "odds": "Cuota",
     "pModel": "P familia",
-    "pModelHint": "La probabilidad que afirmaba la familia, sin calibrar",
+    "pModelHint": "La probabilidad que afirmaba la familia, como estimación preliminar",
     "pMarket": "P mercado",
     "pMarketHint": "El consenso de las casas en el momento de la decisión",
     "ev": "EV bruto",

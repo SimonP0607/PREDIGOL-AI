@@ -7,11 +7,15 @@
  * with `serializeExplorerState`.
  */
 import { isTabKey, type ExplorerView, type TabKey } from "./tabs";
-import type { BoardQuery, BoardSort, FamiliesQuery } from "./model";
+import type { BoardQuery, BoardSort, DayKey, FamiliesQuery } from "./model";
 
-/** «Empiezan en»: today, or the next 24, 48 or 72 hours. */
-export type ExplorerWindow = "today" | 24 | 48 | 72;
-export const WINDOWS: readonly ExplorerWindow[] = ["today", 24, 48, 72];
+/**
+ * «Día»: Hoy, Mañana or Pasado mañana, cut by the server on the Bogota calendar (AP-C01). The next 48 or 72 hours stay only
+ * so a link written before them still opens; no chip offers them.
+ */
+export type ExplorerWindow = DayKey | 48 | 72;
+export const DAY_KEYS: readonly DayKey[] = ["today", "tomorrow", "day_after"];
+export const WINDOWS: readonly ExplorerWindow[] = DAY_KEYS;
 export const SORTS: readonly BoardSort[] = ["time", "competition", "edge"];
 const PERIODS = ["FT", "1H", "2H", "INTERVAL"];
 
@@ -44,7 +48,7 @@ export interface ExplorerState extends ExplorerFilters {
 }
 
 export const NO_FILTERS: ExplorerFilters = {
-  window: 24,
+  window: "today",
   q: "",
   country: null,
   competition: null,
@@ -111,9 +115,9 @@ export function normalizeOdds(value: unknown): string | null {
 
 function windowOf(value: unknown): ExplorerWindow {
   const s = scalar(value);
-  if (s === "today") return "today";
+  if (s === "today" || s === "tomorrow" || s === "day_after") return s;
   const n = Number(s);
-  return n === 48 || n === 72 ? n : 24;
+  return n === 48 || n === 72 ? n : "today"; // an old h=24 was the default: it is «Hoy» now
 }
 
 /** The URL's search -> the state. Anything unknown or malformed reads as its default. */
@@ -154,7 +158,7 @@ export function serializeExplorerState(state: ExplorerState): Record<string, str
   if (state.period) out["p"] = state.period;
   const line = normalizeLine(state.line);
   if (line !== null) out["l"] = line;
-  if (state.window !== 24) out["h"] = String(state.window);
+  if (state.window !== "today") out["h"] = String(state.window);
   if (state.q.trim()) out["q"] = state.q.trim();
   if (state.country) out["c"] = state.country;
   if (state.competition !== null) out["comp"] = String(state.competition);
@@ -168,14 +172,20 @@ export function serializeExplorerState(state: ExplorerState): Record<string, str
   return out;
 }
 
-/** The hours the API is asked for: «Hoy» asks for the next 24 h and keeps today's matches. */
+/** The hours the API is asked for: a day asks for none (it names the day), an old link's 48 or 72 asks for them. */
 export function windowHours(window: ExplorerWindow): number {
-  return window === "today" ? 24 : window;
+  return typeof window === "number" ? window : 24;
+}
+
+/** The day the API is asked for, or null for an old link's hours. */
+export function windowDay(window: ExplorerWindow): DayKey | null {
+  return typeof window === "number" ? null : window;
 }
 
 export function familiesQuery(state: ExplorerState): FamiliesQuery {
   return {
     hours: windowHours(state.window),
+    day: windowDay(state.window),
     country: state.country,
     competition: state.competition,
   };

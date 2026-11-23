@@ -486,7 +486,7 @@ describe("a family that completed the cycle", () => {
     expect(first).toContain(norm(fmtPct(0.5)));
     expect(first).toContain(norm(fmtSignedPct(0.131)));
     expect(first).toContain("Investigación");
-    expect(first).toContain("Sin calibrar");
+    expect(first).toContain("Estimación preliminar");
     expect(first).not.toContain("Familia en investigación");
     expect(first).toContain("corners_ft@v1");
     expect(first).toContain("Ganada");
@@ -816,7 +816,7 @@ describe("in English", () => {
     expect(first).toContain("Over 10.5");
     expect(first).toContain("+0.95 u");
     expect(first).toContain("Investigation");
-    expect(first).toContain("Not calibrated");
+    expect(first).toContain("Preliminary estimate");
     expect(first).toContain("Bad price");
     expect(first).toContain("11 in the match (+0.5 over the line)");
     expect(first).toContain("+1 more");

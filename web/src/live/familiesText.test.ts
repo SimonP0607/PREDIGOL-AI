@@ -481,7 +481,7 @@ describe("what became of a decision", () => {
     setLocale("es");
     expect(reasonName("price_outlier")).toBe("Precio atípico");
     expect(reasonName("ai_reject")).toBe("ai_reject");
-    expect(reasonsShown(["family_research", "not_calibrated"])).toEqual(["Sin calibrar"]);
+    expect(reasonsShown(["family_research", "not_calibrated"])).toEqual(["Estimación preliminar"]);
     expect(reasonsShown(["family_research"])).toEqual([]);
     expect(reasonsShown([])).toEqual([]);
     expect(reasonsShown(["family_research", "price_outlier", "family_shadow_only"])).toEqual([
