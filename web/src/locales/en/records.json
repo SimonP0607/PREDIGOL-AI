@@ -57,7 +57,7 @@
     "count": "{count} of 5",
     "partial_one": "Only {count} selection met the criteria today. We never pad the list.",
     "partial_other": "Only {count} selections met the criteria today. We never pad the list.",
-    "emptyBody": "We only choose selections from models that have beaten the market, without the bookmakers' margin, in their tests on past matches. A day without any stays empty.",
+    "emptyBody": "We only publish a selection when our tests on past matches back it. If none does, the day stays empty.",
     "list": "Picks of the day",
     "reason": {
       "no_qualified_picks": "No PrediGol picks today",

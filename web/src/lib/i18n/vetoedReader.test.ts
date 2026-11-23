@@ -73,6 +73,19 @@ const TERMS: readonly Term[] = [
   [/\bElo\b/, "Elo", ["es", "en"]],
   [/\blogit\b/i, "logit", ["es", "en"]],
   [/\bshrink(?:age)?\b/i, "shrinkage", ["es", "en"]],
+  // AP-T01b: the label of an unchecked forecast is «Estimación preliminar», the validated one «Probabilidad de PrediGol».
+  [/\b(?:sin calibrar|uncalibrated|not calibrated)\b/i, "«sin calibrar»", ["es", "en"]],
+  [/\b(?:modelo validado|validated model)\b/i, "«modelo validado»", ["es", "en"]],
+  [
+    /\b(?:consenso sin margen|consensus without margin|margin-free consensus)\b/i,
+    "consenso sin margen",
+    ["es", "en"],
+  ],
+  [
+    /\b(?:los mismos números|the same numbers|seis ejes fijos|six fixed axes)\b/i,
+    "relleno de lector",
+    ["es", "en"],
+  ],
   [/\bp\d{2}\b/, "percentil pNN", ["es", "en"]],
   // Spanish writes 2,5; a point is the English reader's decimal. A version number («16.4») is not a decimal.
   [/(?<![\d.])\d\.\d(?!\d*\.)/, "decimal con punto", ["es"]],
