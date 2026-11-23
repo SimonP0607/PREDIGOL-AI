@@ -525,6 +525,46 @@
     );
 }
 
+/*
+ * The welcome (AP-B04): a soft light sweeps across the pitch once, and what the reader picks swells for a moment. Both are
+ * motion the reader can switch off: under «reduce motion» (the system's setting or PrediGol's own) every animation here
+ * lasts 0.01 ms (the block at the end), so nothing moves.
+ */
+@keyframes welcome-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-60%);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(60%);
+  }
+}
+@utility welcome-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      color-mix(in oklch, var(--color-gold) 14%, transparent) 50%,
+      transparent 70%
+    );
+    animation: welcome-sweep 2400ms var(--motion-ease) 1 both;
+  }
+}
+@utility welcome-pop {
+  animation: motion-pop var(--motion-slow) var(--motion-ease) 1;
+}
+
 @utility scene {
   position: absolute;
   left: 0;

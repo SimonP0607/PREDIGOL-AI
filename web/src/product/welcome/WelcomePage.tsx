@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { BarChart3, BookOpen, ChevronRight, Compass, Loader2 } from "lucide-react";
+import { BadgeCheck, BarChart3, BookOpen, Compass, Crown, Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/Brand";
 import { Disclaimer } from "@/components/system/Disclaimer";
 import { LanguageSwitch } from "@/components/layout/HeaderControls";
@@ -146,15 +146,32 @@ function About({
   return (
     <>
       <h1 className="text-display text-balance">{t("onboarding.welcome.about.title")}</h1>
-      <p className="text-[0.9375rem] leading-relaxed" data-testid="welcome-what">
-        {t("common.what")}
+      <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+        {t("onboarding.welcome.about.lead")}
       </p>
       <ul className="space-y-3" data-testid="welcome-about">
-        {(["analysis", "picks", "transparency"] as const).map((k) => (
-          <li key={k} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">
-            <ChevronRight aria-hidden className="mt-1 h-4 w-4 shrink-0 text-gold" />
-            <span>
-              {t(`onboarding.welcome.about.${k}`)}
+        {(
+          [
+            ["analysis", BarChart3],
+            ["picks", Crown],
+            ["transparency", BadgeCheck],
+          ] as const
+        ).map(([k, Icon]) => (
+          <li
+            key={k}
+            className="flex items-start gap-3 rounded-feature border border-border bg-card p-4"
+          >
+            <span
+              aria-hidden
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-gold/10 text-gold"
+            >
+              <Icon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 space-y-1 text-[0.9375rem] leading-relaxed">
+              <span className="block font-semibold">{t(`onboarding.welcome.about.${k}Title`)}</span>
+              <span className="block text-muted-foreground">
+                {t(`onboarding.welcome.about.${k}`)}
+              </span>
               {k === "transparency" && transparency ? (
                 <>
                   {" "}
@@ -292,6 +309,7 @@ export function WelcomePage() {
       data-testid="welcome"
       data-step={step}
     >
+      <span aria-hidden className="welcome-sweep" data-testid="welcome-sweep" />
       <header className="safe-top border-b border-border">
         <div className="px-safe mx-auto flex h-14 max-w-3xl items-center gap-3">
           <BrandLogo size={30} tagline={t("common.tagline")} />
@@ -316,6 +334,22 @@ export function WelcomePage() {
             step === "about" && "card-surface rounded-feature p-5 shadow-xl",
           )}
         >
+          {steps.length > 1 ? (
+            <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={steps.length}
+              aria-valuenow={index + 1}
+              aria-label={t("onboarding.welcome.step", { n: index + 1, total: steps.length })}
+              data-testid="welcome-bar"
+              className="h-1 w-full overflow-hidden rounded-full bg-elevated"
+            >
+              <span
+                className="block h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{ width: `${((index + 1) / steps.length) * 100}%` }}
+              />
+            </div>
+          ) : null}
           {name || steps.length > 1 ? (
             <p className="truncate text-overline text-gold" data-testid="welcome-overline">
               {name ? t("onboarding.welcome.greeting", { name }) : null}

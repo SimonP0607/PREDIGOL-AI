@@ -146,6 +146,17 @@ interface Props {
   onChange: (next: Choice) => void;
 }
 
+/** Within two of a limit: the point where the counts are worth saying (AP-B04). */
+export function nearLimit(choice: Choice, limits: Limits): boolean {
+  const near = (count: number, max: number) => max > 0 && count >= max - 2;
+  return (
+    near(choice.leagues.length, limits.leagues) ||
+    near(choice.teams.length, limits.teams) ||
+    near(choice.players.length, limits.players) ||
+    near(choice.markets.length, limits.markets)
+  );
+}
+
 /** The reader's choice: chips that remove with a tap, the counts against the limits. */
 function Chosen({ choice, limits, onChange }: Props) {
   const noneYet = choice.leagues.length + choice.teams.length === 0;
@@ -159,24 +170,27 @@ function Chosen({ choice, limits, onChange }: Props) {
         <h3 id="fav-chosen" className="text-title">
           {t("onboarding.picker.chosen")}
         </h3>
-        <p className="numeric text-caption text-muted-foreground" data-testid="fav-counts">
-          {t("onboarding.picker.countLeagues", {
-            count: choice.leagues.length,
-            max: limits.leagues,
-          })}
-          {" · "}
-          {t("onboarding.picker.countTeams", { count: choice.teams.length, max: limits.teams })}
-          {" · "}
-          {t("onboarding.picker.countPlayers", {
-            count: choice.players.length,
-            max: limits.players,
-          })}
-          {" · "}
-          {t("onboarding.picker.countMarkets", {
-            count: choice.markets.length,
-            max: limits.markets,
-          })}
-        </p>
+        {/* The counts say so only when a limit is near (AP-B04): 2 of 10 is noise, 8 of 10 is a warning. */}
+        {nearLimit(choice, limits) ? (
+          <p className="numeric text-caption text-muted-foreground" data-testid="fav-counts">
+            {t("onboarding.picker.countLeagues", {
+              count: choice.leagues.length,
+              max: limits.leagues,
+            })}
+            {" · "}
+            {t("onboarding.picker.countTeams", { count: choice.teams.length, max: limits.teams })}
+            {" · "}
+            {t("onboarding.picker.countPlayers", {
+              count: choice.players.length,
+              max: limits.players,
+            })}
+            {" · "}
+            {t("onboarding.picker.countMarkets", {
+              count: choice.markets.length,
+              max: limits.markets,
+            })}
+          </p>
+        ) : null}
       </div>
       {noneYet ? (
         <p className="mt-2 text-sm text-muted-foreground">{t("onboarding.picker.noneChosen")}</p>
@@ -264,7 +278,7 @@ function Chosen({ choice, limits, onChange }: Props) {
                 data-testid="fav-chip"
                 data-kind="team"
                 data-id={tm.id}
-                className="relative flex h-full min-h-[5.5rem] w-full flex-col items-center gap-2 rounded-control border border-primary bg-primary/[0.06] px-1.5 pb-3 pt-3.5 text-center text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="welcome-pop relative flex h-full min-h-[5.5rem] w-full flex-col items-center gap-2 rounded-control border border-primary bg-primary/[0.06] px-1.5 pb-3 pt-3.5 text-center text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span
                   aria-hidden

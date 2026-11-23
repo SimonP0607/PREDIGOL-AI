@@ -20,7 +20,11 @@
       "transparencyLink": "Cómo le va a PrediGol",
       "enter": "Entrar a PrediGol",
       "tour": "Hacer el recorrido (5 pasos)",
-      "howItWorks": "Cómo funciona PrediGol"
+      "howItWorks": "Cómo funciona PrediGol",
+      "lead": "Tres cosas que conviene saber antes de entrar.",
+      "analysisTitle": "El análisis de tus partidos",
+      "picksTitle": "Picks solo cuando hay valor",
+      "transparencyTitle": "Te contamos cómo nos va"
     },
     "failed": "No pudimos guardar. Inténtalo de nuevo o salta este paso."
   },
