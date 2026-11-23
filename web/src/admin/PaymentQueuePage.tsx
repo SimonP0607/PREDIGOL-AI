@@ -349,7 +349,7 @@ function Row({ r }: { r: AdminPaymentRequest }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <Link
-            to="/admin/customers/$userId"
+            to="/admin/users/$userId"
             params={{ userId: String(r.user_id) }}
             className="break-words font-display text-base font-semibold hover:underline"
           >

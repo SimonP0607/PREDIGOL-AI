@@ -38,13 +38,12 @@ export const PUBLIC_PAGES = [
   "/legal/responsible-gaming",
 ] as const;
 
-/** The Admin Console's 28 destinations, in the menu's order (components/layout/nav.ts). */
+/** The Admin Console's 27 destinations, in the menu's order (components/layout/nav.ts). */
 export const CONSOLE_PAGES = [
   "/admin/overview",
   "/admin/picks",
   "/admin/performance",
   "/admin/odds",
-  "/admin/customers",
   "/admin/support",
   "/admin/models",
   "/admin/backtesting",

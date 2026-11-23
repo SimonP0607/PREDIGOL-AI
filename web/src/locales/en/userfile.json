@@ -1,0 +1,20 @@
+{
+  "tabsLabel": "Sections of the file",
+  "tabs": {
+    "account": "Account and access",
+    "membership": "Membership and payments",
+    "support": "Support",
+    "activity": "Activity and risk",
+    "restrictions": "Restrictions and audit"
+  },
+  "access": "Role, access and sessions",
+  "accessLoading": "Loading the account's controls…",
+  "accessError": "We could not read the account's controls. Reload the file to try again.",
+  "paymentsLink": "See the payment notices",
+  "auditLink": "See the audit trail",
+  "back": "Users",
+  "noCard": "This account is not a reader's: it has no membership, support or activity to show. Here are its access controls.",
+  "viewsLabel": "Views of users",
+  "accounts": "Accounts and roles",
+  "invitedNoMembership": "This account is an invitation not yet activated: it has no membership to manage. Resend the invitation from «Account and access»."
+}

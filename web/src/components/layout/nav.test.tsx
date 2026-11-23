@@ -340,13 +340,13 @@ describe("«Más»", () => {
 });
 
 describe("the console's menu in five groups (plan maestro UX/UI 2026, decision 12)", () => {
-  // the 28 destinations the menu had before the regrouping: none may be lost, none added
+  // the 28 destinations the menu had before the regrouping, less «Clientes», which is a view of «Usuarios» since AP-A03 (its
+  // old address redirects): none else may be lost, none added
   const BEFORE = [
     "overview",
     "picks",
     "performance",
     "odds",
-    "customers",
     "support",
     "models",
     "backtesting",
@@ -372,18 +372,18 @@ describe("the console's menu in five groups (plan maestro UX/UI 2026, decision 1
     "settings",
   ].map((slug) => `/admin/${slug}`);
 
-  test("the same 28 destinations, each exactly once, «Resumen» first", () => {
+  test("the same destinations less «Clientes» (27), each exactly once, «Resumen» first", () => {
     const now = adminDestinations.map((item) => item.to);
-    expect(now).toHaveLength(28);
-    expect(new Set(now).size).toBe(28);
+    expect(now).toHaveLength(27);
+    expect(new Set(now).size).toBe(27);
     expect([...now].sort()).toEqual([...BEFORE].sort());
     expect(now[0]).toBe("/admin/overview");
     expect(adminHome.to).toBe("/admin/overview");
   });
 
-  test("five groups with the sizes of the decision: 7, 3, 5, 5 and 7", () => {
+  test("five groups: 6, 3, 5, 5 and 7", () => {
     expect(adminNav.map((g) => [g.key, g.items.length])).toEqual([
-      ["customers", 7],
+      ["customers", 6],
       ["market", 3],
       ["intelligence", 5],
       ["football", 5],

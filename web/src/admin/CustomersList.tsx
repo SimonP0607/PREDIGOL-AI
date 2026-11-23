@@ -1,5 +1,5 @@
 /**
- * Clientes (/admin/customers, plan UX, B10): every reader with what is needed to attend and renew them. Six views say who
+ * La lista de clientes (dentro de «Usuarios», plan AP-A03; antes /admin/customers, plan UX, B10): every reader with what is needed to attend and renew them. Six views say who
  * needs attention - their cover ends within 7 days, 14 days unseen, an open ticket, an error in the last 24 hours, at risk or invited and
  * never activated (the lifecycle, B11) - with
  * how many each holds; a search by address or alias; a table from xl and a card per reader below. Each row opens the
@@ -8,13 +8,11 @@
 import { useDeferredValue, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { RefreshCw, Search } from "lucide-react";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { Search } from "lucide-react";
 import { v1 } from "@/lib/api/v1/client";
-import { CUSTOMER_VIEWS, type CustomerRow, type CustomerView } from "@/lib/api/v1/types_customers";
+import type { CustomerRow, CustomerView } from "@/lib/api/v1/types_customers";
 import { t } from "@/lib/i18n";
 import { formatDateYear, formatRelative } from "@/lib/time";
-import { cn } from "@/lib/utils";
 import { Card, EmptyState, ErrorState, SkeletonCards } from "@/product/shared/States";
 import { LifecycleBadge, MembershipBadge } from "./CustomerParts";
 
@@ -50,8 +48,7 @@ function SeenCell({ row }: { row: CustomerRow }) {
   );
 }
 
-export function CustomersPage() {
-  const [view, setView] = useState<CustomerView>("all");
+export function CustomersList({ view }: { view: CustomerView }) {
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const needle = useDeferredValue(search.trim());
@@ -61,56 +58,11 @@ export function CustomersPage() {
     placeholderData: keepPreviousData,
   });
   const data = q.data;
-  const counts = new Map(data?.views.map((v) => [v.view, v.count]));
   // sheet AD3 (UX-151): from 1536 px, a customer's summary at the side of the list; the full card stays its own page
   const [picked, setPicked] = useState<number | null>(null);
   const side = data?.items.find((r) => r.id === picked) ?? null;
   return (
     <div className="space-y-5">
-      <PageHeader
-        title={t("admin.pages.customers.title")}
-        description={t("admin.pages.customers.description")}
-        actions={
-          <button
-            type="button"
-            onClick={() => void q.refetch()}
-            aria-label={t("common.retry")}
-            className="tap relative rounded-md border border-border-strong p-2 hover:bg-elevated"
-          >
-            <RefreshCw aria-hidden className={cn("h-4 w-4", q.isFetching && "animate-spin")} />
-          </button>
-        }
-      />
-      <div
-        className="flex flex-wrap items-center gap-2"
-        role="tablist"
-        data-testid="customer-views"
-      >
-        {CUSTOMER_VIEWS.map((v) => (
-          <button
-            key={v}
-            type="button"
-            role="tab"
-            aria-selected={view === v}
-            data-testid={`customer-view-${v}`}
-            onClick={() => {
-              setView(v);
-              setOffset(0);
-            }}
-            className={cn(
-              "tap-y relative inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium pointer-coarse:py-2.5",
-              view === v
-                ? "border-primary bg-primary/10 text-foreground"
-                : "border-border-strong text-muted-foreground hover:bg-elevated",
-            )}
-          >
-            {t(`admin.customers.views.${v}`)}
-            <span className="numeric font-semibold" data-testid={`customer-count-${v}`}>
-              {counts.get(v) ?? "·"}
-            </span>
-          </button>
-        ))}
-      </div>
       <label className="relative block max-w-md">
         <Search
           aria-hidden
@@ -171,7 +123,7 @@ export function CustomersPage() {
                       >
                         <td className="px-4 py-3">
                           <Link
-                            to="/admin/customers/$userId"
+                            to="/admin/users/$userId"
                             params={{ userId: String(r.id) }}
                             className="tap-y relative font-medium text-primary hover:underline"
                           >
@@ -221,7 +173,7 @@ export function CustomersPage() {
                     data-testid={`customer-card-${r.id}`}
                   >
                     <Link
-                      to="/admin/customers/$userId"
+                      to="/admin/users/$userId"
                       params={{ userId: String(r.id) }}
                       className="tap-y relative block break-words font-medium text-primary hover:underline"
                     >
@@ -313,7 +265,7 @@ export function CustomersPage() {
               </dl>
               <Flags row={side} />
               <Link
-                to="/admin/customers/$userId"
+                to="/admin/users/$userId"
                 params={{ userId: String(side.id) }}
                 className="inline-flex h-10 w-full items-center justify-center rounded-control border border-border text-sm font-semibold hover:bg-elevated"
               >

@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 
 function Tile({
   to,
+  search,
   icon,
   value,
   title,
@@ -34,6 +35,7 @@ function Tile({
   testId,
 }: {
   to: string;
+  search?: Record<string, string>;
   icon: ReactNode;
   value: number | null;
   title: string;
@@ -44,6 +46,7 @@ function Tile({
   return (
     <Link
       to={to as never}
+      {...(search ? { search: search as never } : {})}
       data-testid={testId}
       className={cn(
         "surface-panel flex min-h-32 flex-col gap-2 rounded-card p-4 transition-colors hover:bg-elevated",
@@ -134,7 +137,8 @@ export function BusinessSummary() {
           testId="summary-books"
         />
         <Tile
-          to="/admin/customers"
+          to="/admin/users"
+          search={{ view: "expiring" }}
           icon={<Users aria-hidden className="h-5 w-5" />}
           value={views.get("expiring") ?? null}
           title={t("admin.summary.expiring")}
@@ -155,7 +159,8 @@ export function BusinessSummary() {
           {VIEWS.map((v) => (
             <Link
               key={v}
-              to="/admin/customers"
+              to="/admin/users"
+              search={{ view: v }}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-sm hover:bg-elevated"
             >
               {t(`admin.summary.views.${v}`)}
