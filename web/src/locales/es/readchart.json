@@ -101,5 +101,25 @@
     "radarTitle": "¿En qué se parecen y en qué se diferencian?",
     "figuresTitle": "Cifra a cifra",
     "statesTitle": "Cuando el partido se mueve"
+  },
+  "movement": {
+    "title": "¿Ha subido o bajado la cuota?",
+    "axis": "Horizontal: hora de la primera y de la última captura. Vertical: la mejor cuota disponible en ese momento; cada gráfica tiene su propia escala.",
+    "line": "{title}: la mejor cuota pasó de {from} a {to} ({change}) en {n} capturas.",
+    "single": "{title}: la mejor cuota es {odds}.",
+    "thin": "Con una sola captura todavía no hay movimiento que leer."
+  },
+  "recap": {
+    "cumulative": {
+      "title": "¿Cómo va tu resultado en total?",
+      "axis": "Horizontal: día. Vertical: unidades ganadas o perdidas, sumando día tras día (una unidad por registro).",
+      "read": "Tu resultado acumulado es de {total} tras {n} registros liquidados en {days} días."
+    },
+    "daily": {
+      "title": "¿Qué días ganaste y cuáles perdiste?",
+      "axis": "Horizontal: día. Vertical: unidades de ese día, en verde si ganaste y en rojo si perdiste.",
+      "read": "Tu mejor día fue el {best} ({bestProfit}) y el peor, el {worst} ({worstProfit}), entre {days} días con registros liquidados.",
+      "one": "Hay {days} día con registros liquidados."
+    }
   }
 }

@@ -17,9 +17,6 @@ const BEFORE_PM_10_06 = [
   "live/ModelsLive.tsx",
   "product/match/stats/PreviewStats.tsx",
   "product/match/stats/ProbabilitiesPanel.tsx",
-  "product/odds/MovementPanel.tsx",
-  "product/odds/explorer/MovementChart.tsx",
-  "product/records/Recap.tsx",
   "routes/admin.backtesting.tsx",
   "routes/admin.models.tsx",
   "routes/admin.odds.tsx",
@@ -33,7 +30,7 @@ function isPrimitive(path: string): boolean {
 
 const DRAWS_A_CHART = [
   /from\s+["']recharts["']/,
-  /from\s+["']@\/components\/analytics\/(?!evidence|EvidenceChart|stats\/format)[^"']+["']/,
+  /from\s+["']@\/components\/analytics\/(?!evidence|EvidenceChart|readerReview|stats\/format|stats\/readText|stats\/howToRead)[^"']+["']/,
   /from\s+["']@\/components\/ui\/chart["']/,
   /<ChartCard\b/,
   /<ChartContainer\b/,
