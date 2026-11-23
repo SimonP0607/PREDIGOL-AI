@@ -128,6 +128,11 @@ before (catalogue ``evaluable`` and ``FBI_FORECAST_USERS``) - and ``=1`` also as
 report of ``fbi.coverage.model_segments`` must call the market ``apta`` there; a competition with no verdict reads «no autorizada». It
 changes only what C-16 says (itself behind ``FBI_AVAILABILITY``): no pick, model or forecast reads it."""
 
+EVALUATION_BOARD: Final = "FBI_EVALUATION_BOARD"
+"""The owner's private evaluation board (plan PM, PM-12-01; IA-153): OFF while the line is absent - ``GET /admin/evaluation/board``
+answers 404, the weekly batch computes no board and the Performance page shows no panel - and ``=1`` opens it. It reads predictions,
+the market and the provider's forecast; it changes no pick, model or forecast."""
+
 USAGE_CONSOLE: Final = "FBI_USAGE_CONSOLE"
 """The owner's console of the provider's requests by lane, endpoint and competition (plan PM, PM-04-05; BE-076, UX-175): OFF while
 the line is absent - ``GET /admin/monitoring/provider-usage`` answers 404 and the console shows no tab - and ``=1`` opens it (the
@@ -275,6 +280,11 @@ def availability_phases_on() -> bool:
 def prob_by_competition_on() -> bool:
     """Whether state 5 of C-16 asks the competition's own sample (``FBI_PROB_BY_COMPETITION``, off by default)."""
     return user_switch(PROB_BY_COMPETITION, default=False)
+
+
+def evaluation_board_on() -> bool:
+    """Whether the owner's private evaluation board answers (``FBI_EVALUATION_BOARD``, off by default)."""
+    return user_switch(EVALUATION_BOARD, default=False)
 
 
 def usage_console_on() -> bool:
