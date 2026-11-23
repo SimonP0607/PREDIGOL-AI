@@ -16,13 +16,14 @@
  * Enter, and the search says what it found.
  */
 import { useEffect, useId, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, Loader2, Plus, Search, X } from "lucide-react";
 import { CompetitionLogo, CountryFlag, TeamLogo } from "@/components/football/Logos";
 import { live } from "@/lib/api/v1/queries";
 import type { PlayerBadge } from "@/lib/api/v1/types_favorites";
 import type { CompetitionBadge, TeamBadge } from "@/lib/api/v1/types_product";
 import { t } from "@/lib/i18n";
+import { useCountryAliases } from "@/lib/i18n/useCountryAliases";
 import { fieldVariants } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 import { marketName } from "@/product/shared/markets";
@@ -363,12 +364,23 @@ function LeagueToggles({
 function useFavoriteSearch(leagues: readonly CompetitionBadge[], q: string, settled: string) {
   const ready = searchable(settled);
   const found = useQuery({ ...live.favoriteOptions(settled), enabled: ready });
+  // AP-B02: «España» also asks the provider for «Spain»; the answers are one list, the national team first
+  const { aliases, merge } = useCountryAliases(settled, ready);
+  const aliased = useQueries({
+    queries: aliases.map((a) => ({ ...live.favoriteOptions(a), enabled: ready })),
+  });
   const matching = searchable(q)
     ? leagues.filter((l) => leagueMatches(l, q)).slice(0, LEAGUE_RESULTS)
     : [];
-  const teams = ready ? (found.data?.teams ?? []) : [];
+  const teams = ready
+    ? merge(
+        found.data?.teams ?? [],
+        aliased.map((a) => a.data?.teams ?? []),
+        aliases,
+      )
+    : [];
   const players = ready ? (found.data?.players ?? []) : [];
-  const pending = !ready || found.isFetching;
+  const pending = !ready || found.isFetching || aliased.some((a) => a.isFetching);
   let status = "";
   if (!searchable(q)) status = "";
   else if (pending && matching.length === 0) status = t("onboarding.picker.searching");

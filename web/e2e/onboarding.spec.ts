@@ -335,6 +335,10 @@ for (const width of [320, 1440]) {
           : null;
       });
       expect(order, "the markets block comes after the results").toBe(true);
+      // axe measures what is on the screen: the markets block is brought to the middle, clear of the sticky save bar
+      await page
+        .getByTestId("fav-markets")
+        .evaluate((el) => el.scrollIntoView({ block: "center" }));
       const axe = await new AxeBuilder({ page })
         .withTags(WCAG)
         .include('[data-testid="welcome"]')

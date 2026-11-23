@@ -5,7 +5,7 @@
  * profiles (maquetas 11-13). Shown only while FBI_PROFILES is on.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Search, Star } from "lucide-react";
 import { fieldVariants } from "@/components/ui/field";
@@ -14,6 +14,7 @@ import { live } from "@/lib/api/v1/queries";
 import type { CompetitionSummary } from "@/lib/api/v1/types";
 import { useAuth, usePmReaderSwitches } from "@/lib/auth/AuthProvider";
 import { intlTag, t } from "@/lib/i18n";
+import { useCountryAliases } from "@/lib/i18n/useCountryAliases";
 import { cn } from "@/lib/utils";
 import { Card, EmptyState, PageTitle, SkeletonCards } from "@/product/shared/States";
 import { countryName, isNation, teamLabel } from "./model";
@@ -71,6 +72,16 @@ export function TeamsPage() {
   const term = useDebounced(q.trim());
   const favorites = useQuery({ ...live.favorites, enabled: open && reader });
   const found = useQuery({ ...live.teamSearch(term), enabled: open && term.length >= 2 });
+  // AP-B02: «España» also asks for «Spain»; one list, the national team first
+  const { aliases, merge } = useCountryAliases(term, open && term.length >= 2);
+  const aliased = useQueries({
+    queries: aliases.map((a) => ({ ...live.teamSearch(a), enabled: open })),
+  });
+  const teamsFound = merge(
+    found.data?.data ?? [],
+    aliased.map((a) => a.data?.data ?? []),
+    aliases,
+  );
   const comps = useQuery({ ...live.competitions, enabled: open });
   const groups = useMemo(() => byCountry(comps.data?.data ?? []), [comps.data]);
   if (!open)
@@ -102,7 +113,7 @@ export function TeamsPage() {
         <section aria-label={t("profiles.teams.results")}>
           {found.isPending ? (
             <SkeletonCards count={1} />
-          ) : (found.data?.data ?? []).length === 0 ? (
+          ) : teamsFound.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="teams-none">
               {t("profiles.teams.none", { q: term })}
             </p>
@@ -111,7 +122,7 @@ export function TeamsPage() {
               className="card-surface divide-y divide-border rounded-card"
               data-testid="teams-results"
             >
-              {(found.data?.data ?? []).slice(0, 20).map((team) => (
+              {teamsFound.slice(0, 20).map((team) => (
                 <li key={team.id}>
                   <Link
                     to={isNation(team) ? "/nations/$teamId" : "/teams/$teamId"}
