@@ -8,6 +8,7 @@
  *
  * The suite signs in once per QA account (project "setup") and reuses the session:
  *   anon      sign-in, sign-out, redirects; RBAC over the API; the server-function path (R02)
+ *   controls  layout guards at nine widths: text in a column of letters, overflow, chip rows a mouse cannot reach
  *   user-es   the product as a USER, in Spanish (America/Bogota), and the glossary at a desk
  *   user-en   the product as a USER, in English (Europe/Madrid)
  *   admin     the Admin Console as SUPER_ADMIN, in English
@@ -89,6 +90,14 @@ export default defineConfig({
       // glossary.spec.ts: the one glossary at a desk (plan UX, A3); analytics.spec.ts: a journey's events (A6)
       testMatch: /(user|glossary|analytics)\.spec\.ts/,
       metadata: { lang: "es" },
+      use: { ...desktop, storageState: statePath("user") },
+      dependencies: ["setup"],
+    },
+    {
+      // The layout guards (Plan Maestro de Correcciones, AP-Q03 and AP-Q04): text in a column of letters, blocks past their
+      // box and rows of chips a mouse cannot reach, at nine widths, on the pages the owner's audit found them.
+      name: "controls",
+      testMatch: /controls\.spec\.ts/,
       use: { ...desktop, storageState: statePath("user") },
       dependencies: ["setup"],
     },
