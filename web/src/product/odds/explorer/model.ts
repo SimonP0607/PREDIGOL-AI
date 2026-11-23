@@ -292,4 +292,6 @@ export interface ExplorerData {
   useMovement(fixtureId: number, q: MovementQuery, enabled: boolean): Loadable<OddsMovement>;
   /** Null while unknown or with personalisation off: «Mis equipos y ligas» is not offered then. */
   useFollow(): ExplorerFollow | null;
+  /** The administrator's account sees the hour of every reading; a reader, only a delay (plan UX, AP-I02). */
+  useAdmin(): boolean;
 }

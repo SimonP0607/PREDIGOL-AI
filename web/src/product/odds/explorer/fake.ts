@@ -520,6 +520,8 @@ export interface FakeOptions {
   /** How many pages are loaded («Cargar más» was tapped). */
   pages?: number;
   follow?: ExplorerFollow | null;
+  /** The administrator's account: the hour of the reading is always shown. */
+  admin?: boolean;
   families?: OddsFamilies;
   now?: number;
   /** Cut the board by `day` as the server does (AP-C01); off, every fixture answers whatever the day (older tests). */
@@ -617,6 +619,9 @@ export function fakeExplorerData(o: FakeOptions = {}): ExplorerData & { calls: F
     },
     useFollow() {
       return o.follow ?? null;
+    },
+    useAdmin() {
+      return o.admin === true;
     },
   };
 }

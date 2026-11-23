@@ -1,5 +1,6 @@
 {
   "liveUpdated": "Datos en vivo actualizados {when}",
+  "liveUpdatedAt": "Datos en vivo de las {time} · {when}",
   "liveNone": "Sin datos en vivo recientes",
   "picks": {
     "seeAll": "Ver todos",

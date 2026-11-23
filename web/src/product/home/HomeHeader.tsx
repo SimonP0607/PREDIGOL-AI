@@ -1,10 +1,15 @@
-/** Today, in the reader's zone, and how fresh what is in play is (the one freshness line of the page). */
+/**
+ * Today, in the reader's zone, and — only when it matters — how late what is in play is (the one freshness line of the
+ * page, plan UX AP-I02): a reader hears of a delay; the administrator always sees the hour.
+ */
 import type { ReactNode } from "react";
 import { Clock } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { formatDateLong, formatRelative } from "@/lib/time";
+import { isDelayed } from "@/lib/freshness";
+import { formatDateLong, formatRelative, formatTime } from "@/lib/time";
 import { GuideButton } from "@/product/guides/GuideButton";
+import { DataDelayed } from "@/product/shared/DataDelayed";
 import { SkeletonBlock } from "@/product/shared/States";
 import { ShadowToggle } from "@/product/shared/ShadowToggle";
 
@@ -13,12 +18,18 @@ export const GREETING_MAX = 18;
 
 export function HomeHeader({
   freshness,
+  inPlay = false,
+  admin = false,
   loading,
   name,
   selector,
 }: {
   /** Null until the page has data: nothing is claimed about what it could not load. */
   freshness: { live_at: string | null } | null;
+  /** A match is being played: only then does the live reading's age mean anything (D16). */
+  inPlay?: boolean;
+  /** The administrator always sees the hour of the reading; a reader, only a delay. */
+  admin?: boolean;
   loading: boolean;
   /** How the reader is greeted (their name's first word); without it, the page's title is the day. */
   name?: string | null | undefined;
@@ -46,19 +57,7 @@ export function HomeHeader({
             {first ? t("home.hello", { name: first }) : t("common.day.today")}
           </span>
         </h1>
-        {loading ? (
-          <SkeletonBlock className="mt-2 h-3.5 w-44" />
-        ) : freshness ? (
-          <p
-            className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
-            data-testid="home-freshness"
-          >
-            <Clock aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
-            {freshness.live_at
-              ? t("home.liveUpdated", { when: formatRelative(freshness.live_at) })
-              : t("home.liveNone")}
-          </p>
-        ) : null}
+        <HomeFreshness freshness={freshness} inPlay={inPlay} admin={admin} loading={loading} />
       </div>
       {/* The «?» of Inicio (UX-070): its own guide again, at the end of the header as on every screen with a guide. */}
       <div
@@ -74,4 +73,39 @@ export function HomeHeader({
       </div>
     </header>
   );
+}
+
+/** The line under the greeting: nothing, a delay (reader) or the hour of the reading (administrator). */
+export function HomeFreshness({
+  freshness,
+  inPlay,
+  admin,
+  loading,
+}: {
+  freshness: { live_at: string | null } | null;
+  inPlay: boolean;
+  admin: boolean;
+  loading: boolean;
+}) {
+  if (loading) return <SkeletonBlock className="mt-2 h-3.5 w-44" />;
+  if (freshness && admin) {
+    return (
+      <p
+        className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
+        data-testid="home-freshness"
+      >
+        <Clock aria-hidden className="h-3.5 w-3.5 shrink-0 text-subtle-foreground" />
+        {freshness.live_at
+          ? t("home.liveUpdatedAt", {
+              time: formatTime(freshness.live_at),
+              when: formatRelative(freshness.live_at),
+            })
+          : t("home.liveNone")}
+      </p>
+    );
+  }
+  if (freshness && inPlay && isDelayed("live", freshness.live_at)) {
+    return <DataDelayed className="mt-1.5" testId="home-freshness" />;
+  }
+  return null;
 }
