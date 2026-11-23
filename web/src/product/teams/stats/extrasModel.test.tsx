@@ -120,7 +120,7 @@ describe("the blocks", () => {
     expect(out).toContain("Pocos partidos de esta competición traen estos datos (3 como mucho)");
     expect(out).toContain("Goles evitados");
     expect(out).toContain("no pasó la comprobación de calidad");
-    expect(out).toContain("Dato de API-Football");
+    expect(out).toContain("Dato medido en el partido");
     expect(out).not.toContain("parcial");
   });
 

@@ -37,8 +37,8 @@
   "partialSubject": "this competition's player data",
   "goalsPrevented": "Goals prevented",
   "goalsPreventedWhy": "The provider's figure did not pass its quality check: it is not shown until it does.",
-  "sourceMixed": "Source: player statistics of each match (PrediGol) and penalties saved as API-Football measures them.",
+  "sourceMixed": "Source: player statistics of each match (PrediGol) and penalties saved as recorded in the match data.",
   "sourcePredigol": "Source: player statistics of each match; the league is this competition's goalkeepers.",
-  "sourceProvider": "API-Football's figure: measured by the provider, not recalculated by PrediGol.",
+  "sourceProvider": "Measured in the match: PrediGol does not recalculate it.",
   "blockMissing": "Few matches of this competition carry these figures ({matches} at most): they are not shown."
 }

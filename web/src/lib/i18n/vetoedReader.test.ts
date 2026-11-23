@@ -80,61 +80,15 @@ const TERMS: readonly Term[] = [
 
 /**
  * Texts that still use a term, «locale:key|term» -> the piece of the plan that rewrites it. Built from the catalogs of
- * 23-nov-2026; every piece removes its lines.
+ * 23-nov-2026; AP-T01 rewrote all but one.
  */
 const KNOWN: Readonly<Record<string, string>> = {
-  "en:matchviz.layers.source|API-Football": "AP-T01",
-  "en:matchviz.scoreState.source|API-Football": "AP-T01",
-  "en:matchviz.source.api_football|API-Football": "AP-T01",
-  "en:matchviz.zones.xgSource|API-Football": "AP-T01",
-  "en:players.sourceMixed|API-Football": "AP-T01",
-  "en:players.sourceProvider|API-Football": "AP-T01",
-  "es:matchviz.layers.source|API-Football": "AP-T01",
-  "es:matchviz.scoreState.source|API-Football": "AP-T01",
-  "es:matchviz.source.api_football|API-Football": "AP-T01",
-  "es:matchviz.zones.xgSource|API-Football": "AP-T01",
-  "es:players.sourceMixed|API-Football": "AP-T01",
-  "es:players.sourceProvider|API-Football": "AP-T01",
-  "en:markets.gate.not_qualified|backtest": "AP-K03",
-  "en:match.analysis.block.elo|Elo": "AP-P07",
-  "en:match.forecast.models.dixon_coles|Dixon-Coles": "AP-P07",
-  "en:match.forecast.models.elo_ologit|Elo": "AP-P07",
-  "en:match.forecast.models.elo_ologit|logit": "AP-P07",
-  "en:match.forecast.models.poisson|Poisson": "AP-P07",
-  "en:match.providerPrediction.label|API-Football": "AP-T01",
-  "en:match.providerPrediction.label|Poisson": "AP-P07",
-  "en:match.providerPrediction.title|API-Football": "AP-T01",
-  "en:records.daily.emptyBody|backtest": "AP-K03",
-  "en:records.noPick.reason.not_qualified|backtest": "AP-K03",
-  "en:stats.pulseNote|versión de modelo": "AP-T03",
-  "en:stats.pulseSub|bootstrap": "AP-T03",
-  "en:stats.settlesWith.player|API-Football": "AP-T01",
-  "en:stats.settlesWith.stats|API-Football": "AP-T01",
-  "en:stats.source|API-Football": "AP-T01",
-  "en:stats.survivalSub|Kaplan-Meier": "AP-T03",
+  // «4.000 caracteres»: the thousands separator of Spanish, read by the test as a decimal point. AP-T02 decides it.
   "es:errors.code.invalid_message|decimal con punto": "AP-T02",
-  "es:markets.gate.not_qualified|backtest": "AP-K03",
-  "es:match.analysis.block.elo|Elo": "AP-P07",
-  "es:match.forecast.models.dixon_coles|Dixon-Coles": "AP-P07",
-  "es:match.forecast.models.elo_ologit|Elo": "AP-P07",
-  "es:match.forecast.models.elo_ologit|logit": "AP-P07",
-  "es:match.forecast.models.poisson|Poisson": "AP-P07",
-  "es:match.providerPrediction.label|API-Football": "AP-T01",
-  "es:match.providerPrediction.label|Poisson": "AP-P07",
-  "es:match.providerPrediction.title|API-Football": "AP-T01",
-  "es:records.daily.emptyBody|backtest": "AP-K03",
-  "es:records.noPick.reason.not_qualified|backtest": "AP-K03",
-  "es:stats.pulseMethod|decimal con punto": "AP-T03",
-  "es:stats.pulseNote|versión de modelo": "AP-T03",
-  "es:stats.pulseSub|bootstrap": "AP-T03",
-  "es:stats.settlesWith.player|API-Football": "AP-T01",
-  "es:stats.settlesWith.stats|API-Football": "AP-T01",
-  "es:stats.source|API-Football": "AP-T01",
-  "es:stats.survivalSub|Kaplan-Meier": "AP-T03",
 };
 
 /** The most entries the list may ever have. Lowering it is welcome; raising it is not allowed. */
-const CEILING = 48;
+const CEILING = 1;
 
 function entries(node: Catalog, prefix: string): Array<[string, string]> {
   return Object.entries(node).flatMap(([k, v]): Array<[string, string]> =>

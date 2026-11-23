@@ -199,9 +199,7 @@ describe("the card", () => {
     expect(html).toContain("Posición nominal de formación, no posición real en el campo");
     expect(html).toContain("Las cuatro capas, en tabla");
     expect(html).toContain("Cordillera · 2-1");
-    expect(html).toContain(
-      "1 partido; estadísticas por jugador y eventos del partido de API-Football",
-    );
+    expect(html).toContain("1 partido; estadísticas por jugador y eventos del partido");
     expect(html).toContain('data-evidence="E1"');
     expect(html).toContain('data-review="completa"');
     expect(reviewProblems(LINEUP_LAYERS_REVIEW)).toEqual([]);

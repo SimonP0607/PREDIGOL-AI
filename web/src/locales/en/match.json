@@ -549,8 +549,8 @@
     "notAPick": "Not a pick and not a bookmaker's price: no model has beaten the market yet."
   },
   "providerPrediction": {
-    "title": "Provider's prediction (API-Football)",
-    "label": "API-Football's own forecast (Poisson, form, comparison; no odds). Auxiliary: not PrediGol's model, not the market, never a model input or a pick.",
+    "title": "External forecast",
+    "label": "The data provider's own forecast (from goals, form and comparison; no odds). Auxiliary: not PrediGol's model, not the market, never a model input or a pick.",
     "none": "The provider's prediction has not been read for this match yet (it is asked 48 h, 24 h and 3 h before kick-off).",
     "home": "Home",
     "draw": "Draw",
@@ -651,7 +651,7 @@
     "block": {
       "absences": "absences",
       "dossier": "match context",
-      "elo": "Elo",
+      "elo": "Team strength",
       "forecast": "forecast",
       "form": "form",
       "h2h": "head to head",
@@ -726,9 +726,9 @@
     "updated": "Updated {when}",
     "model": "Model: {model}",
     "models": {
-      "poisson": "Poisson (Maher)",
-      "dixon_coles": "Dixon-Coles",
-      "elo_ologit": "Elo (ordered logit)"
+      "poisson": "Goals model",
+      "dixon_coles": "Goals model with a low-score adjustment",
+      "elo_ologit": "Team-strength model"
     },
     "admin": {
       "fairOdds": "PrediGol's odds {odds}",

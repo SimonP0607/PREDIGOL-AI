@@ -549,8 +549,8 @@
     "notAPick": "No es un pick ni una cuota de casa: ningún modelo ha superado al mercado todavía."
   },
   "providerPrediction": {
-    "title": "Predicción del proveedor (API-Football)",
-    "label": "Pronóstico propio de API-Football (Poisson, forma, comparación; sin cuotas). Auxiliar: no es el modelo de PrediGol ni el mercado, y nunca alimenta un modelo ni un pick.",
+    "title": "Pronóstico externo",
+    "label": "Pronóstico propio del proveedor de datos (a partir de goles, forma y comparación; sin cuotas). Auxiliar: no es el modelo de PrediGol ni el mercado, y nunca alimenta un modelo ni un pick.",
     "none": "La predicción del proveedor aún no se ha leído para este partido (se pide 48 h, 24 h y 3 h antes del inicio).",
     "home": "Local",
     "draw": "Empate",
@@ -651,7 +651,7 @@
     "block": {
       "absences": "bajas",
       "dossier": "contexto del partido",
-      "elo": "Elo",
+      "elo": "Fuerza de los equipos",
       "forecast": "pronóstico",
       "form": "forma",
       "h2h": "historial directo",
@@ -726,9 +726,9 @@
     "updated": "Actualizado {when}",
     "model": "Modelo: {model}",
     "models": {
-      "poisson": "Poisson (Maher)",
-      "dixon_coles": "Dixon-Coles",
-      "elo_ologit": "Elo (logit ordenado)"
+      "poisson": "Modelo de goles",
+      "dixon_coles": "Modelo de goles con ajuste de marcadores bajos",
+      "elo_ologit": "Modelo de fuerza de los equipos"
     },
     "admin": {
       "fairOdds": "cuota según PrediGol {odds}",
