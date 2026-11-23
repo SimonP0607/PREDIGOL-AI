@@ -15,7 +15,11 @@ import {
 import { t } from "@/lib/i18n";
 import { formatOdds } from "@/lib/i18n/format";
 import { dayKey, formatDate, formatTime } from "@/lib/time";
+import { EvidenceChart } from "@/components/analytics/EvidenceChart";
+import { READER_REVIEW } from "@/components/analytics/readerReview";
+import { t as r } from "@/components/analytics/stats/readText";
 import { oddsDomain, oddsTicks, type MovePoint } from "../movement";
+import { movementReading } from "../movementReading";
 
 const LINE = "var(--color-info)";
 const SURFACE = "var(--color-card)";
@@ -36,7 +40,8 @@ export default function MovementChart({
   extent: [number, number];
 }) {
   const sameDay = dayKey(extent[0]) === dayKey(extent[1]);
-  return (
+  const reading = movementReading(lines);
+  const grid = (
     <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3" data-testid="explorer-chart">
       {lines.map((l) => {
         const domain = oddsDomain(l.points.map((p) => p.odds));
@@ -45,7 +50,7 @@ export default function MovementChart({
             key={l.key}
             className="min-w-0 rounded-md border border-border/70 bg-card px-2.5 pb-1 pt-2"
           >
-            <figcaption className="truncate text-xs font-semibold">{l.title}</figcaption>
+            <figcaption className="truncate text-small font-semibold">{l.title}</figcaption>
             <div aria-hidden className="mt-1 h-24">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={l.points} margin={{ top: 8, right: 6, bottom: 0, left: 0 }}>
@@ -60,8 +65,8 @@ export default function MovementChart({
                     height={18}
                     tickLine={false}
                     axisLine={{ stroke: "var(--color-border-strong)" }}
-                    tickFormatter={(v: number) => (sameDay ? formatTime(v) : stamp(v))}
-                    tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
+                    tickFormatter={(v: number) => (sameDay ? formatTime(v) : formatDate(v))}
+                    tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
                   />
                   <YAxis
                     dataKey="odds"
@@ -73,7 +78,7 @@ export default function MovementChart({
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(v: number) => formatOdds(v)}
-                    tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
+                    tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
                   />
                   <Tooltip
                     content={<PointTip />}
@@ -117,6 +122,18 @@ export default function MovementChart({
       })}
     </div>
   );
+  if (!reading) return grid;
+  return (
+    <EvidenceChart
+      evidence="E1"
+      review={READER_REVIEW}
+      title={r("readchart.movement.title")}
+      axes={r("readchart.movement.axis")}
+      reading={reading}
+    >
+      {grid}
+    </EvidenceChart>
+  );
 }
 
 function PointTip({
@@ -131,8 +148,8 @@ function PointTip({
   return (
     <div className="rounded-md border border-border-strong bg-popover px-2.5 py-1.5 shadow-lg">
       <div className="numeric text-sm font-semibold text-foreground">{formatOdds(point.odds)}</div>
-      <div className="text-caption text-muted-foreground">{point.bookmaker}</div>
-      <div className="numeric text-caption text-subtle-foreground">{stamp(point.t)}</div>
+      <div className="text-small text-muted-foreground">{point.bookmaker}</div>
+      <div className="numeric text-small text-subtle-foreground">{stamp(point.t)}</div>
     </div>
   );
 }
