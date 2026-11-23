@@ -376,6 +376,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-192 | «Profundizar» por contenedor en el Resumen del partido (plan de correcciones UX, AP-P01, hallazgo P2): la rejilla de tres columnas del Resumen decide por el ancho de su propia caja y no por el de la pantalla, de modo que «Profundizar» deja de caer en una columna de letras entre 320 y 1100 px. Se retira la entrada de la lista del control de maquetación. | en curso | este PR | UX-191 |
 | UX-193 | Lista de Partidos sin superposición y centrada (plan de correcciones UX, AP-P02, hallazgo P3): la columna de la derecha de cada partido conserva su ancho con o sin casas de apuestas, de modo que el marcador queda siempre en el mismo sitio, y el encabezado de cada competición pasa por encima de las fichas al desplazar. Se retira de la lista del control de maquetación la entrada de la fila. | en curso | este PR | UX-192 |
 | UX-194 | Etiquetas en lenguaje llano en las pantallas de lector (plan de correcciones UX, AP-T01b, hallazgos P11, P12, E4 y K1): «Sin calibrar» pasa a «Estimación preliminar» y «Modelo validado» a «Probabilidad de PrediGol»; salen «Consenso sin margen de N casas», «Seis ejes fijos», «LOS MISMOS números» y los rellenos de «aparecerán cuando empiece…» y «Cada cifra cuenta solo…». El control AP-Q02 vigila los términos nuevos. | en curso | este PR | UX-190 |
+| UX-195 | Recorridos guiados bien medidos (plan de correcciones UX, AP-P03, hallazgo P1): el recuadro de la guía enmarca la unión de lo que el elemento enseña (con 6 px de margen) y no la fila entera; se mide de nuevo al cargar las fuentes, al cambiar el contenido y al cambiar de tamaño. El control de las guías comprueba que el recuadro queda a menos de 8 px del contenido. | en curso | este PR | UX-189, UX-194 |
 | FE-001 | Recharts 2.15 → 3.10 (el informe de herramientas gratuitas): los gráficos de analítica, del explorador de cuotas, de Resumen y de modelos, y el `chart.tsx` de shadcn. Cambios de tipos (en Recharts 3 `payload` y `label` ya no están en `TooltipProps`, `formatter` recibe `ValueType | undefined`, `dataKey` puede ser una función) sin cambiar lo que se dibuja: se comparó una página con los seis gráficos de analítica y el gráfico de movimiento del explorador (con su tooltip) renderizados con 2.15 y con 3.10, en Chromium, y salen iguales | en curso | este PR | — |
 | FE-002 | Sin usar: la sesión de Intelligence tomó FE-003 sin pedir el siguiente libre (18-nov-2026). No se reutiliza | sin usar | — | — |
 | FE-003 | Plan de estadísticas avanzadas (EA-202): en «Mercados → Probabilidades», la línea que se muestra de un total siempre tiene su botón entre las ocho visibles (visto en producción con los córners de Flamengo–Athletico) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #390 | BE-047 |
@@ -486,7 +487,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-195 · BE-085 · FE-010 · OPS-017 · DOC-013
+CI-020 · SEG-003 · UX-196 · BE-085 · FE-010 · OPS-017 · DOC-013
 
 IA-161
 
