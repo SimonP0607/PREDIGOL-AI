@@ -50,8 +50,23 @@ export interface OddsFamily {
   markets: OddsMarketInfo[];
 }
 
+/** A day of Bogota the explorer offers (AP-C01). */
+export type OddsDayKey = "today" | "tomorrow" | "day_after";
+
+export interface OddsDay {
+  key: OddsDayKey;
+  /** The day in Bogota, "2026-11-23". */
+  bogota_date: string;
+  /** Matches with prices that day (today: those still to kick off), under the same country and competition. */
+  fixtures: number;
+}
+
 export interface OddsFamilies {
   window_hours: number;
+  /** The day asked for: it replaces the hours. */
+  window_day?: OddsDayKey | null;
+  /** Today, tomorrow and the day after, each with its matches. */
+  days?: OddsDay[];
   /** Only the families and markets with prices in the window, in the explorer's order. */
   families: OddsFamily[];
   /** FBI_ODDS_BOOK: the worker builds the book. */
@@ -216,8 +231,10 @@ export interface OddsHealth {
 
 /** GET /odds/families. */
 export interface OddsFamiliesQuery {
-  /** Matches kicking off in the next N hours: 24, 48 or 72 on the page (1 to 72). */
+  /** Matches kicking off in the next N hours (1 to 72). Without `day`. */
   hours?: number | undefined;
+  /** A day of Bogota: it replaces `hours` (AP-C01). */
+  day?: OddsDayKey | undefined;
   /** The competition's country, as it is named. */
   country?: string | undefined;
   /** A competition id. */

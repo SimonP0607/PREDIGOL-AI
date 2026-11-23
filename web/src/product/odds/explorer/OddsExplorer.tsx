@@ -13,6 +13,7 @@ import { t } from "@/lib/i18n";
 import { useGuideScreen } from "@/product/guides/context";
 import { Card, EmptyState, ErrorState, PageTitle, StaleNote } from "@/product/shared/States";
 import type { RowEnv } from "./env";
+import { DayTabs, dayLabel, nextDayWithPrices } from "./DayTabs";
 import { filterOptions } from "./filterOptions";
 import { ExplorerSearch, FiltersRow, FiltersSheet } from "./Filters";
 import { useAnnouncer, useMarketMemory, usePriceMoves, useSeen, useSlipAnnouncer } from "./hooks";
@@ -112,24 +113,18 @@ export function OddsExplorer({
   const pages = board.data;
   const loaded = useMemo(() => pages?.flatMap((p) => p.rows) ?? [], [pages]);
   const rows = useMemo(
-    () => clientFilter(loaded, { window: state.window, mine: state.mine }, follow, now),
-    // `now` moves every render: the day only changes at midnight, so the rows follow the data, not the clock.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loaded, state.window, state.mine, follow],
+    () => clientFilter(loaded, { mine: state.mine }, follow),
+    [loaded, state.mine, follow],
   );
   const boardKey = JSON.stringify(query);
   const moves = usePriceMoves(loaded, boardKey, board.updatedAt);
   const lastPage = pages?.[pages.length - 1];
   const filters = filtersOf(state);
   const filtered = activeFilters(filters) > 0;
-  // «Hoy» by kick-off: once a loaded match starts after today, no later page can bring one of today's.
-  const lastRow = loaded[loaded.length - 1];
-  const pastToday =
-    state.window === "today" && state.sort === "time" && !!lastRow && !rows.includes(lastRow);
-  const hasMore = board.hasNextPage && !pastToday;
-  // The API counts its own filters; «Hoy» and «Mis equipos y ligas» are the client's, over the pages loaded: their count is
-  // known once nothing more can come.
-  const clientFiltered = state.window === "today" || (state.mine && follow !== null);
+  const hasMore = board.hasNextPage;
+  // The API counts its own filters, the day among them (AP-C01); «Mis equipos y ligas» is the client's, over the pages
+  // loaded: its count is known once nothing more can come.
+  const clientFiltered = state.mine && follow !== null;
   const total = board.isPlaceholderData
     ? null
     : clientFiltered
@@ -208,6 +203,12 @@ export function OddsExplorer({
       }
     : null;
   const options = filterOptions(seen.competitions, seen.bookmakers, follow !== null);
+  // Where today has no prices the way out is the next day that has them, with its matches (AP-C01).
+  const days = families.data?.days;
+  const next = nextDayWithPrices(state.window, days);
+  const nextLabel = next
+    ? t("explorer.empty.nextDay", { day: dayLabel(next.key).toLowerCase(), count: next.fixtures })
+    : undefined;
 
   let content;
   if (families.isPending) {
@@ -226,13 +227,13 @@ export function OddsExplorer({
           title={off ? t("explorer.empty.offTitle") : t("explorer.empty.windowTitle")}
           body={off ? t("explorer.empty.offBody") : t("explorer.empty.windowBody")}
           action={
-            !off && state.window !== 72 ? (
+            !off && next ? (
               <button
                 type="button"
-                onClick={() => patch({ window: 72 })}
+                onClick={() => patch({ window: next.key })}
                 className="tap-y relative inline-flex h-9 items-center rounded-full border border-border-strong px-4 text-xs font-semibold hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {t("explorer.empty.widen")}
+                {nextLabel}
               </button>
             ) : undefined
           }
@@ -275,7 +276,8 @@ export function OddsExplorer({
             onPeriod={(p) => change(withPeriod(state, p))}
             onLine={(l) => change(withLine(state, l))}
             onClear={clear}
-            onWiden={state.window === 72 ? null : () => patch({ window: 72 })}
+            onWiden={next ? () => patch({ window: next.key }) : null}
+            widenLabel={nextLabel}
           />
         </div>
       </>
@@ -299,6 +301,11 @@ export function OddsExplorer({
         }
       />
       {modeSwitch}
+      <DayTabs
+        value={typeof state.window === "number" ? null : state.window}
+        days={days}
+        onChange={(day) => patch({ window: day })}
+      />
       <div className="flex items-start gap-2">
         <ExplorerSearch value={state.q} tabs={tabs} onQuery={onQuery} onJump={jump} />
         <FiltersSheet
