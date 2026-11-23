@@ -68,8 +68,8 @@ describe("the URL of Cuotas", () => {
   });
 
   test("«Hoy» and a search that looks like a number stay text", () => {
-    expect(url({ ...DEFAULT_EXPLORER_STATE, window: "today", q: "2026" })).toEqual({
-      h: "today",
+    expect(url({ ...DEFAULT_EXPLORER_STATE, window: "tomorrow", q: "2026" })).toEqual({
+      h: "tomorrow",
       q: "2026",
     });
   });

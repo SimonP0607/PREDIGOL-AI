@@ -133,6 +133,27 @@ def test_the_families_are_those_with_prices_in_the_window(world: World) -> None:
     assert nothing["status"] == "empty" and nothing["data"]["families"] == []
 
 
+def test_a_day_of_bogota_lists_only_that_days_matches_and_counts_the_three_days(world: World) -> None:
+    """AP-C01. NOW is 09:00 of 22 Oct in Bogota: A (14:00) and B (16:00) are today, C (05:00 of the 23rd) tomorrow, D (the
+    25th) is outside the three days. ``hours`` still works without ``day``; with both, the day wins."""
+    c = client(world.db)
+    today = get(c, "/api/v1/odds/families", day="today")["data"]
+    assert today["window_day"] == "today"
+    assert [(d["key"], d["bogota_date"], d["fixtures"]) for d in today["days"]] == [
+        ("today", "2026-10-22", 2), ("tomorrow", "2026-10-23", 1), ("day_after", "2026-10-24", 0)]
+    assert next(f for f in today["families"] if f["key"] == "result")["fixtures"] == 2
+    tomorrow = get(c, "/api/v1/odds/families", day="tomorrow", hours=1)["data"]
+    assert next(f for f in tomorrow["families"] if f["key"] == "result")["fixtures"] == 1, "the day wins over the hours"
+    assert get(c, "/api/v1/odds/families", day="day_after")["status"] == "empty"
+    assert by_fixture(board(c, day="today"), world) == ["A", "B"]
+    assert by_fixture(board(c, day="tomorrow"), world) == ["C"]
+    assert board(c, day="day_after")["rows"] == []
+    assert by_fixture(board(c, hours=24), world) == ["A", "B", "C"], "without a day the hours rule"
+    italy = get(c, "/api/v1/odds/families", day="today", country="Italy")["data"]
+    assert [d["fixtures"] for d in italy["days"]] == [1, 0, 0], "the counts follow the country filter"
+    get(c, "/api/v1/odds/families", status=422, day="next_week")
+
+
 # ── /odds/board ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 

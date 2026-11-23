@@ -103,6 +103,19 @@ SELECT measured.*,
 """ + _BOARD_FILTERS
 """The rows of one page (``fixtures`` names them), with the chosen line's selections and every line of the row."""
 
+DAYS_SQL = """
+SELECT (b.kickoff_at AT TIME ZONE 'America/Bogota')::date AS day, count(DISTINCT b.fixture_id) AS fixtures
+  FROM market.book_current b
+  JOIN core.fixtures f ON f.id = b.fixture_id
+  JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+  JOIN core.competitions c ON c.id = cs.competition_id
+ WHERE b.kickoff_at > %(now)s AND b.kickoff_at <= %(until)s
+   AND (%(competition)s::bigint IS NULL OR c.id = %(competition)s::bigint)
+   AND (%(country)s::text IS NULL OR c.country = %(country)s::text)
+ GROUP BY 1
+"""
+"""Matches with prices per Bogota day of the window of the three tabs (AP-C01)."""
+
 MARKET_SQL = """
 SELECT m.period, count(DISTINCT b.fixture_id) AS fixtures, coalesce(max(b.books), 0) AS max_books
   FROM market.book_current b
@@ -248,6 +261,10 @@ def board_keys(conn: Conn, params: dict[str, Any]) -> list[Row]:
 
 def board_page(conn: Conn, params: dict[str, Any]) -> list[Row]:
     return fetch_all(conn, BOARD_PAGE_SQL, params)
+
+
+def day_counts(conn: Conn, params: dict[str, Any]) -> list[Row]:
+    return fetch_all(conn, DAYS_SQL, params)
 
 
 def market(conn: Conn, params: dict[str, Any]) -> list[Row]:

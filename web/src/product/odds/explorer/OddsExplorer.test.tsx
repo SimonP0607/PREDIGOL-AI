@@ -450,13 +450,27 @@ describe("loading, failing, empty", () => {
     expect(markup).toContain("Borrar filtros");
   });
 
-  test("no market in the window: offer the next 72 h; the book switched off: say so", async () => {
+  test("no market today: offer the next day that has prices, with its matches; the book switched off: say so", async () => {
+    const days = [
+      { key: "today" as const, bogota_date: "2026-11-08", fixtures: 0 },
+      { key: "tomorrow" as const, bogota_date: "2026-11-09", fixtures: 12 },
+      { key: "day_after" as const, bogota_date: "2026-11-10", fixtures: 3 },
+    ];
     const empty = await explorer(
       {},
-      { families: { window_hours: 24, families: [], book_enabled: true, generated_at: "" } },
+      { families: { window_hours: 24, days, families: [], book_enabled: true, generated_at: "" } },
     );
     expect(empty.markup).toContain("No hay cuotas en esta ventana");
-    expect(empty.markup).toContain("Ver las próximas 72 h");
+    expect(empty.markup).toContain("Ver mañana (12)");
+    // the tabs stay, with each day's matches: the way out is never only the button
+    expect(empty.markup).toContain('data-testid="odds-day"');
+    expect(empty.markup).toContain(", 12 partidos");
+    const last = await explorer(
+      { window: "day_after" },
+      { families: { window_hours: 24, days, families: [], book_enabled: true, generated_at: "" } },
+    );
+    expect(last.markup).not.toContain("Ver pasado mañana");
+    expect(last.markup).not.toContain("Ver mañana");
     const off = await explorer(
       {},
       { families: { window_hours: 24, families: [], book_enabled: false, generated_at: "" } },
@@ -473,14 +487,12 @@ describe("controls", () => {
     expect(markup).toContain('data-testid="explorer-filters-row"');
     expect(markup).toContain('data-testid="explorer-filters-open"');
     expect(markup).toContain('data-testid="explorer-live"');
-    for (const word of [
-      "Hoy",
-      "24 h",
-      "48 h",
-      "72 h",
-      "Por hora",
-      "Mayor diferencia con la justa",
-    ]) {
+    // the day is its own control above the filters (AP-C01), with each day's matches
+    expect(markup).toContain('data-testid="odds-day"');
+    for (const word of ["Hoy", "Mañana", "Pasado mañana", ", 2 partidos", ", 1 partido"]) {
+      expect(markup).toContain(word);
+    }
+    for (const word of ["Por hora", "Mayor diferencia con la justa"]) {
       expect(markup).toContain(word);
     }
     // the other filters wait in the sheet, at every width (UX-087)
@@ -510,7 +522,6 @@ describe("controls", () => {
       );
     const markup = await fields(false);
     for (const word of [
-      "Hoy",
       "País",
       "Competición",
       "Casa",
@@ -532,12 +543,14 @@ describe("controls", () => {
     expect(rowOf(markup, 7821)).toBe("");
   });
 
-  test("«Hoy»: only today's matches, «Mis equipos y ligas»: only the reader's", async () => {
-    const today = await explorer({ window: "today" });
-    expect(rowsOf(today.markup).map((r) => r.match(/data-fixture="(\d+)"/)?.[1])).toEqual([
-      "7819",
-      "7820",
-    ]);
+  test("each day lists its own matches (the server cuts it); «Mis equipos y ligas»: only the reader's", async () => {
+    const ids = (markup: string) => rowsOf(markup).map((r) => r.match(/data-fixture="(\d+)"/)?.[1]);
+    const today = await explorer({ window: "today" }, { byDay: true });
+    expect(ids(today.markup)).toEqual(["7819", "7820"]);
+    expect(today.data.calls.board[0]).toMatchObject({ day: "today" });
+    const tomorrow = await explorer({ window: "tomorrow" }, { byDay: true });
+    expect(ids(tomorrow.markup)).toEqual(["7821", "7822"]);
+    expect((await explorer({ window: "day_after" }, { byDay: true })).markup).toContain("7823");
     const mine = await explorer(
       { mine: true },
       { follow: { teams: new Set([541]), leagues: new Set([2]) } },
@@ -546,7 +559,7 @@ describe("controls", () => {
       "7820",
       "7823",
     ]);
-    // the client's filters are counted over what is loaded: «2 partidos», not the API's 5
+    // the API counts the day: «2 partidos»
     expect(today.markup).toContain('data-testid="explorer-count">2 partidos<');
   });
 

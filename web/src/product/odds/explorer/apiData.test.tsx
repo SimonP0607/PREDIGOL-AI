@@ -24,7 +24,7 @@ function envelope<T>(data: T): Envelope<T> {
   return { status: "ok", data, reason: null, meta: {} } as unknown as Envelope<T>;
 }
 
-const FAMILIES: FamiliesQuery = { hours: 24, country: null, competition: null };
+const FAMILIES: FamiliesQuery = { hours: 24, day: null, country: null, competition: null };
 
 const BOARD: BoardQuery = {
   ...FAMILIES,
@@ -60,11 +60,18 @@ describe("the API's parameters", () => {
       country: undefined,
       competition: undefined,
     });
-    expect(familiesParams({ hours: 72, country: "Spain", competition: 140 })).toEqual({
+    expect(familiesParams({ hours: 72, day: null, country: "Spain", competition: 140 })).toEqual({
       hours: 72,
       country: "Spain",
       competition: 140,
     });
+  });
+
+  test("a day replaces the hours: only one of them is asked (AP-C01)", () => {
+    const asked = JSON.parse(
+      JSON.stringify(familiesParams({ ...FAMILIES, day: "tomorrow" })),
+    ) as Record<string, unknown>;
+    expect(asked).toEqual({ day: "tomorrow" });
   });
 
   test("the board: the explorer's own names, the empty ones left out, a period the API knows", () => {

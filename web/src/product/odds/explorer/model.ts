@@ -52,9 +52,21 @@ export interface OddsFamily {
   markets: OddsMarketInfo[];
 }
 
+/** Hoy, Mañana, Pasado mañana (Bogota). */
+export type DayKey = "today" | "tomorrow" | "day_after";
+
+export interface OddsDay {
+  key: DayKey;
+  bogota_date: string;
+  fixtures: number;
+}
+
 /** Only the families and markets with prices in the window. */
 export interface OddsFamilies {
   window_hours: number;
+  window_day?: DayKey | null;
+  /** The three days with their matches, under the same country and competition filters. */
+  days?: OddsDay[];
   families: OddsFamily[];
   book_enabled: boolean;
   generated_at: Iso;
@@ -197,9 +209,11 @@ export interface OddsMovement {
 
 export type BoardSort = "time" | "competition" | "edge";
 
-/** GET /odds/families. `hours` is 24, 48 or 72 (the «Hoy» window asks for 24 and keeps today's rows). */
+/** GET /odds/families. A `day` of Bogota (AP-C01) replaces `hours`; `hours` stays for an old link (48 or 72). */
 export interface FamiliesQuery {
   hours: number;
+  /** Hoy, Mañana or Pasado mañana: the server cuts the day. Null: the hours. */
+  day: DayKey | null;
   /** A competition's country as the badges name it ("England"); null: every country. */
   country: string | null;
   competition: number | null;

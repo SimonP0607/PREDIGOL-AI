@@ -48,7 +48,8 @@ function interval(o: LiveOptions): number | false {
 /** GET /odds/families' parameters: an empty choice is left out, so the same choice is the same cache entry. */
 export function familiesParams(q: FamiliesQuery): OddsFamiliesQuery {
   return {
-    hours: q.hours,
+    // A day replaces the hours: only one of them is asked, so the same choice is the same cache entry.
+    ...(q.day ? { day: q.day } : { hours: q.hours }),
     country: q.country ?? undefined,
     competition: q.competition ?? undefined,
   };

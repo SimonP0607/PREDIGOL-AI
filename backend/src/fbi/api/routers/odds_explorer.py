@@ -31,6 +31,9 @@ admin_router = APIRouter(tags=["admin: odds"])
 Db = Annotated[psycopg.Connection[Any], Depends(get_db)]
 
 Hours = Annotated[int, Query(ge=1, le=72, description="Matches kicking off in the next N hours (24, 48 or 72 on the page).")]
+Day = Annotated[Literal["today", "tomorrow", "day_after"] | None,
+                Query(description="A day of Bogota: today (from now), tomorrow or day_after. It replaces ``hours``; without it, "
+                                  "the hours rule.")]
 Country = Annotated[str | None, Query(min_length=1, max_length=60, description="The competition's country, as it is named.")]
 Competition = Annotated[int | None, Query(ge=1, le=2**31, description="A competition id.")]
 MarketKey = Annotated[str, Query(min_length=3, max_length=80, pattern=r"^[a-z0-9_.]+$",
@@ -56,10 +59,10 @@ def _line(value: str | None) -> Decimal | None:
 
 @router.get("/odds/families", response_model=Envelope[OddsFamilies])
 def get_odds_families(conn: Db, hours: Hours = 24, country: Country = None,
-                      competition: Competition = None) -> Envelope[OddsFamilies]:
+                      competition: Competition = None, day: Day = None) -> Envelope[OddsFamilies]:
     """The families and markets with prices in the window: how many matches each has and the most bookmakers in one match.
     Only what has prices; in the explorer's order."""
-    return odds_explorer.families(conn, hours=hours, country=country, competition=competition)
+    return odds_explorer.families(conn, hours=hours, country=country, competition=competition, day=day)
 
 
 @router.get("/odds/board", response_model=Envelope[OddsBoardPage])
@@ -71,6 +74,7 @@ def get_odds_board(
     hours: Hours = 24,
     country: Country = None,
     competition: Competition = None,
+    day: Day = None,
     q: Annotated[str | None, Query(max_length=60, description="Part of a team's or a competition's name.")] = None,
     bookmaker: Annotated[int | None, Query(ge=1, le=2**31, description="Only the matches this bookmaker (the provider's "
                                                                        "id) quotes at the line shown.")] = None,
@@ -90,7 +94,7 @@ def get_odds_board(
     if odds_min is not None and odds_max is not None and odds_min > odds_max:
         raise ApiError(422, "invalid_filters", "odds_min is above odds_max")
     query = odds_explorer.BoardQuery(
-        market=market, period=period, line=_line(line), hours=hours, country=country, competition=competition, q=q,
+        market=market, period=period, line=_line(line), hours=hours, day=day, country=country, competition=competition, q=q,
         bookmaker=bookmaker, min_books=min_books, odds_min=odds_min, odds_max=odds_max, fair_only=fair_only, sort=sort,
         cursor=cursor, limit=limit)
     return odds_explorer.board(conn, query)

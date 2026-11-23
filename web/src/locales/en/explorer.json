@@ -283,7 +283,7 @@
     "active_other": "{count} filters on",
     "apply": "Apply",
     "clear": "Clear filters",
-    "window": "Starting within",
+    "window": "Day",
     "today": "Today",
     "hours": "{count} h",
     "country": "Country",
@@ -301,7 +301,11 @@
     "from": "From",
     "to": "To",
     "fairOnly": "Only with a fair price",
-    "mine": "My teams and leagues"
+    "mine": "My teams and leagues",
+    "tomorrow": "Tomorrow",
+    "dayAfter": "Day after",
+    "dayCount_one": ", {count} match",
+    "dayCount_other": ", {count} matches"
   },
   "sort": {
     "label": "Order",
@@ -333,7 +337,8 @@
     "lineTitle": "No match has this line",
     "lineBody": "Go back to each match's main line.",
     "notLoadedBody": "None of the matches loaded fits: «Load more» brings the next ones.",
-    "widen": "See the next 72 h"
+    "widen": "See the next 72 h",
+    "nextDay": "See {day} ({count})"
   },
   "status": {
     "updated": "Updated {time}",
