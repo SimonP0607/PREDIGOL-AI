@@ -96,6 +96,14 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "market.league_daily_stats", "DELETE", False),
     ("predigol_api", "market.league_daily_stats", "SELECT", True),
     ("predigol_api", "market.league_daily_stats", "INSERT", False),
+    # the private evaluation by competition and coverage level, and the weekly board (PM-12-06, PM-12-01, 0172): the weekly batch
+    # appends, never edits or deletes; the API reads them
+    ("predigol_worker", "analytics.evaluation_reports", "INSERT", True),
+    ("predigol_worker", "analytics.evaluation_reports", "UPDATE", False),
+    ("predigol_worker", "analytics.evaluation_segments", "INSERT", True),
+    ("predigol_worker", "analytics.evaluation_segments", "DELETE", False),
+    ("predigol_api", "analytics.evaluation_segments", "SELECT", True),
+    ("predigol_api", "analytics.evaluation_reports", "INSERT", False),
     # the current-price book (BE-010): the worker builds it and purges it, the API reads it
     ("predigol_worker", "market.book_current", "INSERT", True),
     ("predigol_worker", "market.book_current", "UPDATE", True),

@@ -110,7 +110,9 @@ function KeyStatsBlock({ ctx }: { ctx: MatchCtx }) {
 /**
  * Form, table and head to head side by side (plan Partidos y Match Center, D1): aligned at the top and each as tall as what it
  * holds (`items-start`), never stretched to the tallest with half a card empty. Three columns on a desktop; two on a
- * tablet, the head to head then taking the whole second row; one on a phone.
+ * tablet, the head to head then taking the whole second row; one on a phone. The columns follow the width of the
+ * container, not the screen's (AP-P01): the column beside a side panel is about 650 px wide at a 1280 px screen, where three
+ * columns made the texts a cascade of letters. One column under 40 rem, two from 40, three from 64.
  */
 export function ContextRow({
   form,
@@ -122,13 +124,15 @@ export function ContextRow({
   h2h: ReactNode;
 }) {
   return (
-    <div
-      className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3"
-      data-testid="deepen-row-context"
-    >
-      <div className="min-w-0">{form}</div>
-      <div className="min-w-0">{table}</div>
-      <div className="min-w-0 md:col-span-2 lg:col-span-1">{h2h}</div>
+    <div className="@container">
+      <div
+        className="grid grid-cols-1 items-start gap-4 @[40rem]:grid-cols-2 @[64rem]:grid-cols-3"
+        data-testid="deepen-row-context"
+      >
+        <div className="min-w-0">{form}</div>
+        <div className="min-w-0">{table}</div>
+        <div className="min-w-0 @[40rem]:col-span-2 @[64rem]:col-span-1">{h2h}</div>
+      </div>
     </div>
   );
 }
@@ -226,9 +230,14 @@ export function DeepenLayout({ blocks }: { blocks: DeepenBlocks }) {
       <div className="min-w-0" data-testid="deepen-row-calendar">
         {blocks.calendar}
       </div>
-      <div className="grid items-start gap-4 md:grid-cols-2" data-testid="deepen-row-squads">
-        <div className="min-w-0">{blocks.absences}</div>
-        <div className="min-w-0">{blocks.lineups}</div>
+      <div className="@container">
+        <div
+          className="grid grid-cols-1 items-start gap-4 @[40rem]:grid-cols-2"
+          data-testid="deepen-row-squads"
+        >
+          <div className="min-w-0">{blocks.absences}</div>
+          <div className="min-w-0">{blocks.lineups}</div>
+        </div>
       </div>
     </div>
   );

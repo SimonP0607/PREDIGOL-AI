@@ -144,6 +144,7 @@
       "notStored": "not stored in this session"
     },
     "shadow": {
+      "failed": "could not be read now.",
       "loading": "Shadow picks: loading…",
       "label": "Shadow picks",
       "unavailable": "{reason} See Performance.",

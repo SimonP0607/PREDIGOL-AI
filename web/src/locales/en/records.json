@@ -57,7 +57,7 @@
     "count": "{count} of 5",
     "partial_one": "Only {count} selection met the criteria today. We never pad the list.",
     "partial_other": "Only {count} selections met the criteria today. We never pad the list.",
-    "emptyBody": "We only choose selections from models that have beaten the market, without the bookmakers' margin, in their own backtest. A day without any stays empty.",
+    "emptyBody": "We only publish a selection when our tests on past matches back it. If none does, the day stays empty.",
     "list": "Picks of the day",
     "reason": {
       "no_qualified_picks": "No PrediGol picks today",
@@ -68,6 +68,7 @@
     "today": "Today",
     "yesterdayOpen": "Yesterday · still to finish",
     "order": "Order the picks",
+    "byBest": "Best first",
     "byTime": "By time",
     "byValue": "By value"
   },
@@ -151,7 +152,6 @@
     "priceNow": "Current price",
     "noPrice": "No price",
     "note": "Each selection's price is the best current price we know; it is saved with the parlay.",
-    "noAi": "Instant calculation · no AI",
     "summary": {
       "title": "Your parlay in numbers",
       "estimated": "Estimated probability",
@@ -191,8 +191,7 @@
       "rules": "Rules",
       "ruleCount": "{min} to {max} selections, one per match.",
       "ruleReplace": "Adding another selection from the same match replaces the previous one.",
-      "ruleKickoff": "Nothing after kick-off.",
-      "noAi": "The combined odds, the probability and the dependence are calculated instantly from data we already have. No AI analyses your parlay."
+      "ruleKickoff": "Nothing after kick-off."
     },
     "error": {
       "leg_count": "A parlay needs between {min} and {max} selections.",
@@ -551,7 +550,7 @@
       "no_consensus": "The bookmakers did not agree enough on the selections' price.",
       "few_bookmakers": "Too few bookmakers offered the selections.",
       "price_outlier": "The selections' best odds were too far from the rest of the market.",
-      "not_qualified": "The selections came from models that have not beaten the market in their own backtest yet.",
+      "not_qualified": "The selections came from models that have not yet beaten the market in their tests on past matches.",
       "model_retired": "The selections came from a retired model.",
       "no_interval": "The model had not measured the range of its probability for those selections.",
       "non_positive_ev": "No market showed an edge over the market price.",

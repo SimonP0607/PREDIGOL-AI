@@ -2,10 +2,10 @@
  * The explorer's small parts: a toggle chip, a strip of chips that scrolls sideways, a skeleton bone and an arrow that says
  * which way a price went.
  */
-import { useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@/lib/i18n";
-import { useScrollCue } from "@/lib/scrollCue";
+import { ScrollStrip } from "@/components/ui/ScrollStrip";
 import { cn } from "@/lib/utils";
 
 /** An on/off filter: «Solo con cuota justa», «Mis equipos y ligas». */
@@ -41,7 +41,7 @@ export function ToggleChip({
   );
 }
 
-/** A row of chips that scrolls sideways on a phone, its edge fading where more wait (the product's scroll strip). */
+/** A row of chips that scrolls sideways on a phone, with arrows from 1024 px (the product's scroll strip, AP-C02). */
 export function Strip({
   label,
   children,
@@ -53,19 +53,16 @@ export function Strip({
   className?: string | undefined;
   testId?: string | undefined;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useScrollCue(ref);
   return (
-    <div
-      ref={ref}
+    <ScrollStrip
       role="group"
       aria-label={label}
       data-testid={testId}
       // py-1: the chips' 44 px reach (tap-y) stays inside the strip.
-      className={cn("scroll-strip flex items-center gap-1.5 py-1", className)}
+      className={cn("flex items-center gap-1.5 py-1", className)}
     >
       {children}
-    </div>
+    </ScrollStrip>
   );
 }
 

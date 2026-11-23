@@ -129,11 +129,6 @@ export function sortRows(
 
 // ── what only the client can filter ───────────────────────────────────────────────────────────────────────────────────
 
-/** «Hoy»: kick-off on the reader's calendar day. */
-export function isToday(kickoff: string, now: number = Date.now()): boolean {
-  return dayKey(kickoff) === dayKey(now);
-}
-
 /** «Mis equipos y ligas»: a followed team plays, or it is a followed league. */
 export function isMine(
   row: Pick<OddsBoardRow, "home" | "away" | "competition_id">,
@@ -146,17 +141,13 @@ export function isMine(
   );
 }
 
+/** «Mis equipos y ligas» is the only filter the client keeps: the day is the server's (AP-C01). */
 export function clientFilter(
   rows: readonly OddsBoardRow[],
-  f: Pick<ExplorerFilters, "window" | "mine">,
+  f: Pick<ExplorerFilters, "mine">,
   follow: ExplorerFollow | null,
-  now: number = Date.now(),
 ): OddsBoardRow[] {
-  return rows.filter(
-    (row) =>
-      (f.window !== "today" || isToday(row.kickoff_at, now)) &&
-      (!f.mine || !follow || isMine(row, follow)),
-  );
+  return rows.filter((row) => !f.mine || !follow || isMine(row, follow));
 }
 
 // ── groups ────────────────────────────────────────────────────────────────────────────────────────────────────────────

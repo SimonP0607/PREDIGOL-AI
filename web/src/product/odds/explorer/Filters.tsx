@@ -26,16 +26,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { FacetPicker, SearchBox } from "@/product/matches/Filters";
-import { sortLabel, windowLabel, type FilterOptions } from "./filterOptions";
+import { sortLabel, type FilterOptions } from "./filterOptions";
 import type { BoardSort } from "./model";
-import {
-  NO_FILTERS,
-  SORTS,
-  WINDOWS,
-  activeFilters,
-  normalizeOdds,
-  type ExplorerFilters,
-} from "./state";
+import { NO_FILTERS, SORTS, activeFilters, normalizeOdds, type ExplorerFilters } from "./state";
 import { searchMarkets, tabName, type ExplorerTab, type MarketHit } from "./tabs";
 import { Chip, Strip, ToggleChip } from "./ui";
 
@@ -217,22 +210,6 @@ export function FilterFields({
     );
   return (
     <>
-      {field(
-        t("explorer.filters.window"),
-        <Strip label={t("explorer.filters.window")} testId="explorer-window">
-          {!sheet ? (
-            <span aria-hidden className="shrink-0 text-label text-subtle-foreground">
-              {t("explorer.filters.window")}
-            </span>
-          ) : null}
-          {WINDOWS.map((w) => (
-            <Chip key={String(w)} on={value.window === w} onClick={() => onChange({ window: w })}>
-              {windowLabel(w)}
-            </Chip>
-          ))}
-        </Strip>,
-        true,
-      )}
       {basic ? null : (
         <>
           {field(

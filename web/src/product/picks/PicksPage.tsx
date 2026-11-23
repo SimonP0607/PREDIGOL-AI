@@ -20,9 +20,11 @@ import type { CompetitionBadge, PicksBoard, StartedPick } from "@/lib/api/v1/typ
 import { useAuth, usePreviewParam } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
 import { formatOdds } from "@/lib/i18n/format";
-import { formatRelative } from "@/lib/time";
+import { isDelayed } from "@/lib/freshness";
+import { formatRelative, formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ShadowBadge } from "@/product/shared/Bits";
+import { DataDelayed } from "@/product/shared/DataDelayed";
 import { PickCard } from "@/product/shared/PickCard";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { StartedMatchGroupCard } from "@/product/shared/StartedMatchGroup";
@@ -370,6 +372,7 @@ function AllPicks({
   const paged = usePaged(shown, `${JSON.stringify(toQuery(filters))}|${scope}`);
   const refreshing = query.isPlaceholderData;
   const asOf = query.data?.meta.data_as_of ?? null;
+  const admin = useAuth().user?.role !== "USER";
   const filtered = !isDefault(filters);
   const loaded = !!board && !query.isError;
   // Nothing at all in the window and no filter set: a filter panel would only be noise.
@@ -542,11 +545,13 @@ function AllPicks({
               {t("picks.count", { count: shown.length })}
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              {asOf ? (
+              {asOf && admin ? (
                 <span className="inline-flex items-center gap-1 text-caption text-muted-foreground">
                   <Clock aria-hidden className="h-3 w-3" />
-                  {t("picks.pricesUpdated", { when: formatRelative(asOf) })}
+                  {t("picks.pricesUpdated", { when: formatRelative(asOf) })} · {formatTime(asOf)}
                 </span>
+              ) : asOf && isDelayed("day", asOf) ? (
+                <DataDelayed />
               ) : null}
               {filtered ? reset : null}
             </div>

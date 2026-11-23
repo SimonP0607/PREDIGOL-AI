@@ -15,7 +15,7 @@ price is shown dimmed, never goes to Mi Parlay and is left out of ``sort=edge``.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -55,8 +55,20 @@ class OddsFamily(Contract):
     markets: list[OddsMarketInfo]
 
 
+DayKey = Literal["today", "tomorrow", "day_after"]
+
+
+class OddsDay(Contract):
+    key: DayKey
+    bogota_date: date = Field(description="The day in Bogota.")
+    fixtures: int = Field(description="Matches with prices that day (today: those still to kick off), under the same "
+                                      "country and competition filters.")
+
+
 class OddsFamilies(Contract):
     window_hours: int
+    window_day: DayKey | None = Field(default=None, description="The day asked for (``day``): it replaces the hours.")
+    days: list[OddsDay] = Field(default_factory=list, description="Today, tomorrow and the day after, with their matches.")
     families: list[OddsFamily] = Field(description="Only the families and markets with prices in the window, in the "
                                                    "explorer's order.")
     book_enabled: bool = Field(description="FBI_ODDS_BOOK: the worker builds the book. Off, the lists are empty or old.")

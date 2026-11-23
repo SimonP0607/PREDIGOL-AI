@@ -238,17 +238,20 @@ def run(con: Any, *, rules_dir: Path | None, seed: int) -> dict[str, Any]:
     t = {"league_seasons": len(t_rows), "sides": int(sides), "share": (sum(r[3] for r in t_rows) / sides) if sides else 0.0,
          "priority_share": _ratio([r for r in t_rows if r[1] in lc.PRIORITY], 3, 2)}
 
+    # The referee of a match is core.fixture_officials.alias_id -> core.referee_aliases -> core.referees (migration 0083). A v3
+    # export carries core.referee_aliases and the referees are counted as people; a v2 export took core.entity_aliases instead (its
+    # mistake, fixed in IA-155) and they are counted as distinct aliases, an upper bound of the people. An open identifier is looked
+    # for among the entity types of core.entity_ids: if it holds no referee at all, no referee has one, whatever the link.
+    ref_types = {r[0] for r in con.execute("SELECT DISTINCT entity_type FROM core_entity_ids").fetchall()}
+    views = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
+    person = "a.referee_id" if "core_referee_aliases" in views else "f.alias_id"
+    join = "LEFT JOIN core_referee_aliases a ON a.id = f.alias_id" if "core_referee_aliases" in views else ""
     ref = lc.one(con, f"""
-        WITH m AS ({lc.MATCHES_SQL}),
-        o AS (SELECT DISTINCT f.alias_id FROM core_fixture_officials f JOIN m ON m.fixture_id = f.fixture_id
-               WHERE f.role = 'referee' AND m.kickoff_at >= TIMESTAMPTZ '{since}'),
-        p AS (SELECT DISTINCT coalesce(a.entity_type || ':' || a.entity_id::VARCHAR, 'alias:' || o.alias_id::VARCHAR) AS person,
-                     a.entity_type, a.entity_id
-                FROM o LEFT JOIN core_entity_aliases a ON a.id = o.alias_id)
-        SELECT count(*), count(*) FILTER (WHERE EXISTS (SELECT 1 FROM core_entity_ids e
-                                                         WHERE e.entity_type = p.entity_type AND e.entity_id = p.entity_id))
-          FROM p
+        WITH m AS ({lc.MATCHES_SQL})
+        SELECT count(DISTINCT {person}) FROM core_fixture_officials f JOIN m ON m.fixture_id = f.fixture_id {join}
+         WHERE f.role = 'referee' AND f.alias_id IS NOT NULL AND m.kickoff_at >= TIMESTAMPTZ '{since}'
     """)
+    ref = (int(ref[0]), None if "referee" in ref_types else 0)
     coach_types = [r[0] for r in con.execute("SELECT DISTINCT entity_type FROM core_entity_ids").fetchall()]
     ctype = "coach" if "coach" in coach_types else next((x for x in coach_types if "coach" in str(x)), "coach")
     co = lc.one(con, f"""
@@ -260,7 +263,11 @@ def run(con: Any, *, rules_dir: Path | None, seed: int) -> dict[str, Any]:
           FROM c
     """)
     systems = con.sql("SELECT entity_type, system, count(*) FROM core_entity_ids GROUP BY 1, 2 ORDER BY 3 DESC").fetchall()
+    if ref[1] is None:
+        raise lc.ExportError("core.entity_ids holds referees: link them through core.referee_aliases (lab-export-v3) before measuring")
     i = {"referees": int(ref[0]), "referees_with_id": int(ref[1]), "referee_share": (ref[1] / ref[0]) if ref[0] else 0.0,
+         "referee_count_is": "árbitros" if person == "a.referee_id" else "alias distintos (cota superior de personas)",
+         "entity_types": sorted(ref_types),
          "coaches": int(co[0]), "coaches_with_id": int(co[1]), "coach_share": (co[1] / co[0]) if co[0] else 0.0,
          "coach_entity_type": ctype, "systems": [list(s) for s in systems]}
     v = verdicts(e, e_cov, p, a, t, i)
@@ -292,7 +299,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--rules", type=Path, default=Path(__file__).resolve().parents[1] / "config" / "rules")
     args = ap.parse_args(argv)
     con = lc.open_export(args.folder, need=("core.fixture_team_stats", "core.fixture_events", "core.fixture_lineups",
-                                            "core.fixture_officials", "core.entity_aliases", "core.entity_ids"))
+                                            "core.fixture_officials", "core.entity_ids"))
     res = run(con, rules_dir=args.rules, seed=p.seed)
     lc.write_json(args.out, {"stamp": lc.stamp(KEY, args.folder).as_json(), **res})
     print(json.dumps(res["verdicts"], ensure_ascii=False))

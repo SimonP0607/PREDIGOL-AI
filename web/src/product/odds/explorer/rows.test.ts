@@ -13,7 +13,6 @@ import {
   clientFilter,
   groupRows,
   isMine,
-  isToday,
   lineOptions,
   priceMap,
   priceMoves,
@@ -124,26 +123,15 @@ describe("the orders", () => {
 });
 
 describe("what the client keeps", () => {
-  test("«Hoy»: kick-off on the reader's day - Bogotá's, not UTC's", () => {
-    const late = new Date(Date.parse("2026-11-09T03:00:00Z")).toISOString();
-    expect(isToday(late, FAKE_NOW)).toBe(false);
-    setTimeZone("America/Bogota");
-    // 22:00 on the 8th in Bogotá
-    expect(isToday(late, FAKE_NOW)).toBe(true);
-    setTimeZone("UTC");
-    expect(ids(clientFilter(rows, { window: "today", mine: false }, null, FAKE_NOW))).toEqual([
-      7819, 7820,
-    ]);
-    expect(clientFilter(rows, { window: 24, mine: false }, null, FAKE_NOW)).toHaveLength(5);
+  test("the day is the server's (AP-C01): the client keeps every row it is given", () => {
+    expect(clientFilter(rows, { mine: false }, null)).toHaveLength(5);
   });
 
   test("«Mis equipos y ligas»: a followed team, or a followed league; without a follow set, everything", () => {
     const follow = { teams: new Set([541]), leagues: new Set([239]) };
-    expect(ids(clientFilter(rows, { window: 24, mine: true }, follow, FAKE_NOW))).toEqual([
-      7820, 7821,
-    ]);
+    expect(ids(clientFilter(rows, { mine: true }, follow))).toEqual([7820, 7821]);
     expect(isMine(rows[0]!, follow)).toBe(false);
-    expect(clientFilter(rows, { window: 24, mine: true }, null, FAKE_NOW)).toHaveLength(5);
+    expect(clientFilter(rows, { mine: true }, null)).toHaveLength(5);
   });
 });
 

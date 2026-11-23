@@ -1,6 +1,6 @@
 {
   "source": {
-    "api_football": "match statistics from API-Football",
+    "api_football": "match statistics",
     "football_data": "match statistics from football-data.co.uk"
   },
   "table": {
@@ -31,7 +31,7 @@
     "blocked": "Blocked shots",
     "xg": "Match xG",
     "xgPerShot": "xG per shot",
-    "xgSource": "xG from API-Football.",
+    "xgSource": "xG from the match data.",
     "honest": "These are the two zones the provider delivers. This is not a shot map: where each shot was taken is not known.",
     "method": "The provider counts each team's shots inside and outside the box; the percentage is the part of that team's shots in each zone. It does not give where each shot was taken, so there is no map: only these two zones.",
     "aria": "{team}: {inside} shots inside the box ({insidePct} %) and {outside} outside ({outsidePct} %)"
@@ -53,7 +53,7 @@
     "title": "State of the score",
     "subtitle": "Who was ahead during the 90 minutes.",
     "subject": "Minutes ahead of {home} and {away}",
-    "source": "match events from API-Football",
+    "source": "match events",
     "beyond90": "The strip covers the 90 minutes: extra time and penalties are not drawn.",
     "method": "The goals of the match events are put in order and, minute by minute, it is counted who was ahead, who behind or whether they were level. Stoppage time counts as minute 90 (45 in the first half). Drawn only when the goals of the events add up to the final score."
   },
@@ -69,7 +69,7 @@
     "nominal": "Nominal position of the formation, not the real position on the pitch. It is the box the team sheet declares; starters only.",
     "bestNote": "Gold edge: the team's highest rating. The provider's scale, 1 to 10.",
     "subject": "Rating, minutes, cards and goals with assists of the starters of {home} and {away}",
-    "source": "player statistics and match events from API-Football",
+    "source": "player statistics and match events",
     "tableTitle": "The four layers, as a table",
     "player": "Player",
     "val": "Rat.",

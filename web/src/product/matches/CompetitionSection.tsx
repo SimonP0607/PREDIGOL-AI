@@ -38,8 +38,9 @@ export function CompetitionSection({
       <h2
         id={headingId}
         className={cn(
-          // Under the app bar and under the list's own sticky bar of days and states (its height: --matches-bar-h).
-          "sticky top-[calc(var(--app-sticky-top)+var(--matches-bar-h,0px))] z-10 rounded-t-card bg-card font-sans",
+          // Under the app bar and under the list's own sticky bar of days and states (its height: --matches-bar-h). Above the
+          // rows (the «N casas» chip is z-10) and below that bar (z-20): scrolling, no chip slides over it (AP-P02).
+          "sticky top-[calc(var(--app-sticky-top)+var(--matches-bar-h,0px))] z-[15] rounded-t-card bg-card font-sans",
           collapsed ? "rounded-b-card" : "border-b border-border/70",
         )}
       >

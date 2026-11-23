@@ -25,6 +25,7 @@ import { useReportProblem } from "@/product/support/report";
 import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { ask, type AssistantAnswer } from "./helpSearch";
 import type { FaqId } from "./faq";
+import { NO_REACH, type Reach } from "./reach";
 
 export type Turn =
   | { who: "me"; text: string }
@@ -34,10 +35,14 @@ export type Turn =
   | { who: "bot"; kind: "person" };
 
 /** The next turns after the reader writes `text` (pure): what they said, and the help's answer to it. */
-export function answerTo(text: string, faqShown: readonly FaqId[]): Turn[] {
+export function answerTo(
+  text: string,
+  faqShown: readonly FaqId[],
+  reach: Reach = NO_REACH,
+): Turn[] {
   const q = text.trim();
   if (!q) return [];
-  const result = ask(q, faqShown);
+  const result = ask(q, faqShown, reach);
   const me: Turn = { who: "me", text: q };
   if (result.kind === "found")
     return [me, { who: "bot", kind: "found", answers: result.answers, asked: q }];
@@ -87,8 +92,11 @@ function AnswerCard({ a }: { a: AssistantAnswer }) {
 export function Assistant({
   faqShown,
   whatsapp = null,
+  reach = NO_REACH,
 }: {
   faqShown: readonly FaqId[];
+  /** The channels that are published: an answer names only these (AP-H01). */
+  reach?: Reach;
   /** The owner's WhatsApp, only when it is published. */
   whatsapp?: string | null;
 }) {
@@ -102,7 +110,7 @@ export function Assistant({
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const next = answerTo(text, faqShown);
+    const next = answerTo(text, faqShown, reach);
     if (!next.length) return;
     setTurns((all) => [...all, ...next]);
     setText("");
@@ -287,11 +295,13 @@ export function AssistantSheet({
   onOpenChange,
   faqShown,
   whatsapp,
+  reach,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   faqShown: readonly FaqId[];
   whatsapp: string | null;
+  reach: Reach;
 }) {
   const desk = useMediaQuery("(min-width: 768px)");
   return (
@@ -318,7 +328,7 @@ export function AssistantSheet({
             </SheetDescription>
           </div>
         </div>
-        {open ? <Assistant faqShown={faqShown} whatsapp={whatsapp} /> : null}
+        {open ? <Assistant faqShown={faqShown} whatsapp={whatsapp} reach={reach} /> : null}
       </SheetContent>
     </Sheet>
   );

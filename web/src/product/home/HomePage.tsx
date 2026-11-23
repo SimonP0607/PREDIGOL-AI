@@ -276,6 +276,8 @@ export function HomePage() {
       <div className="space-y-9 sm:space-y-10" data-testid="home-page">
         <HomeHeader
           freshness={home.data?.data?.data_freshness ?? null}
+          inPlay={(home.data?.data?.live?.data?.length ?? 0) > 0}
+          admin={!reader}
           loading={home.isPending}
           name={user?.display_name}
         />
@@ -288,6 +290,8 @@ export function HomePage() {
     <div className="space-y-9 sm:space-y-10" data-testid="home-page">
       <HomeHeader
         freshness={home.data?.data?.data_freshness ?? null}
+        inPlay={(home.data?.data?.live?.data?.length ?? 0) > 0}
+        admin={!reader}
         loading={home.isPending}
         name={user?.display_name}
         selector={

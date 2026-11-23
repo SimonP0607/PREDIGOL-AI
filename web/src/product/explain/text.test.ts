@@ -124,11 +124,11 @@ describe("the sentences", () => {
     });
     const out = text(line) ?? "";
     expect(out).toContain("Nacional");
-    expect(out).toContain("50 %, sin calibrar");
+    expect(out).toContain("50 %, estimación preliminar");
     expect(out).toContain("27 %");
     expect(out).toContain("23 %");
     const calibrated = text(say("forecast_market", { ...line.params, calibrated: true })) ?? "";
-    expect(calibrated).not.toContain("sin calibrar");
+    expect(calibrated).not.toContain("estimación preliminar");
     // without a clear likely outcome, only the figures
     const even = text(say("forecast_market", { ...line.params, likely: null })) ?? "";
     expect(even).not.toContain("lo más probable");

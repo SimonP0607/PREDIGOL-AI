@@ -3,7 +3,17 @@
 import { describe, expect, test } from "bun:test";
 import type { CompetitionSummary, MatchSummary } from "@/lib/api/v1/types";
 import type { PlayerSummary, TableRow } from "@/lib/api/v1/types_center";
-import { ageOf, excerpt, formOf, isNation, parseTab, squadGroups } from "./model";
+import { setLocale } from "@/lib/i18n";
+import {
+  ageOf,
+  countryName,
+  excerpt,
+  formOf,
+  isNation,
+  parseTab,
+  squadGroups,
+  teamLabel,
+} from "./model";
 import { byCountry } from "./TeamsPage";
 
 const m = (id: number, home: number, away: number, score: [number, number] | null) =>
@@ -67,5 +77,37 @@ describe("the profiles", () => {
     expect(
       byCountry([c(1, "Spain"), c(2, "Colombia"), c(3, "Argentina", false)]).map((g) => g.country),
     ).toEqual(["Colombia", "Spain"]);
+  });
+});
+
+describe("AP-T02: the countries in the reader's language", () => {
+  const c = (id: number, country: string | null) =>
+    ({ id, name: `C${id}`, country, is_tracked: true, tier: 1 }) as CompetitionSummary;
+
+  test("es: «Belgium» and «Brazil» are «Bélgica» and «Brasil»; a national side is named like its country", () => {
+    setLocale("es");
+    expect(countryName("Belgium")).toBe("Bélgica");
+    expect(countryName("Brazil")).toBe("Brasil");
+    expect(countryName("World")).toBe("Internacional");
+    expect(countryName(null)).toBeNull();
+    expect(countryName("Atlantis")).toBe("Atlantis");
+    expect(teamLabel({ name: "Belgium", country: "Belgium" })).toBe("Bélgica");
+    expect(teamLabel({ name: "Brazil", country: "Brazil" })).toBe("Brasil");
+    expect(teamLabel({ name: "Millonarios", country: "Colombia" })).toBe("Millonarios");
+    setLocale("es");
+  });
+
+  test("en: the English names stay", () => {
+    setLocale("en");
+    expect(countryName("Belgium")).toBe("Belgium");
+    expect(teamLabel({ name: "Brazil", country: "Brazil" })).toBe("Brazil");
+    setLocale("es");
+  });
+
+  test("the groups carry their label, Colombia first, the rest by the label in the reader's language", () => {
+    setLocale("es");
+    const groups = byCountry([c(1, "Spain"), c(2, "Colombia"), c(3, "Belgium"), c(4, "Germany")]);
+    expect(groups.map((g) => g.label)).toEqual(["Colombia", "Alemania", "Bélgica", "España"]);
+    expect(groups.map((g) => g.country)).toEqual(["Colombia", "Germany", "Belgium", "Spain"]);
   });
 });

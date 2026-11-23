@@ -88,12 +88,13 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
   ].filter((x): x is string => x !== null);
   return (
     <div
-      // the combined price as a tile set into the card (the system's sheet 4), not a band across it
+      // the combined price as a tile set into the card (the system's sheet 4), not a band across it. AP-K02: the three
+      // figures go by the card's own width, not the screen's: three columns from 26 rem, one under the other below it.
       className="mx-4 mb-4 mt-1 rounded-field border border-gold/30 bg-black/20 px-3.5 py-3.5 sm:mx-5"
       data-testid="parlay-summary"
     >
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
-        <div className="col-span-2 sm:col-span-1">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 @[26rem]:grid-cols-3 @[26rem]:gap-y-1">
+        <div>
           <dt className={STAT_LABEL}>{t("parlays.combinedOdds")}</dt>
           <dd
             className="numeric mt-1.5 text-[2.5rem] font-extrabold leading-none tracking-tight text-gold-strong"
@@ -102,7 +103,7 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
             {formatOdds(parlay.combined_odds)}
           </dd>
         </div>
-        <div className="mt-3 sm:mt-0">
+        <div>
           <dt className={STAT_LABEL} title={t("records.parlay.pAllLowHelp")}>
             {t("records.parlay.pAllLow")}
           </dt>
@@ -110,7 +111,7 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
             {fmtPct(p, p !== null && p < 0.01 ? 2 : 1)}
           </dd>
         </div>
-        <div className="mt-3 sm:mt-0">
+        <div>
           <dt className={STAT_LABEL}>{t("records.labels.result")}</dt>
           <dd className="mt-1.5 flex flex-wrap items-center gap-2">
             <ParlayOutcomeBadge status={parlay.status} progress={parlay.progress} />

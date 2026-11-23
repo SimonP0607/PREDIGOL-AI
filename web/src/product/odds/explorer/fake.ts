@@ -459,9 +459,29 @@ export function fakeMovement(fixtureId: number, q: MovementQuery): OddsMovement 
   };
 }
 
+/** Bogota is UTC-5 all year. */
+const BOGOTA_OFFSET = 5 * HOUR;
+
+/** The Bogota day of a fixture of the fake: 0 today, 1 tomorrow, 2 the day after (07:00 now: 3 h and 5 h are today). */
+function dayIndex(hours: number): number {
+  const day = (ms: number) => Math.floor((ms - BOGOTA_OFFSET) / (24 * HOUR));
+  return day(FAKE_NOW + hours * HOUR) - day(FAKE_NOW);
+}
+
+const DAY_ORDER = ["today", "tomorrow", "day_after"] as const;
+
+function fakeDays(): NonNullable<OddsFamilies["days"]> {
+  return DAY_ORDER.map((key, i) => ({
+    key,
+    bogota_date: new Date(FAKE_NOW - BOGOTA_OFFSET + i * 24 * HOUR).toISOString().slice(0, 10),
+    fixtures: FIXTURES.filter((f) => dayIndex(f.hours) === i).length,
+  }));
+}
+
 export function fakeFamilies(): OddsFamilies {
   return {
     window_hours: 24,
+    days: fakeDays(),
     book_enabled: true,
     generated_at: new Date(FAKE_NOW - 60_000).toISOString(),
     families: Object.entries(MARKETS).map(([key, markets]) => ({
@@ -500,8 +520,12 @@ export interface FakeOptions {
   /** How many pages are loaded («Cargar más» was tapped). */
   pages?: number;
   follow?: ExplorerFollow | null;
+  /** The administrator's account: the hour of the reading is always shown. */
+  admin?: boolean;
   families?: OddsFamilies;
   now?: number;
+  /** Cut the board by `day` as the server does (AP-C01); off, every fixture answers whatever the day (older tests). */
+  byDay?: boolean;
 }
 
 export interface FakeCalls {
@@ -531,7 +555,13 @@ export function fakeExplorerData(o: FakeOptions = {}): ExplorerData & { calls: F
       const size = o.pageSize ?? 20;
       const all = sortRows(
         serverFilter(
-          fakeRows(q.market, q.period, q.line, now),
+          fakeRows(q.market, q.period, q.line, now).filter(
+            (row) =>
+              !o.byDay ||
+              !q.day ||
+              dayIndex(FIXTURES.find((f) => f.id === row.fixture_id)?.hours ?? 0) ===
+                DAY_ORDER.indexOf(q.day),
+          ),
           {
             q: q.q,
             country: q.country,
@@ -589,6 +619,9 @@ export function fakeExplorerData(o: FakeOptions = {}): ExplorerData & { calls: F
     },
     useFollow() {
       return o.follow ?? null;
+    },
+    useAdmin() {
+      return o.admin === true;
     },
   };
 }

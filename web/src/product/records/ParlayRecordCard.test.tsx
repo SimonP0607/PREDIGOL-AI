@@ -179,3 +179,19 @@ describe("compact parlay legs, UX-100", () => {
     expect(row).toContain("selectable-price");
   });
 });
+
+describe("the three totals go by the card's width, AP-K02", () => {
+  test("combined odds, probability and result sit three across from 26 rem of card, one under the other below", async () => {
+    const markup = await html(
+      <ParlayRecordCard
+        kind="daily"
+        parlay={parlay([leg(1, "PENDING", match({})), leg(2, "PENDING", match({}))])}
+      />,
+    );
+    const dl = markup.match(/<dl class="([^"]*)"/)?.[1] ?? "";
+    expect(dl).toContain("grid-cols-1");
+    expect(dl).toContain("@[26rem]:grid-cols-3");
+    // by the screen it used to be: a 380 px phone crowded the combined odds against the next figure
+    expect(dl).not.toContain("sm:grid-cols-3");
+  });
+});

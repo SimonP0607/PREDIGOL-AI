@@ -657,6 +657,9 @@
     "unexpected": "Unexpected error.",
     "request": "request {id}",
     "downNote": "Nothing on this page is shown from memory or demo data while the API is down.",
+    "code": "Code: {code} (HTTP {status})",
+    "retry": "Retry",
+    "retrying": "Retrying…",
     "noValue": "No value: {reason}"
   },
   "status": {
@@ -1163,5 +1166,50 @@
     "activity": "Recent activity",
     "open": "Open",
     "readOnly": "Read-only view: nothing is approved, changed or deleted from here."
+  },
+  "evaluationBoard": {
+    "title": "Model evaluation (private)",
+    "notice": "Not proof of an edge, and it changes no pick, model or probability. «Insufficient»: no sample of its own.",
+    "empty": "No weekly board yet: it is computed on Mondays with the switch on.",
+    "week": "Week {from} to {to}",
+    "cumulative": "Since {from}",
+    "matches": "{n} matches with a forecast; {common} with every source",
+    "source": "Source",
+    "n": "n",
+    "logLoss": "Log loss",
+    "brier": "Brier",
+    "reliability": "Reliability (lower is better)",
+    "resolution": "Resolution (higher is better)",
+    "uncertainty": "Uncertainty",
+    "pairs": "Paired differences (model minus the other source)",
+    "metric": "Measure",
+    "difference": "Difference",
+    "verdictLabel": "Reading",
+    "sources": {
+      "modelo": "PrediGol",
+      "mercado": "Market (Shin)",
+      "proveedor": "Provider (API-Football)"
+    },
+    "verdicts": {
+      "modelo_mejor": "the model scores better",
+      "modelo_peor": "the model scores worse",
+      "indistinguible": "indistinguishable",
+      "insuficiente": "insufficient sample",
+      "apta": "fit",
+      "sin_habilidad": "no skill"
+    },
+    "competitions": "By competition (what a reader sees)",
+    "competition": "Competition",
+    "market": "Market",
+    "skill": "Skill against its own frequencies",
+    "verdict": "Verdict",
+    "needed": "A competition needs {n} matches of its own; with no verdict, not authorised.",
+    "reproduced": "The segments reproduce the global figure",
+    "notReproduced": "The segments do NOT reproduce the global figure",
+    "markets": {
+      "1X2": "1X2",
+      "OU": "Over/under 2.5",
+      "BTTS": "Both teams to score"
+    }
   }
 }

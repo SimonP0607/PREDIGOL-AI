@@ -22,7 +22,6 @@ import {
   Undo2,
   X,
   XCircle,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -498,18 +497,6 @@ function Issues({ validation }: { validation: ParlayValidation }) {
   );
 }
 
-function NoAiCaption() {
-  return (
-    <p
-      className="flex items-center justify-center gap-1.5 text-center text-caption font-medium text-subtle-foreground"
-      data-testid="slip-no-ai"
-    >
-      <Zap aria-hidden className="h-3.5 w-3.5 shrink-0 text-gold" />
-      {t("records.slip.noAi")}
-    </p>
-  );
-}
-
 const SOURCES: ReadonlyArray<{
   to: "/picks" | "/odds" | "/matches" | "/parlays";
   nav: string;
@@ -570,16 +557,6 @@ function EmptySlip({ onLeave }: { onLeave: () => void }) {
           <li>{t("records.slip.guide.ruleKickoff")}</li>
         </ul>
       </section>
-      <div
-        className="flex items-start gap-2.5 rounded-lg border border-gold/30 bg-gold-soft/40 p-3.5"
-        data-testid="slip-no-ai"
-      >
-        <Zap aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-        <p className="min-w-0 text-xs text-muted-foreground">
-          <span className="block font-semibold text-foreground">{t("records.slip.noAi")}</span>
-          {t("records.slip.guide.noAi")}
-        </p>
-      </div>
     </div>
   );
 }
@@ -767,7 +744,6 @@ export function SlipSheet() {
                   validation={validation}
                   waiting={waiting}
                 />
-                <NoAiCaption />
                 {body.length > 0 ? (
                   <div className="flex">
                     <ExplainButton
