@@ -24,6 +24,11 @@ by competition, market and day (``fbi.market.league_daily``, into ``market.leagu
 (``market_league_stats``), inside what is left of the time the scheduler gives the process. ``--no-market`` skips it; ``--market-only``
 runs only it. A measure: nothing reads it to price, pick or decide.
 
+Then, once a week (the first night of the ISO week that finds it not done, so Mondays) and only while ``FBI_MODEL_SEGMENTS`` is on (off by
+default: PM-12-06), the same process scores the stored forecasts against the results by competition and by coverage level
+(``fbi.coverage.model_segments``, into ``analytics.evaluation_reports`` and ``analytics.evaluation_segments``) with its own ledger row
+(``model_segments``). ``--no-evaluation`` skips it; ``--evaluation-only`` runs only it. It changes no pick, model or forecast.
+
 It records one row in the job ledger (``raw.ingestion_runs``, ``availability_refresh``) with what it did, how long it took and the peak
 of its memory (``params.memory_peak_mib``: the acceptance asks seven nights with duration and memory). Exit 0 when the pass ran (even
 stopped at its time budget: the next night goes on), 1 when it failed, 2 when the switch is off.
@@ -69,6 +74,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--shadow-only", action="store_true", help="only the shadow comparison (PM-02-06)")
     parser.add_argument("--no-market", action="store_true", help="skip the market's margin and dispersion (PM-05-07)")
     parser.add_argument("--market-only", action="store_true", help="only the market's margin and dispersion (PM-05-07)")
+    parser.add_argument("--no-evaluation", action="store_true", help="skip the weekly evaluation by competition (PM-12-06)")
+    parser.add_argument("--evaluation-only", action="store_true", help="only the weekly evaluation by competition (PM-12-06)")
     args = parser.parse_args(argv)
     process_started = time.monotonic()
     cap_memory(args.max_memory_mib)
@@ -88,6 +95,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.market_only:
         with psycopg.connect(settings.database.psycopg_url, connect_timeout=10, application_name="market_league_stats") as conn:
             market_phase(conn, at=now(), process_started=process_started, scheduled=args.scheduled)
+        return 0
+    if args.evaluation_only:
+        with psycopg.connect(settings.database.psycopg_url, connect_timeout=10, application_name="model_segments") as conn:
+            evaluation_phase(conn, at=now(), process_started=process_started, scheduled=args.scheduled)
         return 0
     if job.mode() != "on":
         print(f"{job.SWITCH} is off: nothing is recalculated")
@@ -123,6 +134,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             shadow_phase(conn, at=at, started=time.monotonic(), scheduled=args.scheduled)
         if not args.no_market:
             market_phase(conn, at=at, process_started=process_started, scheduled=args.scheduled)
+        if not args.no_evaluation:
+            evaluation_phase(conn, at=at, process_started=process_started, scheduled=args.scheduled)
     return 1 if counters.status == "failed" else 0
 
 
@@ -214,6 +227,54 @@ def market_phase(conn: Any, *, at: datetime, process_started: float, scheduled: 
         conn.execute("UPDATE raw.ingestion_runs SET params = params || %s::jsonb WHERE id = %s", (Json(measured), run_id))
         conn.commit()
         print({"run_id": run_id, "job": league_daily.JOB, "status": counters.status, **measured})
+
+
+WEEK_DONE_SQL = ("SELECT 1 FROM raw.ingestion_runs WHERE job_type = %s AND status = 'completed' "
+                 "AND started_at >= date_trunc('week', %s::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' LIMIT 1")
+
+
+def evaluation_phase(conn: Any, *, at: datetime, process_started: float, scheduled: bool) -> None:
+    """PM-12-06: the week's evaluation by competition and coverage level (``fbi.coverage.model_segments``), once per ISO week, with its
+    own ledger row, only while ``FBI_MODEL_SEGMENTS`` is on, and stopping before the scheduler's limit on the whole process."""
+    import psycopg
+    from psycopg.types.json import Json
+
+    from fbi.core.version import code_version
+    from fbi.coverage import job
+    from fbi.coverage import model_segments as segments
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+
+    if segments.mode() != "on":
+        return
+    if conn.execute(WEEK_DONE_SQL, (segments.JOB, at)).fetchone() is not None:
+        conn.commit()
+        return
+    conn.commit()
+    if time.monotonic() >= process_started + job.PROCESS_TIMEOUT - MARKET_MARGIN_SECONDS:
+        print({"job": segments.JOB, "skipped": "sin_tiempo"})
+        return
+    started = time.monotonic()
+    ledger = RunLedger(conn)
+    run_id = ledger.open(segments.JOB, params={"scheduled": scheduled, "version": segments.VERSION})
+    counters = RunCounters()
+    measured: dict[str, Any] = {}
+    try:
+        conn.execute("SET statement_timeout = '120s'")
+        rep = segments.report(conn, at=at)
+        report_id = segments.store(conn, rep, code_version=code_version())
+        conn.commit()
+        counters.rows_inserted = 0 if report_id is None else len(rep["segments"])
+        measured = {"report_id": report_id, "reproduced": rep["reproduced"], "incomplete": rep["incomplete"]}
+    except Exception as exc:
+        counters.errors.append(f"{type(exc).__name__}: {exc}"[:300])
+    finally:
+        if conn.info.transaction_status != psycopg.pq.TransactionStatus.IDLE:
+            conn.rollback()
+        ledger.close(run_id, counters)
+        measured |= {"memory_peak_mib": peak_mib(), "seconds": round(time.monotonic() - started, 1)}
+        conn.execute("UPDATE raw.ingestion_runs SET params = params || %s::jsonb WHERE id = %s", (Json(measured), run_id))
+        conn.commit()
+        print({"run_id": run_id, "job": segments.JOB, "status": counters.status, **measured})
 
 
 if __name__ == "__main__":
