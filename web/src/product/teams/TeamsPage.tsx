@@ -1,8 +1,9 @@
 /**
  * «Equipos» (plan maestro unificado, UX-157; decision D-03): the destination the unified bar names, made only of pieces
  * that exist - the teams the reader follows (favourites), a search of clubs and national teams (GET /teams?q), and the
- * competitions PrediGol follows by country, each leading to its matches. No maqueta of its own: it is the door to the
- * profiles (maquetas 11-13). Shown only while FBI_PROFILES is on.
+ * competitions PrediGol follows by country, each opening onto its teams (AP-E01: country → league → teams → profile; no
+ * click of this page leads to Partidos). No maqueta of its own: it is the door to the profiles (maquetas 11-13). Shown only
+ * while FBI_PROFILES is on.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ import { intlTag, t } from "@/lib/i18n";
 import { useCountryAliases } from "@/lib/i18n/useCountryAliases";
 import { cn } from "@/lib/utils";
 import { Card, EmptyState, PageTitle, SkeletonCards } from "@/product/shared/States";
+import { LeagueRow } from "./CompetitionTeams";
 import { countryName, isNation, teamLabel } from "./model";
 
 /** The competitions by country, the reader's own country (Colombia) first, then alphabetical. */
@@ -208,23 +210,7 @@ export function TeamsPage() {
                 </summary>
                 <ul className="pb-2">
                   {g.competitions.map((c) => (
-                    <li key={c.id}>
-                      <Link
-                        {...(competitionPage
-                          ? {
-                              to: "/competitions/$competitionId",
-                              params: { competitionId: String(c.id) },
-                            }
-                          : { to: "/matches", search: { competition: c.id } })}
-                        className="flex min-h-11 items-center gap-3 px-6 py-2 text-sm hover:bg-elevated"
-                      >
-                        <span className="min-w-0 flex-1">{c.name}</span>
-                        <ChevronRight
-                          aria-hidden
-                          className="h-4 w-4 shrink-0 text-subtle-foreground"
-                        />
-                      </Link>
-                    </li>
+                    <LeagueRow key={c.id} competition={c} competitionPage={competitionPage} />
                   ))}
                 </ul>
               </details>
