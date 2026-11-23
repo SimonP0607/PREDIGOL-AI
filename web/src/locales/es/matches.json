@@ -103,7 +103,8 @@
     "label": "Qué partidos ver",
     "mine": "Tus ligas · {count}",
     "suggested": "Sugeridas · {count}",
-    "all": "Todos · {count}"
+    "all": "Todos · {count}",
+    "favorites": "Mis favoritos · {count}"
   },
   "mine": {
     "emptyToday": "Hoy no juegan tus ligas ni tus equipos.",

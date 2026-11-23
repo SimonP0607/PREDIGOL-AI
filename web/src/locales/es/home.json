@@ -52,7 +52,9 @@
     "nextOf": "Próximo de {name}",
     "mineLabel": "Tus ligas y equipos",
     "choose": "Elegir mis ligas",
-    "edit": "Cambiar"
+    "edit": "Cambiar",
+    "whyPlayer": "Sigues a {player}",
+    "whyPlayerHelp": "Te mostramos este partido porque juega el equipo de {player}, a quien sigues."
   },
   "relevant": {
     "title": "Partidos relevantes",

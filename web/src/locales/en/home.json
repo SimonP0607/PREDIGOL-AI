@@ -52,7 +52,9 @@
     "nextOf": "Next for {name}",
     "mineLabel": "Your leagues and teams",
     "choose": "Pick my leagues",
-    "edit": "Change"
+    "edit": "Change",
+    "whyPlayer": "You follow {player}",
+    "whyPlayerHelp": "We show you this match because {player}, whom you follow, plays for one of its teams."
   },
   "relevant": {
     "title": "Matches worth a look",
