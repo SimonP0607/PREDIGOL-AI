@@ -7,8 +7,8 @@ import type { SurvivalPoint } from "@/lib/api/v1/types_stats";
 import { pct } from "./format";
 
 const W = 340;
-const H = 110;
-const P = { left: 28, right: 6, top: 6, bottom: 16 };
+const H = 116;
+const P = { left: 40, right: 8, top: 8, bottom: 20 };
 
 export interface SurvivalSeries {
   name: string;
@@ -39,7 +39,7 @@ export function SurvivalCurve({ series, testId }: { series: SurvivalSeries[]; te
             <text
               x={P.left - 4}
               y={y(v) + 3}
-              fontSize="9"
+              fontSize="12"
               textAnchor="end"
               fill="var(--color-subtle-foreground)"
             >
@@ -70,8 +70,8 @@ export function SurvivalCurve({ series, testId }: { series: SurvivalSeries[]; te
           <text
             key={m}
             x={x(m)}
-            y={H - 3}
-            fontSize="9"
+            y={H - 4}
+            fontSize="12"
             textAnchor="middle"
             fill="var(--color-subtle-foreground)"
           >

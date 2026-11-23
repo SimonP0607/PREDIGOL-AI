@@ -9,7 +9,7 @@
  */
 import { t } from "@/lib/i18n";
 
-export const CATEGORIES = ["predigol", "prices", "parlays", "results"] as const;
+export const CATEGORIES = ["predigol", "prices", "parlays", "results", "stats"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 interface TermInfo {
@@ -68,6 +68,9 @@ export const TERMS = {
   roi: { category: "results", related: ["units", "sample", "settlement"] },
   sample: { category: "results", related: ["roi", "lineValue"] },
   lineValue: { category: "results", related: ["odds", "marketProbability", "margin", "sample"] },
+  percentile: { category: "stats", related: ["sample", "xg"] },
+  xg: { category: "stats", related: ["percentile", "goalPulse", "sample"] },
+  goalPulse: { category: "stats", related: ["sample", "percentile", "xg"] },
 } as const satisfies Record<string, TermInfo>;
 
 export type TermKey = keyof typeof TERMS;

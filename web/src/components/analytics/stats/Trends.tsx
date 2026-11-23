@@ -29,7 +29,7 @@ export function TrendMatrix({
   const cell = (c: TrendColumn, key: string) => c.rows.find((r) => r.key === key);
   return (
     <div className="overflow-x-auto" data-testid={testId}>
-      <table className="w-full min-w-[20rem] border-separate border-spacing-1 text-caption">
+      <table className="w-full min-w-[20rem] border-separate border-spacing-1 text-small">
         <thead>
           <tr>
             <th scope="col" className="sr-only">
@@ -77,7 +77,7 @@ export function TrendMatrix({
           ))}
         </tbody>
       </table>
-      <p className="mt-2 flex flex-wrap gap-3 text-caption text-muted-foreground">
+      <p className="mt-2 flex flex-wrap gap-3 text-small text-muted-foreground">
         <span>
           <span aria-hidden className="text-primary">
             ■
@@ -104,7 +104,7 @@ export function TrendMatrix({
 /** One frequency with its Wilson interval: the light span is the interval, the dot the observed share. */
 export function WilsonRow({ label, row }: { label: string; row: TrendRow }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)_auto] items-center gap-2 text-caption">
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)_auto] items-center gap-2 text-small">
       <span className="truncate text-foreground-soft">{label}</span>
       <span className="relative h-3 rounded-full bg-elevated" aria-hidden>
         <span

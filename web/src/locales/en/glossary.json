@@ -12,7 +12,8 @@
       "predigol": "What PrediGol says",
       "prices": "Probabilities and odds",
       "parlays": "Parlays",
-      "results": "Results and accounts"
+      "results": "Results and accounts",
+      "stats": "Team and player statistics"
     }
   },
   "ui": {
@@ -235,6 +236,21 @@
       "name": "Lost",
       "short": "The selection did not come true: the whole unit is lost.",
       "long": "In a parlay, a single lost selection loses it all. A loss counts in the return the same as a win."
+    },
+    "percentile": {
+      "name": "Place in its league (percentile)",
+      "short": "Where a team or player sits among those of its league: “better than 63 %” means it beats 63 out of every 100.",
+      "long": "It is worked out with the teams of the same competition and season. 50 % is the middle of the league; near 100 %, among the best; near 0 %, among the last. For figures where less is better (goals against), PrediGol turns it round so that more is always better."
+    },
+    "xg": {
+      "name": "xG (expected goals)",
+      "short": "The goals you would expect from the chances a team had, given how hard each shot was. It says how much it deserved to score.",
+      "long": "A penalty is worth far more than a shot from distance. Adding those values gives the match's xG: a team scoring far above its xG has usually been lucky or unusually sharp. It is the data provider's estimate, not a result."
+    },
+    "goalPulse": {
+      "name": "Goal pulse",
+      "short": "How many goals a team scores or concedes in each stretch of the match, against its league's average (100 = same as the average).",
+      "long": "Goals per minute are counted in five-minute stretches, smoothed so one match does not rule, and divided by the league's in the same minute. The light band shows how much the figure would change with other matches: the wider, the less reliable. Added time counts apart."
     }
   }
 }

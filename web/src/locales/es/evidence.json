@@ -46,5 +46,6 @@
     "tabla_equivalente": "Tabla equivalente o datos legibles",
     "zoom_y_espaciado": "Se lee con zoom al 200 % y espaciado de texto aumentado",
     "lector_de_pantalla": "Nombre accesible y orden lógico para lector de pantalla"
-  }
+  },
+  "explain": "¿Qué significa?"
 }

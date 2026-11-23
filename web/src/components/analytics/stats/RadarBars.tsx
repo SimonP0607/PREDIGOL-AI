@@ -20,6 +20,7 @@ import {
 import { t } from "@/lib/i18n";
 import { isMissing } from "@/lib/api/v1/types_intelligence";
 import type { RadarAxis, RadarKey } from "@/lib/api/v1/types_stats";
+import { placeInWords } from "./howToRead";
 import { ChipChoice } from "./ChartCard";
 
 export interface RadarSide {
@@ -38,7 +39,7 @@ const ORDER: readonly RadarKey[] = [
 ];
 
 export function RadarBars({ sides, testId }: { sides: RadarSide[]; testId?: string }) {
-  const [view, setView] = useState<"radar" | "bars">("radar");
+  const [view, setView] = useState<"radar" | "bars">("bars");
   const rows = ORDER.map((key) => {
     const row: Record<string, string | number | null> = {
       axis: t(`stats.axis.${key}`),
@@ -68,7 +69,7 @@ export function RadarBars({ sides, testId }: { sides: RadarSide[]; testId?: stri
               <PolarGrid stroke="var(--color-border)" />
               <PolarAngleAxis
                 dataKey="axis"
-                tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
               />
               <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
               <Radar
@@ -76,6 +77,7 @@ export function RadarBars({ sides, testId }: { sides: RadarSide[]; testId?: stri
                 stroke="var(--color-subtle-foreground)"
                 strokeDasharray="4 4"
                 fill="none"
+                isAnimationActive={false}
               />
               {sides.map((s, i) => (
                 <Radar
@@ -85,6 +87,7 @@ export function RadarBars({ sides, testId }: { sides: RadarSide[]; testId?: stri
                   stroke={s.color}
                   fill={s.color}
                   fillOpacity={i === 0 ? 0.22 : 0.12}
+                  isAnimationActive={false}
                   strokeWidth={2}
                 />
               ))}
@@ -99,13 +102,13 @@ export function RadarBars({ sides, testId }: { sides: RadarSide[]; testId?: stri
               <XAxis
                 type="number"
                 domain={[0, 100]}
-                tick={{ fill: "var(--color-subtle-foreground)", fontSize: 10 }}
+                tick={{ fill: "var(--color-subtle-foreground)", fontSize: 12 }}
               />
               <YAxis
                 type="category"
                 dataKey="axis"
                 width={78}
-                tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
               />
               <ReferenceLine x={50} stroke="var(--color-subtle-foreground)" strokeDasharray="4 4" />
               {sides.map((s, i) => (
@@ -116,23 +119,29 @@ export function RadarBars({ sides, testId }: { sides: RadarSide[]; testId?: stri
                   fill={s.color}
                   radius={[0, 6, 6, 0]}
                   barSize={10}
+                  isAnimationActive={false}
                 />
               ))}
             </BarChart>
           )}
         </ResponsiveContainer>
       </div>
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-caption sm:grid-cols-3">
+      <ul className="grid gap-y-1 text-small">
         {rows.map((r) => (
           <li key={String(r["axis"])} className="flex justify-between gap-2">
             <span className="text-muted-foreground">{r["axis"]}</span>
             <span className="numeric">
-              {sides.map((_, i) => (r[`s${i}`] === null ? "—" : `p${r[`s${i}`]}`)).join(" · ")}
+              {sides
+                .map((_, i) => {
+                  const v = r[`s${i}`];
+                  return typeof v === "number" ? placeInWords(v) : "—";
+                })
+                .join(" · ")}
             </span>
           </li>
         ))}
       </ul>
-      <p className="text-caption text-subtle-foreground">{t("stats.radarSame")}</p>
+      <p className="text-small text-subtle-foreground">{t("stats.radarSame")}</p>
     </div>
   );
 }

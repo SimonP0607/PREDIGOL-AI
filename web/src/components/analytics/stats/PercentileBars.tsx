@@ -1,13 +1,15 @@
 /**
- * Percentile bars (plan EA, catalogue n.º 5; V1·1, V2·1): each figure's value, a bar as long as its percentile in the league and the
- * league's median marked - FBref's form, the one that reads best. A «less is better» figure keeps its own percentile in the text and
- * its colour says whether that is good. Every row carries its sample in its accessible name; a missing value says why.
+ * Percentile bars (plan EA, catalogue n.º 5; V1·1, V2·1; AP-T03): each figure's value, a bar as long as its place in the league
+ * (always «more is better»: a figure where less is better is turned round) and the league's middle marked - FBref's form, the one
+ * that reads best. The place is said in words under the bar («mejor que el 63 % de su liga»), never as «p63». Every row carries its
+ * sample in its accessible name; a missing value says why.
  */
 import { t } from "@/lib/i18n";
 import { isMissing } from "@/lib/api/v1/types_intelligence";
 import type { StatFigure } from "@/lib/api/v1/types_stats";
 import { cn } from "@/lib/utils";
-import { figName, figValue, goodness, missingText, num, percentileText } from "./format";
+import { figName, figValue, goodness, missingText, num } from "./format";
+import { placeInWords } from "./howToRead";
 
 export function PercentileBars({ figures, testId }: { figures: StatFigure[]; testId?: string }) {
   return (
@@ -24,21 +26,19 @@ export function PercentileBars({ figures, testId }: { figures: StatFigure[]; tes
           n: f.matches_with_data,
         });
         return (
-          <li
-            key={f.key}
-            className="grid grid-cols-[minmax(0,7.5rem)_3.25rem_minmax(0,1fr)_2.5rem] items-center gap-2"
-            aria-label={label}
-          >
-            <span className="truncate text-caption text-foreground-soft">{figName(f.key)}</span>
-            <span className="numeric text-right text-sm font-semibold">{figValue(f)}</span>
-            {isMissing(f.value) ? (
-              <span className="col-span-2 text-caption text-subtle-foreground">
-                {missingText(f.value)}
+          <li key={f.key} className="space-y-1" aria-label={label}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="min-w-0 truncate text-small text-foreground-soft">
+                {figName(f.key)}
               </span>
+              <span className="numeric text-sm font-semibold">{figValue(f)}</span>
+            </div>
+            {isMissing(f.value) ? (
+              <p className="text-small text-subtle-foreground">{missingText(f.value)}</p>
             ) : (
               <>
-                <span className="relative h-3 rounded-full bg-elevated" aria-hidden>
-                  {p !== null ? (
+                <span className="relative block h-3 rounded-full bg-elevated" aria-hidden>
+                  {good !== null ? (
                     <span
                       className={cn(
                         "absolute inset-y-0 left-0 rounded-full",
@@ -48,7 +48,7 @@ export function PercentileBars({ figures, testId }: { figures: StatFigure[]; tes
                             ? "bg-primary"
                             : "bg-primary-dim",
                       )}
-                      style={{ width: `${Math.max(3, p)}%` }}
+                      style={{ width: `${Math.max(3, good)}%` }}
                     />
                   ) : null}
                   <span
@@ -56,9 +56,9 @@ export function PercentileBars({ figures, testId }: { figures: StatFigure[]; tes
                     style={{ left: "50%" }}
                   />
                 </span>
-                <span className="numeric text-right text-caption text-subtle-foreground">
-                  {p === null && isMissing(f.percentile) ? "—" : percentileText(f.percentile)}
-                </span>
+                <p className="text-small text-subtle-foreground">
+                  {good === null ? "—" : placeInWords(good)}
+                </p>
               </>
             )}
           </li>

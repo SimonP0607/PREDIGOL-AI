@@ -22,7 +22,6 @@ const BEFORE_PM_10_06 = [
   "product/records/Recap.tsx",
   "product/teams/stats/Compare.tsx",
   "product/teams/stats/PlayerStatsHub.tsx",
-  "product/teams/stats/TeamStatsHub.tsx",
   "routes/admin.backtesting.tsx",
   "routes/admin.models.tsx",
   "routes/admin.odds.tsx",
