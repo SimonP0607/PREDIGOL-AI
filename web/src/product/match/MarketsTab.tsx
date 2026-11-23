@@ -69,7 +69,8 @@ import {
 } from "./catalogParlay";
 import { Block, CenterSection, FreshnessLabel, MoreButton, SectionNote } from "./ui";
 import { FollowCatalogMarket, FollowMarket } from "@/product/favorites/FollowExtras";
-import { useFollowedCatalog } from "@/product/favorites/useFollowedCatalog";
+import { useFollowedCatalog, useFollowedFamilies } from "@/product/favorites/useFollowedCatalog";
+import { familiesFirst } from "@/product/favorites/follow";
 import { followableMarket, followedFirst } from "@/product/favorites/model";
 import { orderBoards, orderSentence } from "./marketOrder";
 import { useMarketTarget } from "./useMarketTarget";
@@ -635,6 +636,7 @@ export function PrematchMarkets({
   onConsult: consult,
   follow = followBoard,
   followed = [],
+  families = [],
 }: {
   ctx: MatchCtx;
   order: MarketOrder | null;
@@ -644,6 +646,8 @@ export function PrematchMarkets({
   follow?: Follow;
   /** The catalogue markets the reader follows, in their order (they go first in a category). */
   followed?: readonly string[];
+  /** The families (corners, cards) the reader follows as markets: their chips come right after «Destacados» (AP-B05). */
+  families?: readonly string[];
 }) {
   const { markets, phase, match: m } = ctx;
   const { probs } = useStatsSwitches();
@@ -671,10 +675,13 @@ export function PrematchMarkets({
   ).size;
   const books = headerBooks(matchBooks, categories);
   const updated = later(latestCapture(quotes, "prematch"), catalogQ.data?.data?.checked_at);
-  const views: MarketsView[] = [
-    ...(featured.length > 0 ? (["featured"] as const) : []),
-    ...(categories ?? []).map((c) => c.key),
-  ];
+  const views: MarketsView[] = familiesFirst(
+    [
+      ...(featured.length > 0 ? (["featured"] as const) : []),
+      ...(categories ?? []).map((c) => c.key),
+    ],
+    families,
+  );
   // A link from Cuotas names a market: its category opens first, unless the reader picks another chip.
   const linked = useMarketTarget();
   const [picked, setPicked] = useState<MarketsView | null>(null);
@@ -795,6 +802,7 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
   const sides = { home: ctx.match.home.name, away: ctx.match.away.name };
   const { order, first, consult } = useMarketOrder(ctx.fixtureId);
   const followed = useFollowedCatalog();
+  const families = useFollowedFamilies();
   const note = useCoverageMarketsNote(ctx.fixtureId);
   return (
     <div className="space-y-8">
@@ -809,6 +817,7 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
         first={first}
         onConsult={consult}
         followed={followed}
+        families={families}
       />
 
       <div className="flex justify-center">

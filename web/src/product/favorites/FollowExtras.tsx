@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
-import type { MarketKey } from "@/lib/api/v1/types_records";
+import type { FollowedMarketKey } from "@/lib/api/v1/types_records";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useJustChanged } from "@/product/shared/motion";
@@ -144,7 +144,7 @@ export function FollowPlayer({ id, name }: { id: number | null; name: string }) 
 }
 
 /** «Seguir» in a match's «Mercados», beside the market's name. */
-export function FollowMarket({ market }: { market: MarketKey }) {
+export function FollowMarket({ market }: { market: FollowedMarketKey }) {
   const { view, busy, save } = useFollowing();
   if (!view) return null;
   const before = choiceOf(view);

@@ -1,6 +1,6 @@
 /**
  * A reader's favourites on the page (plan UX, A13 and 3.1; sections 20 and 38): what the picker holds while the reader
- * chooses, pure so a test fixes it. Up to `max` leagues, teams, players and markets (the API's limits: 10, 20, 20 and 5),
+ * chooses, pure so a test fixes it. Up to `max` leagues, teams, players and markets (the API's limits: 10, 20, 20 and 7),
  * in the order the reader chose them; at the limit nothing more is added - the picker says so before the reader reaches
  * it, and the API refuses rather than trims. Never a betting profile: only what the reader follows (the markets they read,
  * not what they stake on them).
@@ -8,13 +8,13 @@
 import type { CompetitionBadge, TeamBadge } from "@/lib/api/v1/types_product";
 import type { FavoritesView, PlayerBadge } from "@/lib/api/v1/types_favorites";
 import type { Suggestion } from "@/lib/api/v1/types_personal";
-import type { MarketKey } from "@/lib/api/v1/types_records";
+import type { FollowedMarketKey } from "@/lib/api/v1/types_records";
 
 export interface Choice {
   leagues: CompetitionBadge[];
   teams: TeamBadge[];
   players: PlayerBadge[];
-  markets: MarketKey[];
+  markets: FollowedMarketKey[];
   /** Markets of a match's catalogue, by the catalogue's own key (CUOTAS, BE-025): apart from the five classic `markets`. */
   catalog: string[];
 }
@@ -32,16 +32,27 @@ export const DEFAULT_LIMITS: Limits = {
   leagues: 10,
   teams: 20,
   players: 20,
-  markets: 5,
+  markets: 7,
   catalog: 10,
 };
 
-/** The markets a reader can follow, in the order the product lists them (fbi.customer.favorites.FOLLOWABLE_MARKETS). */
-export const MARKETS: readonly MarketKey[] = ["1X2", "OU", "BTTS", "AH", "DC"];
+/**
+ * The markets a reader can follow, in the order the product lists them (fbi.customer.favorites.FOLLOWABLE_ALL): the five
+ * classic ones and the two families, any corners line and any cards line (AP-B05).
+ */
+export const MARKETS: readonly FollowedMarketKey[] = [
+  "1X2",
+  "OU",
+  "BTTS",
+  "AH",
+  "DC",
+  "CORNERS",
+  "CARDS",
+];
 
 /** A market key the reader can follow, or null (a market PrediGol lists but the API does not offer to follow). */
-export function followableMarket(key: string): MarketKey | null {
-  return (MARKETS as readonly string[]).includes(key) ? (key as MarketKey) : null;
+export function followableMarket(key: string): FollowedMarketKey | null {
+  return (MARKETS as readonly string[]).includes(key) ? (key as FollowedMarketKey) : null;
 }
 
 export function choiceOf(view: FavoritesView): Choice {
@@ -107,14 +118,14 @@ export function hasPlayer(choice: Choice, id: number): boolean {
 }
 
 /** Adds the market (at the end: the reader's order) or takes it away; at the limit nothing is added. */
-export function toggleMarket(choice: Choice, market: MarketKey, limits: Limits): Choice {
+export function toggleMarket(choice: Choice, market: FollowedMarketKey, limits: Limits): Choice {
   if (choice.markets.includes(market))
     return { ...choice, markets: choice.markets.filter((m) => m !== market) };
   if (choice.markets.length >= limits.markets) return { ...choice, markets: [...choice.markets] };
   return { ...choice, markets: [...choice.markets, market] };
 }
 
-export function hasMarket(choice: Choice, market: MarketKey): boolean {
+export function hasMarket(choice: Choice, market: FollowedMarketKey): boolean {
   return choice.markets.includes(market);
 }
 
@@ -176,7 +187,7 @@ export function bodyOf(choice: Choice): {
   leagues: number[];
   teams: number[];
   players: number[];
-  markets: MarketKey[];
+  markets: FollowedMarketKey[];
   catalog_markets: string[];
 } {
   return {
@@ -199,7 +210,8 @@ export function extrasBody(view: FavoritesView, next: Choice): ReturnType<typeof
 }
 
 export type Change =
-  { kind: "team" | "competition" | "player"; id: number } | { kind: "market"; market: MarketKey };
+  | { kind: "team" | "competition" | "player"; id: number }
+  | { kind: "market"; market: FollowedMarketKey };
 
 /**
  * What a save added and removed, for the product's analytics (favorite_added / favorite_removed - the catalog calls a

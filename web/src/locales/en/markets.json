@@ -4,14 +4,18 @@
     "OU": "Over/Under goals",
     "BTTS": "Both teams to score",
     "AH": "Asian handicap",
-    "DC": "Double chance"
+    "DC": "Double chance",
+    "CORNERS": "Corners",
+    "CARDS": "Cards"
   },
   "short": {
     "1X2": "1X2",
     "OU": "Goals",
     "BTTS": "BTTS",
     "AH": "Handicap",
-    "DC": "Double ch."
+    "DC": "Double ch.",
+    "CORNERS": "Corners",
+    "CARDS": "Cards"
   },
   "selection": {
     "1X2": {
