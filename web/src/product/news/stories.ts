@@ -43,17 +43,7 @@ const CATEGORY_WORD: Readonly<Record<StoryCategory, string>> = {
   competiciones: "stories.category.competiciones",
 };
 
-/** The categories in the order the front page lists them (maqueta 08). */
-export const CATEGORY_ORDER: readonly StoryCategory[] = [
-  "colombia",
-  "internacional",
-  "selecciones",
-  "fichajes",
-  "bajas_y_sanciones",
-  "declaraciones",
-  "resultados_y_proximos",
-  "competiciones",
-];
+export { CATEGORY_ORDER } from "./storyKinds";
 
 export function levelWord(level: StoryLevel | null): string {
   return t(LEVEL_WORD[level ?? "none"]);
