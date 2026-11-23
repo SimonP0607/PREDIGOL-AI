@@ -585,6 +585,13 @@
     "probs": "PrediGol {model} · mercado {market}",
     "whyValue": "PrediGol ve este resultado más probable que el mercado.",
     "more": "Más sobre este pick",
-    "audit": "Auditoría"
+    "audit": "Auditoría",
+    "priceCurrent": "Cuota actual",
+    "published": "Publicado a {odds}",
+    "up": "subió {delta}",
+    "down": "bajó {delta}",
+    "noValueNow": "A este precio ya no hay valor",
+    "whyLabel": "Por qué",
+    "oldPrice": "El precio de ahora es antiguo"
   }
 }
