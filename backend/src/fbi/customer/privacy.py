@@ -294,6 +294,11 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
     push_rows = push.export_rows(conn, user_id)
     # Where PrediGol thinks they stand, day by day, with the reason codes (plan UX, B11).
     lifecycle_rows = lifecycle.export_rows(conn, user_id)
+    # Their calendar links (PM-14-06): when each was made, revoked and last read - never the secret nor its hash.
+    calendar_rows = _all(conn, """
+        SELECT created_at, revoked_at, revoked_why, last_read_at
+        FROM customer.calendar_feeds WHERE user_id = %s ORDER BY id
+    """, (user_id,))
     document: dict[str, Any] = _iso({
         "format": EXPORT_FORMAT,
         "generated_at": now or datetime.now(UTC),
@@ -319,6 +324,7 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "support_tickets": support_rows,
         "feedback": feedback_rows,
         "lifecycle": lifecycle_rows,
+        "calendar_links": calendar_rows,
         **push_rows,
     })
     return document

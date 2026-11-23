@@ -25,6 +25,7 @@ from fbi.api.routers import (
     announcements,
     auth,
     availability,
+    calendar_feed,
     center,
     customer,
     events,
@@ -205,7 +206,7 @@ def create_app() -> FastAPI:
         response.headers["x-content-type-options"] = "nosniff"
         response.headers["referrer-policy"] = "no-referrer"
         response.headers["cache-control"] = "no-store"
-        log.info("api.request", method=request.method, path=request.url.path, status=response.status_code,
+        log.info("api.request", method=request.method, path=calendar_feed.redact(request.url.path), status=response.status_code,
                  ms=elapsed_ms, request_id=rid)
         return response
 
@@ -223,13 +224,15 @@ def create_app() -> FastAPI:
     app.include_router(monitoring.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])
     app.include_router(announcements.router, prefix="/api/v1", dependencies=[Depends(same_site_only)])
     app.include_router(announcements.bot_router, prefix="/api/v1")  # Telegram's own call: its secret is the key
+    # A reader's calendar link (PM-14-06): a calendar app carries no session - the secret in the path is the key (FBI_CALENDAR_FEED, off).
+    app.include_router(calendar_feed.public_router, prefix="/api/v1")
     app_tier = [Depends(same_site_only), Depends(require_app), Depends(observe_principal)]
     # The account itself, its membership and the reader's rights (consents, export, privacy requests, notification
     # preferences) and their questions to PrediGol (A14): never behind the gates - a limited reader still sees why, how
     # to renew, and reaches Ayuda. Novedades read (B6) is the reader's own state, like a dismissed hint; so are the reader's
     # devices and categories of notices (B7) - a limited reader is still told their membership ends.
     for r in (auth.router, customer.router, messaging.router, membership.router, payment_requests.router, favorites.router, guides.router,
-              support.router, feedback.updates_router, push.router, push.inbox_router):
+              support.router, feedback.updates_router, push.router, push.inbox_router, calendar_feed.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
     # not measured; a limited one is (what they open while limited is part of renewing). What the reader's own use orders
