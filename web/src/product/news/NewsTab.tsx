@@ -17,7 +17,7 @@ import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "@/product/match/context";
 import { NewsCard } from "./NewsCard";
 import { byTeam, emptyText, groups, searchLine } from "./news";
-import { useNews, type NewsLoad } from "./useNews";
+import { useNews, useTeamNews, type NewsLoad, type TeamNews } from "./useNews";
 
 function Frame({
   children,
@@ -92,13 +92,41 @@ function ByTeam({ items, now }: { items: NewsItem[]; now?: number | undefined })
   );
 }
 
+/** AP-P11 (a): the match has no news of its own - the latest of each side, with its date, never «no hay noticias» while they exist. */
+function TeamLatest({ sides, now }: { sides: TeamNews[]; now?: number | undefined }) {
+  return (
+    <div className="space-y-4" data-testid="news-team-latest">
+      <p className="text-sm text-muted-foreground" data-testid="news-team-latest-note">
+        {t("match.news.teamLatest.note")}
+      </p>
+      {sides
+        .filter((s) => s.items.length > 0)
+        .map((s) => (
+          <section key={s.team} className="space-y-2.5">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {t("match.news.teamLatest.of", { team: s.team })}
+            </h3>
+            <div className="space-y-2.5">
+              {s.items.map((item) => (
+                <NewsCard key={item.id} item={item} now={now} />
+              ))}
+            </div>
+          </section>
+        ))}
+    </div>
+  );
+}
+
 export function NewsView({
   load,
   now,
   v2 = false,
+  teamNews = [],
 }: {
   load: NewsLoad;
   now?: number | undefined;
+  /** The latest news of each side, shown when the match has none of its own (AP-P11). */
+  teamNews?: TeamNews[];
   /** The unified plan's news (FBI_NEWS_V2): «Por certeza | Por equipo». */
   v2?: boolean;
 }) {
@@ -137,6 +165,13 @@ export function NewsView({
   const items = envelope.data.items;
   const search = envelope.data.search;
   const searched = searchLine(search, now);
+  if (!items.length && teamNews.some((s) => s.items.length > 0)) {
+    return (
+      <Frame search={searched}>
+        <TeamLatest sides={teamNews} now={now} />
+      </Frame>
+    );
+  }
   if (!items.length) {
     return (
       <Frame search={search?.searched === "yes" ? searched : null}>
@@ -241,6 +276,19 @@ export function NewsTab({ ctx }: { ctx: MatchCtx }) {
       track("news_opened", { match_id: Number(ctx.fixtureId) });
     }
   }, [load.status, ctx.fixtureId]);
-  const v2 = useAuth().user?.news_v2 === true;
-  return <NewsView load={load} v2={v2} />;
+  const user = useAuth().user;
+  const v2 = user?.news_v2 === true;
+  const empty =
+    load.status === "success" &&
+    load.envelope.status !== "not_available" &&
+    !!load.envelope.data &&
+    load.envelope.data.items.length === 0;
+  const teamNews = useTeamNews(
+    [
+      { id: ctx.match.home.id, name: ctx.match.home.name },
+      { id: ctx.match.away.id, name: ctx.match.away.name },
+    ],
+    empty && user?.news_feed === true,
+  );
+  return <NewsView load={load} v2={v2} teamNews={teamNews} />;
 }

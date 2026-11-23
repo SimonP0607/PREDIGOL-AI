@@ -1467,6 +1467,10 @@
       "home": "Local",
       "away": "Visitante",
       "general": "Del partido"
+    },
+    "teamLatest": {
+      "note": "Este partido todavía no tiene noticias propias. Estas son las últimas de cada equipo, con su fecha.",
+      "of": "Últimas noticias de {team}"
     }
   },
   "catalog": {

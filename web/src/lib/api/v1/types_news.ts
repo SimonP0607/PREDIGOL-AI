@@ -140,6 +140,8 @@ export interface NewsFeed {
 export interface NewsFeedQuery {
   mine?: boolean;
   status?: FeedStatus | null;
+  /** A team's id: the items of its matches (AP-P11: the latest news of each side when the match has none of its own). */
+  team?: number;
   offset?: number;
 }
 
