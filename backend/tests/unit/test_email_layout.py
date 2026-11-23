@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 import pytest
 
 from fbi.messaging import layout
-from fbi.messaging.templates import TEMPLATES, render
+from fbi.messaging.templates import TEMPLATES, Locale, Rendered, render
 
 TOKEN = "abcdefghijklmnopqrstuvwxyz0123456789"
 UNTIL = datetime(2026, 11, 12, 15, 0, tzinfo=UTC)
@@ -25,9 +25,9 @@ def web_address(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FBI_WEB_BASE_URL", "https://predigol.example")
 
 
-def made(name: str, locale: str, name_of_reader: str = "Ana"):  # type: ignore[no-untyped-def]
+def made(name: str, locale: Locale, name_of_reader: str = "Ana") -> Rendered:
     t = TEMPLATES[name]
-    return render(name, locale, dict(t.sample), {"name": name_of_reader}, zone="America/Bogota",  # type: ignore[arg-type]
+    return render(name, locale, dict(t.sample), {"name": name_of_reader}, zone="America/Bogota",
                   link=TOKEN if t.grant else None, until=UNTIL if t.grant else None)
 
 
@@ -52,7 +52,7 @@ def test_every_template_has_one_of_the_eight_tones() -> None:
 
 
 @pytest.mark.parametrize("locale", ["es", "en"])
-def test_the_words_are_the_same_with_the_switch_on_and_off(monkeypatch: pytest.MonkeyPatch, locale: str) -> None:
+def test_the_words_are_the_same_with_the_switch_on_and_off(monkeypatch: pytest.MonkeyPatch, locale: Locale) -> None:
     for name in TEMPLATES:
         monkeypatch.delenv(layout.SWITCH, raising=False)
         plain = made(name, locale)
@@ -64,7 +64,7 @@ def test_the_words_are_the_same_with_the_switch_on_and_off(monkeypatch: pytest.M
 
 
 @pytest.mark.parametrize("locale", ["es", "en"])
-def test_the_branded_html_is_safe_light_and_readable_without_images(monkeypatch: pytest.MonkeyPatch, locale: str) -> None:
+def test_the_branded_html_is_safe_light_and_readable_without_images(monkeypatch: pytest.MonkeyPatch, locale: Locale) -> None:
     monkeypatch.setenv(layout.SWITCH, "1")
     for name, t in TEMPLATES.items():
         out = made(name, locale)
