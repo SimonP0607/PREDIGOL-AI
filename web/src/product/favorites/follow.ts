@@ -14,6 +14,34 @@ import type { Why } from "@/product/home/why";
 /** What a page shows: the reader's own (their leagues and teams) or every match. */
 export type Scope = "mine" | "all";
 
+/** The two families a reader can follow as a market (AP-B05), by the key the catalogue's category and Cuotas' tab share. */
+export type FollowedFamily = "corners" | "cards";
+
+const FAMILY_OF: Readonly<Record<string, FollowedFamily>> = { CORNERS: "corners", CARDS: "cards" };
+
+/** The families the reader follows, in the order chosen; none while the view has none or personalisation is off. */
+export function followedFamilies(view: FavoritesView | null | undefined): FollowedFamily[] {
+  if (!view || !view.personalization) return [];
+  return (view.markets ?? []).flatMap((m) => {
+    const family = FAMILY_OF[m];
+    return family ? [family] : [];
+  });
+}
+
+/**
+ * The tabs or chips with the reader's followed families right after the first one (the common view's lead: «Destacados»,
+ * «Principales»), in the reader's order; the rest as they came. Stable: only the order changes, never what is listed.
+ */
+export function familiesFirst<T extends string>(
+  items: readonly T[],
+  families: readonly string[],
+): T[] {
+  if (families.length === 0 || items.length < 3) return [...items];
+  const [lead, ...rest] = items;
+  const promoted = families.flatMap((f) => rest.filter((x) => x === f));
+  return [lead as T, ...promoted, ...rest.filter((x) => !promoted.includes(x))];
+}
+
 export interface FollowSet {
   /** A followed league and its place in the reader's order (the order they chose them). */
   leagues: ReadonlyMap<number, number>;
@@ -25,6 +53,8 @@ export interface FollowSet {
   playerTeams: ReadonlyMap<string, string[]>;
   /** None chosen: the suggested ones, labelled as suggested. */
   suggested: boolean;
+  /** The families (corners, cards) the reader follows as markets, in their order; they come first in Mercados and Cuotas. */
+  families?: readonly FollowedFamily[] | undefined;
 }
 
 interface Named {
@@ -47,6 +77,7 @@ export function followSet(view: FavoritesView | null | undefined): FollowSet | n
     teams: new Set(view.teams.map((team) => team.id)),
     playerTeams: playerTeamsOf(view),
     suggested: view.suggested,
+    families: followedFamilies(view),
   };
 }
 

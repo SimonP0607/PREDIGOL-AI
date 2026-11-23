@@ -356,7 +356,7 @@ def test_players_and_markets_are_followed_in_the_readers_order_and_a_save_withou
     assert [(p["name"], p["position"], p["team"]) for p in view["players"]] == [
         ("Radamel Falcao", "Attacker", "Atlético Nacional"), ("James Rodríguez", "Midfielder", "Millonarios")], (
         "in the reader's order, each with the team of its latest line-up")
-    assert view["markets"] == ["OU", "1X2"] and (view["max_players"], view["max_markets"]) == (20, 5)
+    assert view["markets"] == ["OU", "1X2"] and (view["max_players"], view["max_markets"]) == (20, 7)
     assert reader.put("/api/v1/me/favorites", json=body).json() == view, "idempotent"
     with psycopg.connect(database) as conn:
         rows = conn.execute("SELECT kind, ref_id, league_id, team_id, player_id, market_key FROM customer.favorites "
@@ -380,6 +380,34 @@ def test_players_and_markets_are_followed_in_the_readers_order_and_a_save_withou
     assert only["markets"] == ["BTTS"]
     seen = other.get("/api/v1/me/favorites").json()
     assert seen["players"] == [] and seen["markets"] == [], "each reader sees only their own"
+
+
+def test_the_two_families_are_followed_as_markets_and_kept_apart_from_the_markets_table(
+        fresh: Football, database: str) -> None:
+    """AP-B05 (D14): Córners and Tarjetas are the sixth and seventh market; a family is a catalogue row under a reserved key."""
+    f, reader = fresh.ids, client(READER)
+    seven = ["1X2", "OU", "BTTS", "AH", "DC", "CORNERS", "CARDS"]
+    saved = reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [], "markets": seven})
+    assert saved.status_code == 200, saved.text
+    view = saved.json()
+    assert view["markets"] == seven and view["catalog_markets"] == [], "a family never counts as a catalogue market"
+    assert view["max_markets"] == 7
+    with psycopg.connect(database) as conn:
+        kept = conn.execute("SELECT kind, market_key, catalog_key FROM customer.favorites WHERE user_id = %s "
+                            "AND kind IN ('market', 'catalog') ORDER BY created_at, market_key, catalog_key",
+                            (uid(database, READER),)).fetchall()
+    assert kept[-2:] == [("catalog", None, "family.corners"), ("catalog", None, "family.cards")]
+    eighth = reader.put("/api/v1/me/favorites", json={"leagues": [f["uno"]], "teams": [], "markets": [*seven, "OU"]})
+    assert eighth.status_code == 200, "a repeat counts once"
+    too_many = reader.put("/api/v1/me/favorites", json={"markets": [*seven, "FOO"]})
+    assert too_many.status_code == 422, "an eighth market is refused, never trimmed"
+    only_classic = reader.put("/api/v1/me/favorites", json={"markets": ["1X2", "CARDS"]}).json()
+    assert only_classic["markets"] == ["1X2", "CARDS"], "Córners left, Tarjetas stay"
+    cleared = reader.put("/api/v1/me/favorites", json={"markets": []}).json()
+    assert cleared["markets"] == []
+    with psycopg.connect(database) as conn:
+        assert conn.execute("SELECT count(*) FROM customer.favorites WHERE user_id = %s AND kind IN ('market', 'catalog')",
+                            (uid(database, READER),)).fetchone() == (0,)
 
 
 def test_a_player_must_have_played_in_a_followed_league_and_a_market_must_be_one_predigol_reads(
@@ -805,7 +833,7 @@ def test_markets_of_the_catalogue_are_followed_apart_from_the_five_classic_ones(
     assert first.status_code == 200, first.text
     view = first.json()
     assert view["catalog_markets"] == [CORNERS, CARDS] and view["markets"] == ["OU"], "two lists, never mixed"
-    assert (view["max_markets"], view["max_catalog_markets"]) == (5, 10)
+    assert (view["max_markets"], view["max_catalog_markets"]) == (7, 10)
     assert reader.put("/api/v1/me/favorites", json={**base, "markets": ["OU"],
                                                     "catalog_markets": [CORNERS, CARDS]}).json() == view, "idempotent"
     with psycopg.connect(database) as conn:

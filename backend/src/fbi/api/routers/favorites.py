@@ -3,7 +3,7 @@
 * ``GET /me/favorites`` - the leagues and teams the reader follows, or the suggested ones for Colombia (labelled) while they
   have chosen none; and the players and markets they follow.
 * ``PUT /me/favorites`` - they become exactly these: up to 10 leagues PrediGol follows, 20 teams that play in them, 20 players
-  of their line-ups, 5 of the markets PrediGol reads and 10 of a match's catalogue (422 beyond, never trimmed). Players and
+  of their line-ups, 7 of the markets (the five PrediGol reads and Córners and Tarjetas) and 10 of a match's catalogue (422 beyond, never trimmed). Players and
   markets left out of the body stay as they were.
 * ``GET /me/favorites/options`` - every league PrediGol follows, and the teams and players whose name matches a search.
 * ``GET /me/onboarding`` / ``POST /me/onboarding`` - whether the welcome is owed and its steps; done (or skipped), once.

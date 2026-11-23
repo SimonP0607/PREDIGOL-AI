@@ -34,6 +34,24 @@ const tab = (key: TabKey): ExplorerTab => {
 const keys = (key: TabKey) => tab(key).markets.map((m) => m.key);
 
 describe("the family tabs", () => {
+  test("the families a reader follows come right after «Principales»; the same tabs otherwise (AP-B05)", () => {
+    const order = (followed: string[]) =>
+      buildTabs(fakeFamilies().families, followed).map((x) => x.key);
+    expect(order([])).toEqual(tabs.map((x) => x.key));
+    expect(order(["cards", "corners"])).toEqual([
+      "main",
+      "cards",
+      "corners",
+      "goals",
+      "halves",
+      "handicaps",
+      "players",
+      "more",
+    ]);
+    expect(order(["unknown"])).toEqual(tabs.map((x) => x.key));
+    expect([...order(["cards"])].sort()).toEqual(tabs.map((x) => x.key).sort());
+  });
+
   test("seven at most and «Más», in the plan's order, other sports left out", () => {
     expect(tabs.map((x) => x.key)).toEqual([
       "main",

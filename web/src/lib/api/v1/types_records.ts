@@ -212,6 +212,12 @@ export interface DailyBoard {
 export type MarketKey = "1X2" | "OU" | "BTTS" | "AH" | "DC";
 
 /**
+ * What a reader may follow as a market (plan UX, AP-B05): the five classic markets and the two families, any corners line
+ * and any cards line. A pick is only ever of the five (`MarketKey`).
+ */
+export type FollowedMarketKey = MarketKey | "CORNERS" | "CARDS";
+
+/**
  * A market of the catalogue of prices by its stable key (`code.period.subject`, «corners_over_under.FT.match»): a leg of
  * Mi parlay can name one while FBI_PARLAY_MARKETS_V2 is on and the server marks the selection parlayable (plan EA, EA-501).
  */

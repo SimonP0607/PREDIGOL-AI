@@ -21,6 +21,7 @@ import { catalogKeyName } from "./catalogName";
 import { validEvent } from "@/lib/track";
 import type { FavoritesView } from "@/lib/api/v1/types_favorites";
 import {
+  DEFAULT_LIMITS,
   MARKETS,
   beforeOf,
   bodyOf,
@@ -48,6 +49,7 @@ import {
   type Choice,
 } from "./model";
 import { trackChanges } from "./analytics";
+import { familiesFirst, followedFamilies, followSet } from "./follow";
 import { hintShown, welcomeSteps, withOnboarding } from "./onboarding";
 
 setLocale("es");
@@ -229,7 +231,7 @@ describe("the picker as it renders", () => {
     expect(html).toContain('aria-label="Quitar Santa Fe"');
     expect(html.match(/data-testid="fav-league"/g)?.length).toBe(2);
     expect(html.match(/aria-pressed="true"/g)?.length).toBe(1);
-    expect(html.match(/aria-pressed="false"/g)?.length).toBe(6); // Premier League and the five markets
+    expect(html.match(/aria-pressed="false"/g)?.length).toBe(8); // Premier League and the seven markets
     expect(html).toContain("min-h-11");
     expect(html).toContain('for="'); // the search has its label
   });
@@ -281,8 +283,11 @@ describe("players and markets (closing plan 3.1)", () => {
     expect(hasMarket(c, "DC")).toBe(false);
   });
 
-  test("the markets a reader may follow are the five PrediGol reads; another is not offered", () => {
-    expect([...MARKETS]).toEqual(["1X2", "OU", "BTTS", "AH", "DC"]);
+  test("the markets a reader may follow are the five PrediGol reads and the two families; another is not offered", () => {
+    expect([...MARKETS]).toEqual(["1X2", "OU", "BTTS", "AH", "DC", "CORNERS", "CARDS"]);
+    expect(DEFAULT_LIMITS.markets).toBe(MARKETS.length);
+    expect(followableMarket("CORNERS")).toBe("CORNERS");
+    expect(followableMarket("CARDS")).toBe("CARDS");
     expect(followableMarket("BTTS")).toBe("BTTS");
     expect(followableMarket("CS")).toBeNull();
     expect(followableMarket("")).toBeNull();
@@ -307,6 +312,31 @@ describe("players and markets (closing plan 3.1)", () => {
     expect(followedFirst(views, []).map((v) => v.key)).toEqual(["a", "b", "c", "d"]);
     expect(followedFirst(views, ["d", "b"]).map((v) => v.key)).toEqual(["d", "b", "a", "c"]);
     expect(followedFirst(views, ["x"]).map((v) => v.key)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  test("the families followed as markets come first in the order chosen, never changing what is listed (AP-B05)", () => {
+    const v = view({ markets: ["CARDS", "OU", "CORNERS"], max_markets: 7 });
+    expect(followedFamilies(v)).toEqual(["cards", "corners"]);
+    expect(followedFamilies(view({ personalization: false, markets: ["CARDS"] }))).toEqual([]);
+    expect(followedFamilies(null)).toEqual([]);
+    expect(followSet(v)?.families).toEqual(["cards", "corners"]);
+    const chips = ["featured", "result", "goals", "corners", "cards", "shots"];
+    expect(familiesFirst(chips, ["cards", "corners"])).toEqual([
+      "featured",
+      "cards",
+      "corners",
+      "result",
+      "goals",
+      "shots",
+    ]);
+    expect(familiesFirst(chips, [])).toEqual(chips);
+    expect(familiesFirst(chips, ["players"])).toEqual(chips);
+    expect(familiesFirst(["featured"], ["cards"])).toEqual(["featured"]);
+    expect(bodyOf(choiceOf(v)).markets).toEqual(["CARDS", "OU", "CORNERS"]);
+    // the sixth and seventh markets are accepted by the picker, the eighth never
+    const seven = MARKETS.reduce((c, m) => toggleMarket(c, m, DEFAULT_LIMITS), EMPTY);
+    expect(seven.markets).toEqual([...MARKETS]);
+    expect(full(seven, DEFAULT_LIMITS).markets).toBe(true);
   });
 
   test("a save with catalogue markets sends them, and an older answer reads as none", () => {
@@ -340,7 +370,7 @@ describe("players and markets (closing plan 3.1)", () => {
       leagues: 10,
       teams: 20,
       players: 20,
-      markets: 5,
+      markets: 7,
       catalog: 10,
     });
   });
@@ -437,7 +467,7 @@ describe("the picker shows players and markets", () => {
     );
   }
 
-  test("the counts, the chips that remove and the five markets as toggles that say their state", () => {
+  test("the counts, the chips that remove and the seven markets as toggles that say their state", () => {
     const html = render({
       ...EMPTY,
       players: [player(50, "James Rodríguez")],
@@ -447,13 +477,15 @@ describe("the picker shows players and markets", () => {
     expect(html).toContain("2 de 2 mercados");
     expect(html).toContain('aria-label="Quitar James Rodríguez"');
     expect(html).toContain('aria-label="Quitar Más/Menos goles"');
-    expect(html.match(/data-testid="fav-market"/g)?.length).toBe(5);
+    expect(html.match(/data-testid="fav-market"/g)?.length).toBe(7);
+    expect(html).toContain("Córners");
+    expect(html).toContain("Tarjetas");
     expect(html).toContain("Mercados que lees");
     expect(html).toContain("no cambian ningún pick, probabilidad ni cuota");
-    // two markets chosen, the limit: the other three cannot be added
-    expect(html.match(/data-testid="fav-market"/g)?.length).toBe(5);
+    // two markets chosen, the limit: the other five cannot be added
+    expect(html.match(/data-testid="fav-market"/g)?.length).toBe(7);
     expect((html.match(/aria-pressed="false" disabled=""/g) ?? []).length).toBeGreaterThanOrEqual(
-      3,
+      5,
     );
   });
 
