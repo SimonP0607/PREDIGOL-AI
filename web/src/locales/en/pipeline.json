@@ -1,0 +1,50 @@
+{
+  "title": "The path of a pick",
+  "intro": "Each box is a stage of the path, from outside data to what PrediGol learns. The colour and the word say how it is going; tap one to open its page. It refreshes by itself every minute.",
+  "diagram": "Diagram of the path of a pick, from the sources to learning, with the state of each stage",
+  "list": "The same stages, as a list",
+  "refreshed": "Updated at {time}",
+  "refresh": "Refresh now",
+  "loading": "Reading the state of the jobs…",
+  "failed": "The state of the jobs could not be read. The other sections of this page keep working.",
+  "stage": {
+    "sources": "Sources",
+    "ingest": "Ingestion",
+    "validation": "Validation",
+    "models": "Models",
+    "calibration": "Calibration",
+    "value": "Value",
+    "intelligence": "Intelligence",
+    "selection": "Selection",
+    "publication": "Publication",
+    "settlement": "Settlement",
+    "learning": "Learning"
+  },
+  "what": {
+    "sources": "Captures matches, results and prices",
+    "ingest": "Tidies what was captured and makes it ready",
+    "validation": "Checks that the data can be trusted",
+    "models": "Works out the probabilities",
+    "calibration": "Checks that the probabilities hit",
+    "value": "Compares with the market's price",
+    "intelligence": "Research, news and chronicles",
+    "selection": "Chooses the day's candidates",
+    "publication": "What the reader sees",
+    "settlement": "Closes each pick with its result",
+    "learning": "The AI reviews the day and proposes improvements"
+  },
+  "state": {
+    "ok": "Up to date",
+    "late": "Running late",
+    "error": "In error",
+    "none": "No data",
+    "closed": "Closed"
+  },
+  "closedNote": "Closed by the owner's decision: nothing experimental is published.",
+  "last": "Last run: {when}",
+  "never": "No runs recorded",
+  "counts": "{runs} runs and {errors} in error in 24 h",
+  "worst": "Look at: {job}",
+  "unmapped": "Jobs no stage claims yet: {jobs}",
+  "short": "{runs} runs · {errors} failed"
+}
