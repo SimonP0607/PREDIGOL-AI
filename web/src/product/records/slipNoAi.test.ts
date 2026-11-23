@@ -10,17 +10,26 @@ import enOdds from "@/locales/en/odds.json";
  */
 describe("Mi parlay no declara «sin IA»", () => {
   const all: Record<string, unknown> = { esRecords, enRecords, esOdds, enOdds };
-  const strings = (value: unknown, path: string, out: Array<[string, string]>): Array<[string, string]> => {
+  const strings = (
+    value: unknown,
+    path: string,
+    out: Array<[string, string]>,
+  ): Array<[string, string]> => {
     if (typeof value === "string") out.push([path, value]);
     else if (value && typeof value === "object")
-      for (const [k, v] of Object.entries(value as Record<string, unknown>)) strings(v, `${path}.${k}`, out);
+      for (const [k, v] of Object.entries(value as Record<string, unknown>))
+        strings(v, `${path}.${k}`, out);
     return out;
   };
 
   test("ningún texto de parlay y cuotas dice «sin IA» o «Ninguna IA analiza»", () => {
     const hits = Object.entries(all)
       .flatMap(([name, catalog]) => strings(catalog, name, []))
-      .filter(([path, text]) => /sin IA|no AI\b|Ninguna IA|No AI analyses/i.test(text) && !/(aiNone|noReview|noBrief|withoutMarket)/.test(path));
+      .filter(
+        ([path, text]) =>
+          /sin IA|no AI\b|Ninguna IA|No AI analyses/i.test(text) &&
+          !/(aiNone|noReview|noBrief|withoutMarket)/.test(path),
+      );
     expect(hits).toEqual([]);
   });
 
