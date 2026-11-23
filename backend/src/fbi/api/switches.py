@@ -125,7 +125,7 @@ cup match's blocks by the cells of its own phase. The nightly batch measures the
 PROB_BY_COMPETITION: Final = "FBI_PROB_BY_COMPETITION"
 """State 5 of C-16 by competition (plan PM, PM-12-06; IA-152): OFF while the line is absent - a market's forecast is authorised as
 before (catalogue ``evaluable`` and ``FBI_FORECAST_USERS``) - and ``=1`` also asks the competition's own sample: the newest weekly
-report of ``fbi.backtesting.segments`` must call the market ``apta`` there; a competition with no verdict reads «no autorizada». It
+report of ``fbi.coverage.model_segments`` must call the market ``apta`` there; a competition with no verdict reads «no autorizada». It
 changes only what C-16 says (itself behind ``FBI_AVAILABILITY``): no pick, model or forecast reads it."""
 
 USAGE_CONSOLE: Final = "FBI_USAGE_CONSOLE"

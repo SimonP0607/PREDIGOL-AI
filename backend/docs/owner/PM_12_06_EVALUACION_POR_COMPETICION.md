@@ -5,7 +5,7 @@ apagado. Dos interruptores, los dos **apagados** por omisión.
 
 ## Qué mide
 
-`fbi.backtesting.segments` (`segments-v1`) puntúa lo que ya está guardado contra el resultado de los 90 minutos (`reg_goals_*`):
+`fbi.coverage.model_segments` (`segments-v1`) puntúa lo que ya está guardado contra el resultado de los 90 minutos (`reg_goals_*`):
 
 | Fuente | Qué es | Tabla |
 | --- | --- | --- |

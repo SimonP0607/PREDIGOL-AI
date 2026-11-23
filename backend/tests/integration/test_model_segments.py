@@ -15,8 +15,8 @@ import psycopg
 import pytest
 
 import fbi.coverage.resolve as resolve
-from fbi.backtesting import segments as sg
 from fbi.coverage import levels
+from fbi.coverage import model_segments as sg
 from tests.integration.conftest import Seed
 from tests.integration.helpers import scalar
 from tests.unit.test_coverage_resolve import parlay_rules

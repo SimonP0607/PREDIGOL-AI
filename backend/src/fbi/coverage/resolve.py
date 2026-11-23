@@ -15,7 +15,7 @@ own. Nothing is decided here that a module does not already decide: every state 
                                 ``models.match_forecasts``)
  5    ``prob_authorised``       the catalogue holds the market ``evaluable`` (a validated calibrator) and readers may see the forecast
                                 (``FBI_FORECAST_USERS``): what C-14 shows a reader. With ``FBI_PROB_BY_COMPETITION`` (PM-12-06, off by
-                                default) also the competition's own sample: the newest weekly report of ``fbi.backtesting.segments``
+                                default) also the competition's own sample: the newest weekly report of ``fbi.coverage.model_segments``
                                 calls the market ``apta`` there (``analytics.evaluation_segments``); a competition with no verdict -
                                 every new one - is not authorised
  6    ``settleable``            a settlement rule grades it (``fbi.market.rules.rule_for``) and the season records what it reads
@@ -60,7 +60,7 @@ CRASH: Final = "error_interno"
 """What Mi parlay does today with a leg its rules take but no house prices (see ``_catalogue_leg``): the request fails."""
 COVERED: Final = ("A", "B")
 OWN_SAMPLE_OK: Final = "apta"
-"""The verdict of ``fbi.backtesting.segments`` that authorises a market in a competition (state 5, PM-12-06)."""
+"""The verdict of ``fbi.coverage.model_segments`` that authorises a market in a competition (state 5, PM-12-06)."""
 """A cell is enough (state 2) at B or more."""
 FAMILY_OF: Final[dict[str, str]] = {"goals_half": "goals_half", "corners": "corners", "cards": "cards", "shots": "shots",
                                     "players": "players"}

@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 import fbi.coverage.resolve as resolve
-from fbi.backtesting import segments as sg
+from fbi.coverage import model_segments as sg
 from fbi.evaluation import board
 from fbi.market.in_force import key_of
 from fbi.models.metrics import brier, log_loss, per_match_rps

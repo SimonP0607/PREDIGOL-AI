@@ -26,7 +26,7 @@ runs only it. A measure: nothing reads it to price, pick or decide.
 
 Then, once a week (the first night of the ISO week that finds it not done, so Mondays) and only while ``FBI_MODEL_SEGMENTS`` is on (off by
 default: PM-12-06), the same process scores the stored forecasts against the results by competition and by coverage level
-(``fbi.backtesting.segments``, into ``analytics.evaluation_reports`` and ``analytics.evaluation_segments``) with its own ledger row
+(``fbi.coverage.model_segments``, into ``analytics.evaluation_reports`` and ``analytics.evaluation_segments``) with its own ledger row
 (``model_segments``). ``--no-evaluation`` skips it; ``--evaluation-only`` runs only it. It changes no pick, model or forecast.
 
 It records one row in the job ledger (``raw.ingestion_runs``, ``availability_refresh``) with what it did, how long it took and the peak
@@ -234,14 +234,14 @@ WEEK_DONE_SQL = ("SELECT 1 FROM raw.ingestion_runs WHERE job_type = %s AND statu
 
 
 def evaluation_phase(conn: Any, *, at: datetime, process_started: float, scheduled: bool) -> None:
-    """PM-12-06: the week's evaluation by competition and coverage level (``fbi.backtesting.segments``), once per ISO week, with its
+    """PM-12-06: the week's evaluation by competition and coverage level (``fbi.coverage.model_segments``), once per ISO week, with its
     own ledger row, only while ``FBI_MODEL_SEGMENTS`` is on, and stopping before the scheduler's limit on the whole process."""
     import psycopg
     from psycopg.types.json import Json
 
-    from fbi.backtesting import segments
     from fbi.core.version import code_version
     from fbi.coverage import job
+    from fbi.coverage import model_segments as segments
     from fbi.ingestion.ledger import RunCounters, RunLedger
 
     if segments.mode() != "on":

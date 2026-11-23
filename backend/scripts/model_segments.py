@@ -1,4 +1,4 @@
-"""PM-12-06: the models judged by competition and by coverage level (``fbi.backtesting.segments``) - the owner's private command.
+"""PM-12-06: the models judged by competition and by coverage level (``fbi.coverage.model_segments``) - the owner's private command.
 
     python -m scripts.model_segments show [--source forecast --source prediction] [--market 1X2] [--kind competition] [--top 40]
     python -m scripts.model_segments check [--session 4]       # the segments add back to the global figures; a LAB session's runs too
@@ -48,10 +48,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     import psycopg
 
-    from fbi.backtesting import segments as sg
     from fbi.core.clock import now
     from fbi.core.config import settings
     from fbi.core.version import code_version
+    from fbi.coverage import model_segments as sg
 
     write = args.cmd == "run"
     with psycopg.connect(settings.database.psycopg_url, connect_timeout=10, application_name=sg.JOB) as conn:
