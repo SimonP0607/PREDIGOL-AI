@@ -20,6 +20,7 @@ import { ShadowToggle } from "@/product/shared/ShadowToggle";
 import { EvaluationNote } from "@/product/records/DailySetBlock";
 import { ParlayRecordCard } from "@/product/records/ParlayRecordCard";
 import { useSlip } from "@/product/records/slipContext";
+import { AddToSlipButton } from "./AddToSlipButton";
 import { ParlayBuilder } from "./Builder";
 import { KindSwitch, kindVisibility } from "./KindSwitch";
 import { useGuideScreen } from "@/product/guides/context";
@@ -156,26 +157,36 @@ export function ParlaysPage() {
       />
       {data?.evaluation_mode ? <EvaluationNote /> : null}
       <KindSwitch active={active} onChange={setActive} />
-      {KINDS.map((kind) =>
-        data ? (
-          <ParlayRecordCard
-            key={kind}
-            kind={kind}
-            parlay={kind === "daily" ? data.daily_parlay : data.multiday_parlay}
-            evaluation={data.evaluation_mode}
-            className={kindVisibility(kind, active)}
-          />
-        ) : board.isError ? (
-          <Card key={kind} className={kindVisibility(kind, active)}>
-            <ErrorState error={board.error} onRetry={() => void board.refetch()} />
-          </Card>
-        ) : (
-          <SkeletonBlock
-            key={kind}
-            className={cn("h-80 rounded-xl", kindVisibility(kind, active))}
-          />
-        ),
-      )}
+      {/* AP-L03: the cards side by side where the page is wide enough (by the page's own width, not the screen's). */}
+      <div className="@container">
+        <div className="grid gap-6 @3xl:grid-cols-2 @3xl:items-stretch" data-testid="parlays-cards">
+          {KINDS.map((kind) =>
+            data ? (
+              <ParlayRecordCard
+                key={kind}
+                kind={kind}
+                parlay={kind === "daily" ? data.daily_parlay : data.multiday_parlay}
+                evaluation={data.evaluation_mode}
+                className={kindVisibility(kind, active)}
+                footer={
+                  <AddToSlipButton
+                    parlay={kind === "daily" ? data.daily_parlay : data.multiday_parlay}
+                  />
+                }
+              />
+            ) : board.isError ? (
+              <Card key={kind} className={kindVisibility(kind, active)}>
+                <ErrorState error={board.error} onRetry={() => void board.refetch()} />
+              </Card>
+            ) : (
+              <SkeletonBlock
+                key={kind}
+                className={cn("h-80 rounded-xl", kindVisibility(kind, active))}
+              />
+            ),
+          )}
+        </div>
+      </div>
       <ParlayBuilder />
       <BuildYourOwn />
       <HowWeBuild />
