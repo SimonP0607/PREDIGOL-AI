@@ -25,6 +25,7 @@ import "@/product/match/stats/matchvizText";
 import "@/product/teams/stats/playerText";
 import "@/product/explain/probIconsText";
 import "@/product/news/storyText";
+import "@/product/match/marketsV3Text";
 
 /** Namespaces a reader's pages read: the first veto's list plus the ones it did not watch (AP-Q02). */
 const READER = [
@@ -62,6 +63,7 @@ const READER = [
   "explorer",
   "notices",
   "stories",
+  "marketsv3",
 ] as const;
 
 type Term = readonly [RegExp, string, Locale[]];

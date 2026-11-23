@@ -164,10 +164,13 @@ export function PriceRow({
   label,
   price,
   choose,
+  note,
 }: {
   label: string;
   price: BestPrice | null;
   choose?: Choose | undefined;
+  /** After the bookmaker: how old the price is. */
+  note?: ReactNode;
 }) {
   return (
     <li className="flex min-h-11 items-center justify-between gap-3 border-t border-border/60 py-1 first:border-t-0">
@@ -175,6 +178,7 @@ export function PriceRow({
         <span className="truncate text-sm font-medium">{label}</span>
         <span className="truncate text-micro leading-4 text-subtle-foreground">
           {price ? price.bookmaker : t("match.prices.noPrice")}
+          {price && note ? <> · {note}</> : null}
         </span>
       </span>
       {price ? (

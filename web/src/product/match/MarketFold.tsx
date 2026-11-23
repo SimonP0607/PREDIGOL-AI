@@ -168,7 +168,7 @@ function Tiles({ view, choose }: { view: MarketView; choose: Choose | undefined 
 }
 
 /** Every bookmaker's price of a market (one line at a time for over/under and handicaps), the best in gold. */
-function BooksTable({ view }: { view: MarketView }) {
+export function BooksTable({ view }: { view: MarketView }) {
   const [rowKey, setRowKey] = useState<string>(view.rows[view.main]?.key ?? "");
   const row = view.rows.find((r) => r.key === rowKey) ?? view.rows[view.main];
   const table: BookLine[] = row?.books ?? [];

@@ -1,0 +1,21 @@
+{
+  "family": {
+    "featured": "Popular",
+    "goals": "Goals",
+    "goals_half": "Halves",
+    "corners": "Corners",
+    "cards": "Cards",
+    "shots": "Shots",
+    "result": "More"
+  },
+  "familiesLabel": "Market families",
+  "model": "PrediGol {pct}%",
+  "houses": "Bookmakers {pct}%",
+  "history_one": "Last {n}: {count} time",
+  "history_other": "Last {n}: {count} times",
+  "preliminary": "Preliminary estimate",
+  "compare": "Compare bookmakers",
+  "hideBooks": "Hide bookmakers",
+  "personalize": "Personalize markets",
+  "help": "Each price is the best among the bookmakers we read, with the time it was read. «Preliminary estimate»: PrediGol's figure for that market is not yet checked."
+}
