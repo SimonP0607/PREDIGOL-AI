@@ -1,0 +1,6743 @@
+{
+ "current_min_matches": 3,
+ "export": {
+  "at": "2026-11-21T05:01:32.077135+00:00",
+  "code_version": "b14701da1afb",
+  "filters": {
+   "since": "2019-01-01 00:00:00+00:00"
+  },
+  "folder": "20261121T050132Z",
+  "snapshot": "4765478:4765516:4765478",
+  "version": "lab-export-v2"
+ },
+ "method": "n_R = R/(1-R) * s2w/tau2 por liga (temporadas cerradas desde 2019, ponderadas por equipos), validado con la correlación entre primera y segunda mitad de temporada; mediana de las ligas. Solo informativo: puede subir un mínimo de muestra, nunca bajarlo sin decisión del dueño.",
+ "protocol": {
+  "fingerprint": "9a8fdf48f635dda1977a6ea992a92ea9abf45050bd6233f3500a2d20ad45e50b",
+  "framework": "lab-protocol-v1",
+  "protocol": "PM-10-08",
+  "version": "proto-pm-10-08-v1"
+ },
+ "stats": {
+  "corners_against": {
+   "by_league": {
+    "1": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 22,
+     "n70": 51,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 21,
+     "n70": 48,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 6,
+     "n70": 14,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 25,
+     "n70": 57,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 32,
+     "n70": 73,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 19,
+     "n70": 45,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 12,
+     "n70": 27,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 18,
+     "n70": 41,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 19,
+     "n70": 45,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 11,
+     "n70": 24,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 21,
+     "n70": 48,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 11,
+     "n70": 24,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 18,
+     "n70": 42,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 46,
+     "n70": 107,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 17,
+     "n70": 38,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 16,
+     "n70": 37,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 32,
+     "n70": 73,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 23,
+     "n70": 53,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Pro League"
+    },
+    "174": {
+     "n50": 11,
+     "n70": 26,
+     "name": "1. Division"
+    },
+    "175": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 33,
+     "n70": 76,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 33,
+     "n70": 77,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 21,
+     "n70": 48,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 15,
+     "n70": 35,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 39,
+     "n70": 90,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 27,
+     "n70": 62,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 17,
+     "n70": 40,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 29,
+     "n70": 68,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 16,
+     "n70": 38,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 37,
+     "n70": 85,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 35,
+     "n70": 81,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 45,
+     "n70": 104,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 24,
+     "n70": 56,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 26,
+     "n70": 59,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 26,
+     "n70": 60,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 24,
+     "n70": 55,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 17,
+     "n70": 40,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 15,
+     "n70": 35,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 16,
+     "n70": 38,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 26,
+     "n70": 60,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 66,
+   "n50": 16,
+   "n70": 38,
+   "proposed_min_matches": 16,
+   "verdict": "PASA"
+  },
+  "corners_for": {
+   "by_league": {
+    "1": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 22,
+     "n70": 51,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 35,
+     "n70": 81,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 3,
+     "n70": 7,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 3,
+     "n70": 5,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 6,
+     "n70": 12,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 25,
+     "n70": 57,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 27,
+     "n70": 62,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 24,
+     "n70": 55,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 11,
+     "n70": 26,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 21,
+     "n70": 48,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 12,
+     "n70": 28,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 14,
+     "n70": 32,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 23,
+     "n70": 52,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 15,
+     "n70": 35,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 14,
+     "n70": 32,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 30,
+     "n70": 70,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Pro League"
+    },
+    "174": {
+     "n50": 14,
+     "n70": 31,
+     "name": "1. Division"
+    },
+    "175": {
+     "n50": 21,
+     "n70": 48,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 18,
+     "n70": 40,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 32,
+     "n70": 74,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 30,
+     "n70": 70,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 26,
+     "n70": 59,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 34,
+     "n70": 80,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 15,
+     "n70": 35,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 26,
+     "n70": 60,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 15,
+     "n70": 35,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 51,
+     "n70": 118,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 30,
+     "n70": 69,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 27,
+     "n70": 62,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 34,
+     "n70": 80,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 30,
+     "n70": 69,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 24,
+     "n70": 55,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 139,
+     "n70": 323,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 35,
+     "n70": 81,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 22,
+     "n70": 52,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 30,
+     "n70": 70,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 17,
+     "n70": 40,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 30,
+     "n70": 68,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 23,
+     "n70": 54,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 66,
+   "n50": 17,
+   "n70": 40,
+   "proposed_min_matches": 17,
+   "verdict": "PASA"
+  },
+  "expected_goals_against": {
+   "by_league": {
+    "1": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Premier League"
+    },
+    "128": {
+     "n50": 14,
+     "n70": 33,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 13,
+     "n70": 31,
+     "name": "Ligue 1"
+    },
+    "144": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Super League"
+    },
+    "149": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Süper Lig"
+    },
+    "152": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Super League"
+    },
+    "2": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Serie A"
+    },
+    "22": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Eredivisie"
+    },
+    "25": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 22,
+     "n70": 51,
+     "name": "La Liga"
+    },
+    "4": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Bundesliga"
+    },
+    "47": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Jupiler Pro League"
+    },
+    "5": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 31,
+     "n70": 71,
+     "name": "Major League Soccer"
+    },
+    "6": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Serie A"
+    }
+   },
+   "eligible_leagues": 16,
+   "n50": 12,
+   "n70": 28,
+   "proposed_min_matches": 12,
+   "verdict": "PASA"
+  },
+  "expected_goals_for": {
+   "by_league": {
+    "1": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Premier League"
+    },
+    "128": {
+     "n50": 15,
+     "n70": 35,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Ligue 1"
+    },
+    "144": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Super League"
+    },
+    "149": {
+     "n50": 6,
+     "n70": 12,
+     "name": "Süper Lig"
+    },
+    "152": {
+     "n50": 17,
+     "n70": 39,
+     "name": "Super League"
+    },
+    "2": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Serie A"
+    },
+    "22": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Eredivisie"
+    },
+    "25": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 5,
+     "n70": 12,
+     "name": "La Liga"
+    },
+    "4": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Bundesliga"
+    },
+    "47": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Jupiler Pro League"
+    },
+    "5": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Major League Soccer"
+    },
+    "6": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Serie A"
+    }
+   },
+   "eligible_leagues": 16,
+   "n50": 7,
+   "n70": 15,
+   "proposed_min_matches": 7,
+   "verdict": "PASA"
+  },
+  "fouls_against": {
+   "eligible_leagues": 65,
+   "verdict": "NO PASA"
+  },
+  "fouls_for": {
+   "eligible_leagues": 65,
+   "verdict": "NO PASA"
+  },
+  "goals_against": {
+   "by_league": {
+    "1": {
+     "n50": 18,
+     "n70": 41,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 24,
+     "n70": 55,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 39,
+     "n70": 91,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 7,
+     "n70": 15,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 27,
+     "n70": 63,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 39,
+     "n70": 90,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 16,
+     "n70": 38,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 23,
+     "n70": 53,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 24,
+     "n70": 56,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 6,
+     "n70": 14,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 24,
+     "n70": 56,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 12,
+     "n70": 26,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 28,
+     "n70": 64,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 13,
+     "n70": 29,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 25,
+     "n70": 58,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 16,
+     "n70": 38,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 18,
+     "n70": 42,
+     "name": "NWSL Women"
+    },
+    "164": {
+     "n50": 20,
+     "n70": 45,
+     "name": "NB I"
+    },
+    "17": {
+     "n50": 39,
+     "n70": 90,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Pro League"
+    },
+    "172": {
+     "n50": 25,
+     "n70": 59,
+     "name": "Stars League"
+    },
+    "173": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Pro League"
+    },
+    "174": {
+     "n50": 10,
+     "n70": 23,
+     "name": "1. Division"
+    },
+    "175": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 26,
+     "n70": 61,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Premier League"
+    },
+    "178": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Primera División"
+    },
+    "179": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Premier Division"
+    },
+    "181": {
+     "n50": 29,
+     "n70": 67,
+     "name": "Ligat Ha'al"
+    },
+    "182": {
+     "n50": 36,
+     "n70": 83,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 62,
+     "n70": 143,
+     "name": "2. Bundesliga"
+    },
+    "194": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Damallsvenskan"
+    },
+    "2": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 30,
+     "n70": 70,
+     "name": "3. Liga"
+    },
+    "202": {
+     "n50": 25,
+     "n70": 59,
+     "name": "J2 League"
+    },
+    "203": {
+     "n50": 25,
+     "n70": 58,
+     "name": "J3 League"
+    },
+    "204": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Championship"
+    },
+    "205": {
+     "n50": 11,
+     "n70": 24,
+     "name": "League One"
+    },
+    "206": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Veikkausliiga"
+    },
+    "207": {
+     "n50": 23,
+     "n70": 52,
+     "name": "Division Profesional - Apertura"
+    },
+    "208": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Division Profesional - Clausura"
+    },
+    "210": {
+     "n50": 13,
+     "n70": 31,
+     "name": "2. liga"
+    },
+    "22": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 29,
+     "n70": 68,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 25,
+     "n70": 57,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 22,
+     "n70": 51,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 29,
+     "n70": 68,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 38,
+     "n70": 88,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 26,
+     "n70": 60,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 27,
+     "n70": 63,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 57,
+     "n70": 133,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 36,
+     "n70": 82,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 48,
+     "n70": 112,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 17,
+     "n70": 39,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 34,
+     "n70": 79,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 32,
+     "n70": 75,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 37,
+     "n70": 87,
+     "name": "Major League Soccer"
+    },
+    "53": {
+     "n50": 11,
+     "n70": 24,
+     "name": "USL Championship"
+    },
+    "55": {
+     "n50": 22,
+     "n70": 51,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 28,
+     "n70": 64,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 27,
+     "n70": 63,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 19,
+     "n70": 45,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 32,
+     "n70": 74,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 44,
+     "n70": 103,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 18,
+     "n70": 41,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 80,
+   "n50": 19,
+   "n70": 45,
+   "proposed_min_matches": 19,
+   "verdict": "PASA"
+  },
+  "goals_for": {
+   "by_league": {
+    "1": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 21,
+     "n70": 47,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 36,
+     "n70": 84,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 4,
+     "n70": 9,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 21,
+     "n70": 48,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 26,
+     "n70": 60,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 11,
+     "n70": 26,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 26,
+     "n70": 60,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 21,
+     "n70": 48,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 9,
+     "n70": 20,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 29,
+     "n70": 66,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 10,
+     "n70": 24,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 17,
+     "n70": 40,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 24,
+     "n70": 55,
+     "name": "NWSL Women"
+    },
+    "164": {
+     "n50": 19,
+     "n70": 44,
+     "name": "NB I"
+    },
+    "17": {
+     "n50": 38,
+     "n70": 89,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Pro League"
+    },
+    "172": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Stars League"
+    },
+    "173": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Pro League"
+    },
+    "174": {
+     "n50": 16,
+     "n70": 37,
+     "name": "1. Division"
+    },
+    "175": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Premier League"
+    },
+    "178": {
+     "n50": 10,
+     "n70": 24,
+     "name": "Primera División"
+    },
+    "179": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Premier Division"
+    },
+    "181": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Ligat Ha'al"
+    },
+    "182": {
+     "n50": 18,
+     "n70": 41,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 20,
+     "n70": 47,
+     "name": "2. Bundesliga"
+    },
+    "194": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Damallsvenskan"
+    },
+    "2": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 36,
+     "n70": 84,
+     "name": "3. Liga"
+    },
+    "202": {
+     "n50": 23,
+     "n70": 54,
+     "name": "J2 League"
+    },
+    "203": {
+     "n50": 36,
+     "n70": 84,
+     "name": "J3 League"
+    },
+    "204": {
+     "n50": 22,
+     "n70": 51,
+     "name": "Championship"
+    },
+    "205": {
+     "n50": 16,
+     "n70": 38,
+     "name": "League One"
+    },
+    "206": {
+     "n50": 18,
+     "n70": 41,
+     "name": "Veikkausliiga"
+    },
+    "207": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Division Profesional - Apertura"
+    },
+    "208": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Division Profesional - Clausura"
+    },
+    "210": {
+     "n50": 15,
+     "n70": 35,
+     "name": "2. liga"
+    },
+    "22": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 15,
+     "n70": 33,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 30,
+     "n70": 70,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 9,
+     "n70": 21,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 35,
+     "n70": 81,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 14,
+     "n70": 33,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 29,
+     "n70": 66,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 34,
+     "n70": 78,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 25,
+     "n70": 58,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 32,
+     "n70": 74,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 17,
+     "n70": 39,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 33,
+     "n70": 77,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 26,
+     "n70": 60,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 30,
+     "n70": 70,
+     "name": "Major League Soccer"
+    },
+    "53": {
+     "n50": 26,
+     "n70": 59,
+     "name": "USL Championship"
+    },
+    "55": {
+     "n50": 24,
+     "n70": 56,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 41,
+     "n70": 94,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 25,
+     "n70": 58,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 80,
+   "n50": 16,
+   "n70": 37,
+   "proposed_min_matches": 16,
+   "verdict": "PASA"
+  },
+  "offsides_against": {
+   "eligible_leagues": 59,
+   "verdict": "NO PASA"
+  },
+  "offsides_for": {
+   "by_league": {
+    "1": {
+     "n50": 48,
+     "n70": 111,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 45,
+     "n70": 105,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 31,
+     "n70": 72,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 8,
+     "n70": 17,
+     "name": "FA WSL"
+    },
+    "128": {
+     "n50": 31,
+     "n70": 71,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 31,
+     "n70": 71,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 27,
+     "n70": 63,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 70,
+     "n70": 162,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 35,
+     "n70": 80,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 64,
+     "n70": 148,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 17,
+     "n70": 38,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 37,
+     "n70": 86,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 36,
+     "n70": 84,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 67,
+     "n70": 155,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 19,
+     "n70": 44,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 29,
+     "n70": 67,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 65,
+     "n70": 152,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 36,
+     "n70": 84,
+     "name": "Premier League"
+    },
+    "161": {
+     "n50": 67,
+     "n70": 155,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 47,
+     "n70": 108,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 23,
+     "n70": 54,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 136,
+     "n70": 316,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 156,
+     "n70": 364,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 43,
+     "n70": 100,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 69,
+     "n70": 160,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 32,
+     "n70": 74,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 30,
+     "n70": 69,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 189,
+     "n70": 441,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 49,
+     "n70": 113,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 22,
+     "n70": 50,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 30,
+     "n70": 70,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 31,
+     "n70": 72,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 61,
+     "n70": 143,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 47,
+     "n70": 109,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 26,
+     "n70": 60,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 42,
+     "n70": 96,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 48,
+     "n70": 112,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 36,
+     "n70": 82,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 27,
+     "n70": 63,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 56,
+     "n70": 131,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 33,
+     "n70": 76,
+     "name": "Jupiler Pro League"
+    },
+    "49": {
+     "n50": 47,
+     "n70": 108,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 44,
+     "n70": 102,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 37,
+     "n70": 85,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 32,
+     "n70": 73,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 22,
+     "n70": 50,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 28,
+     "n70": 65,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 38,
+     "n70": 88,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 50,
+     "n70": 115,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 29,
+     "n70": 68,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 55,
+     "n70": 128,
+     "name": "K League 1"
+    }
+   },
+   "eligible_leagues": 59,
+   "n50": 35,
+   "n70": 80,
+   "proposed_min_matches": 35,
+   "verdict": "PASA"
+  },
+  "pass_accuracy_against": {
+   "by_league": {
+    "1": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 11,
+     "n70": 26,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 14,
+     "n70": 31,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 5,
+     "n70": 10,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 7,
+     "n70": 16,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Super League"
+    },
+    "146": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 5,
+     "n70": 11,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 10,
+     "n70": 23,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 12,
+     "n70": 28,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Bundesliga"
+    },
+    "156": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Premier League"
+    },
+    "161": {
+     "n50": 9,
+     "n70": 19,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Indian Super League"
+    },
+    "179": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 67,
+     "n70": 156,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 11,
+     "n70": 25,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Serie A"
+    },
+    "22": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 10,
+     "n70": 23,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 15,
+     "n70": 35,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 14,
+     "n70": 32,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 57,
+   "n50": 9,
+   "n70": 20,
+   "proposed_min_matches": 9,
+   "verdict": "PASA"
+  },
+  "pass_accuracy_for": {
+   "by_league": {
+    "1": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 2,
+     "n70": 5,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 3,
+     "n70": 6,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 1,
+     "n70": 3,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 2,
+     "n70": 3,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 1,
+     "n70": 3,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 2,
+     "n70": 5,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 3,
+     "n70": 5,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 1,
+     "n70": 3,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Super League"
+    },
+    "146": {
+     "n50": 1,
+     "n70": 2,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 6,
+     "n70": 13,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 5,
+     "n70": 10,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 4,
+     "n70": 8,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Bundesliga"
+    },
+    "156": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Premier League"
+    },
+    "161": {
+     "n50": 4,
+     "n70": 8,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Indian Super League"
+    },
+    "179": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 1,
+     "n70": 2,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 2,
+     "n70": 5,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Serie A"
+    },
+    "22": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 4,
+     "n70": 10,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 2,
+     "n70": 3,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 3,
+     "n70": 5,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 2,
+     "n70": 3,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 3,
+     "n70": 6,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 57,
+   "n50": 3,
+   "n70": 6,
+   "proposed_min_matches": 3,
+   "verdict": "PASA"
+  },
+  "passes_against": {
+   "by_league": {
+    "1": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 7,
+     "n70": 16,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 12,
+     "n70": 27,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 2,
+     "n70": 5,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 8,
+     "n70": 17,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 4,
+     "n70": 10,
+     "name": "Super League"
+    },
+    "146": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 6,
+     "n70": 14,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 7,
+     "n70": 16,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 6,
+     "n70": 12,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Bundesliga"
+    },
+    "156": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Premier League"
+    },
+    "161": {
+     "n50": 10,
+     "n70": 22,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Indian Super League"
+    },
+    "179": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 7,
+     "n70": 15,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Serie A"
+    },
+    "22": {
+     "n50": 6,
+     "n70": 12,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 7,
+     "n70": 16,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 6,
+     "n70": 12,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 21,
+     "n70": 48,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 6,
+     "n70": 13,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 57,
+   "n50": 6,
+   "n70": 14,
+   "proposed_min_matches": 6,
+   "verdict": "PASA"
+  },
+  "passes_for": {
+   "by_league": {
+    "1": {
+     "n50": 2,
+     "n70": 3,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 3,
+     "n70": 5,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 3,
+     "n70": 6,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 2,
+     "n70": 3,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 1,
+     "n70": 2,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 1,
+     "n70": 2,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 2,
+     "n70": 4,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super League"
+    },
+    "146": {
+     "n50": 1,
+     "n70": 2,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 5,
+     "n70": 12,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 4,
+     "n70": 9,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 3,
+     "n70": 6,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Bundesliga"
+    },
+    "156": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 3,
+     "n70": 5,
+     "name": "Premier League"
+    },
+    "161": {
+     "n50": 6,
+     "n70": 14,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Indian Super League"
+    },
+    "179": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 1,
+     "n70": 3,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 3,
+     "n70": 6,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Serie A"
+    },
+    "22": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 1,
+     "n70": 3,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 2,
+     "n70": 3,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 3,
+     "n70": 5,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 3,
+     "n70": 6,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 57,
+   "n50": 3,
+   "n70": 6,
+   "proposed_min_matches": 3,
+   "verdict": "PASA"
+  },
+  "possession_pct_for": {
+   "by_league": {
+    "1": {
+     "n50": 3,
+     "n70": 5,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 4,
+     "n70": 8,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 5,
+     "n70": 11,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 2,
+     "n70": 3,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 2,
+     "n70": 3,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 2,
+     "n70": 3,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 4,
+     "n70": 8,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 4,
+     "n70": 10,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 4,
+     "n70": 10,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 2,
+     "n70": 4,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 6,
+     "n70": 14,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 5,
+     "n70": 11,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 3,
+     "n70": 7,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 7,
+     "n70": 16,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 4,
+     "n70": 8,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 4,
+     "n70": 8,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 12,
+     "n70": 28,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 3,
+     "n70": 6,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 3,
+     "n70": 5,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 4,
+     "n70": 8,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 63,
+   "n50": 4,
+   "n70": 8,
+   "proposed_min_matches": 4,
+   "verdict": "PASA"
+  },
+  "saves_against": {
+   "by_league": {
+    "1": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 27,
+     "n70": 63,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 46,
+     "n70": 106,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 5,
+     "n70": 12,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 18,
+     "n70": 41,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 32,
+     "n70": 74,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 28,
+     "n70": 64,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 25,
+     "n70": 59,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 17,
+     "n70": 39,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 23,
+     "n70": 52,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 18,
+     "n70": 42,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 29,
+     "n70": 66,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 19,
+     "n70": 45,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 21,
+     "n70": 48,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 57,
+     "n70": 132,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 22,
+     "n70": 51,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 15,
+     "n70": 33,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 19,
+     "n70": 45,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 43,
+     "n70": 99,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 50,
+     "n70": 117,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 17,
+     "n70": 39,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 41,
+     "n70": 95,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 35,
+     "n70": 82,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 14,
+     "n70": 32,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 22,
+     "n70": 52,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 17,
+     "n70": 40,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 21,
+     "n70": 48,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 46,
+     "n70": 107,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 36,
+     "n70": 84,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 26,
+     "n70": 60,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 37,
+     "n70": 86,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 54,
+     "n70": 125,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 24,
+     "n70": 55,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 34,
+     "n70": 79,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 23,
+     "n70": 53,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 38,
+     "n70": 88,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 28,
+     "n70": 64,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 21,
+     "n70": 48,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 17,
+     "n70": 40,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 61,
+     "n70": 141,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 64,
+   "n50": 20,
+   "n70": 47,
+   "proposed_min_matches": 20,
+   "verdict": "PASA"
+  },
+  "saves_for": {
+   "by_league": {
+    "1": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 27,
+     "n70": 63,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 28,
+     "n70": 65,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 6,
+     "n70": 14,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 20,
+     "n70": 45,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 21,
+     "n70": 47,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 21,
+     "n70": 48,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 15,
+     "n70": 33,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 16,
+     "n70": 37,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 16,
+     "n70": 36,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 28,
+     "n70": 64,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 13,
+     "n70": 29,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 44,
+     "n70": 103,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 10,
+     "n70": 24,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 27,
+     "n70": 61,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 26,
+     "n70": 60,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 38,
+     "n70": 88,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 15,
+     "n70": 33,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 34,
+     "n70": 79,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 32,
+     "n70": 75,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 35,
+     "n70": 80,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 10,
+     "n70": 24,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 17,
+     "n70": 40,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 23,
+     "n70": 53,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 31,
+     "n70": 72,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 30,
+     "n70": 70,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 52,
+     "n70": 122,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 72,
+     "n70": 168,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 44,
+     "n70": 102,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 17,
+     "n70": 38,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 29,
+     "n70": 67,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 18,
+     "n70": 41,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 33,
+     "n70": 76,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 27,
+     "n70": 63,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 46,
+     "n70": 106,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 77,
+     "n70": 178,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 29,
+     "n70": 67,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 30,
+     "n70": 68,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 41,
+     "n70": 94,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 38,
+     "n70": 89,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 46,
+     "n70": 107,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 28,
+     "n70": 65,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 29,
+     "n70": 67,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 38,
+     "n70": 88,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 64,
+   "n50": 21,
+   "n70": 48,
+   "proposed_min_matches": 21,
+   "verdict": "PASA"
+  },
+  "shots_against": {
+   "by_league": {
+    "1": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 9,
+     "n70": 21,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 10,
+     "n70": 23,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 4,
+     "n70": 8,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 10,
+     "n70": 23,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 5,
+     "n70": 11,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 7,
+     "n70": 16,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 5,
+     "n70": 12,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 5,
+     "n70": 10,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 9,
+     "n70": 19,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 8,
+     "n70": 18,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 15,
+     "n70": 35,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 11,
+     "n70": 26,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 15,
+     "n70": 33,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 6,
+     "n70": 12,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 17,
+     "n70": 39,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 14,
+     "n70": 32,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 6,
+     "n70": 12,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 9,
+     "n70": 21,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 15,
+     "n70": 35,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 7,
+     "n70": 17,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 12,
+     "n70": 28,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 65,
+   "n50": 8,
+   "n70": 18,
+   "proposed_min_matches": 8,
+   "verdict": "PASA"
+  },
+  "shots_for": {
+   "by_league": {
+    "1": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 10,
+     "n70": 23,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 17,
+     "n70": 38,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 2,
+     "n70": 5,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 8,
+     "n70": 17,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 9,
+     "n70": 21,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 10,
+     "n70": 23,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 8,
+     "n70": 18,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 6,
+     "n70": 12,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 4,
+     "n70": 10,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 6,
+     "n70": 13,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 11,
+     "n70": 25,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 7,
+     "n70": 17,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 15,
+     "n70": 34,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 12,
+     "n70": 26,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 7,
+     "n70": 16,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 13,
+     "n70": 31,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 7,
+     "n70": 17,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 31,
+     "n70": 72,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 17,
+     "n70": 39,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 14,
+     "n70": 33,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 15,
+     "n70": 34,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 7,
+     "n70": 17,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 65,
+   "n50": 8,
+   "n70": 18,
+   "proposed_min_matches": 8,
+   "verdict": "PASA"
+  },
+  "shots_inside_box_against": {
+   "by_league": {
+    "1": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 11,
+     "n70": 26,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 12,
+     "n70": 28,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 4,
+     "n70": 10,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 11,
+     "n70": 26,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Super League"
+    },
+    "146": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 11,
+     "n70": 25,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 5,
+     "n70": 10,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 5,
+     "n70": 10,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Bundesliga"
+    },
+    "156": {
+     "n50": 17,
+     "n70": 38,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 9,
+     "n70": 19,
+     "name": "Premier League"
+    },
+    "161": {
+     "n50": 10,
+     "n70": 23,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 19,
+     "n70": 45,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Indian Super League"
+    },
+    "179": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 6,
+     "n70": 12,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 23,
+     "n70": 54,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Serie A"
+    },
+    "22": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 12,
+     "n70": 28,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 16,
+     "n70": 38,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 18,
+     "n70": 41,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 19,
+     "n70": 45,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 7,
+     "n70": 17,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 21,
+     "n70": 48,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 12,
+     "n70": 26,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 10,
+     "n70": 24,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 16,
+     "n70": 37,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 57,
+   "n50": 10,
+   "n70": 22,
+   "proposed_min_matches": 10,
+   "verdict": "PASA"
+  },
+  "shots_inside_box_for": {
+   "by_league": {
+    "1": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 11,
+     "n70": 26,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 16,
+     "n70": 38,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 2,
+     "n70": 4,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 2,
+     "n70": 3,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 2,
+     "n70": 5,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 9,
+     "n70": 20,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Super League"
+    },
+    "146": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 10,
+     "n70": 22,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 8,
+     "n70": 19,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 6,
+     "n70": 14,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Bundesliga"
+    },
+    "156": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Premier League"
+    },
+    "161": {
+     "n50": 15,
+     "n70": 35,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 25,
+     "n70": 57,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Indian Super League"
+    },
+    "179": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 12,
+     "n70": 28,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Serie A"
+    },
+    "22": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Primeira Liga"
+    },
+    "27": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 8,
+     "n70": 19,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 9,
+     "n70": 19,
+     "name": "Allsvenskan"
+    },
+    "36": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 18,
+     "n70": 40,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 22,
+     "n70": 51,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 25,
+     "n70": 58,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 9,
+     "n70": 19,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 10,
+     "n70": 24,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 57,
+   "n50": 9,
+   "n70": 19,
+   "proposed_min_matches": 9,
+   "verdict": "PASA"
+  },
+  "shots_on_target_against": {
+   "by_league": {
+    "1": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 16,
+     "n70": 37,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 19,
+     "n70": 43,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 5,
+     "n70": 10,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 5,
+     "n70": 10,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 15,
+     "n70": 35,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 16,
+     "n70": 38,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 9,
+     "n70": 20,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 12,
+     "n70": 27,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 15,
+     "n70": 35,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 5,
+     "n70": 12,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 22,
+     "n70": 52,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 6,
+     "n70": 14,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 15,
+     "n70": 34,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 13,
+     "n70": 30,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 29,
+     "n70": 67,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 22,
+     "n70": 51,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 17,
+     "n70": 39,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 25,
+     "n70": 59,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 10,
+     "n70": 22,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 17,
+     "n70": 38,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 6,
+     "n70": 14,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 21,
+     "n70": 48,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 30,
+     "n70": 69,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 10,
+     "n70": 24,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 23,
+     "n70": 53,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 36,
+     "n70": 84,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 13,
+     "n70": 29,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 16,
+     "n70": 38,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 9,
+     "n70": 21,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 14,
+     "n70": 31,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 22,
+     "n70": 51,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 20,
+     "n70": 47,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 28,
+     "n70": 66,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 54,
+     "n70": 125,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 24,
+     "n70": 55,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 19,
+     "n70": 45,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 21,
+     "n70": 47,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 23,
+     "n70": 53,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 14,
+     "n70": 32,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 17,
+     "n70": 38,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 25,
+     "n70": 57,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 65,
+   "n50": 14,
+   "n70": 31,
+   "proposed_min_matches": 14,
+   "verdict": "PASA"
+  },
+  "shots_on_target_for": {
+   "by_league": {
+    "1": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 15,
+     "n70": 35,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 25,
+     "n70": 57,
+     "name": "League Two"
+    },
+    "105": {
+     "n50": 3,
+     "n70": 6,
+     "name": "FA WSL"
+    },
+    "111": {
+     "n50": 3,
+     "n70": 6,
+     "name": "Feminine Division 1"
+    },
+    "120": {
+     "n50": 3,
+     "n70": 7,
+     "name": "Frauen Bundesliga"
+    },
+    "128": {
+     "n50": 11,
+     "n70": 25,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 13,
+     "n70": 29,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 4,
+     "n70": 8,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 16,
+     "n70": 36,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 8,
+     "n70": 17,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 13,
+     "n70": 29,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 12,
+     "n70": 27,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 8,
+     "n70": 19,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 12,
+     "n70": 27,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 9,
+     "n70": 20,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 10,
+     "n70": 24,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 13,
+     "n70": 31,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 33,
+     "n70": 77,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Pro League"
+    },
+    "175": {
+     "n50": 11,
+     "n70": 24,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 7,
+     "n70": 15,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 8,
+     "n70": 19,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 17,
+     "n70": 39,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 17,
+     "n70": 39,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 19,
+     "n70": 44,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 5,
+     "n70": 11,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 11,
+     "n70": 26,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 5,
+     "n70": 12,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 7,
+     "n70": 16,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 13,
+     "n70": 30,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 6,
+     "n70": 13,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 21,
+     "n70": 49,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 17,
+     "n70": 38,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 10,
+     "n70": 23,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 25,
+     "n70": 58,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 31,
+     "n70": 72,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 15,
+     "n70": 33,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 13,
+     "n70": 31,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 26,
+     "n70": 59,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 16,
+     "n70": 36,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 12,
+     "n70": 28,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 11,
+     "n70": 25,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 4,
+     "n70": 9,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 8,
+     "n70": 18,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 24,
+     "n70": 55,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 7,
+     "n70": 16,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 65,
+   "n50": 11,
+   "n70": 25,
+   "proposed_min_matches": 11,
+   "verdict": "PASA"
+  },
+  "yellow_cards_against": {
+   "by_league": {
+    "1": {
+     "n50": 24,
+     "n70": 55,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 33,
+     "n70": 76,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 61,
+     "n70": 142,
+     "name": "League Two"
+    },
+    "128": {
+     "n50": 24,
+     "n70": 55,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 32,
+     "n70": 75,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 409,
+     "n70": 954,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 48,
+     "n70": 112,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 43,
+     "n70": 99,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 19,
+     "n70": 44,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 56,
+     "n70": 130,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 46,
+     "n70": 107,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 27,
+     "n70": 63,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 47,
+     "n70": 109,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 23,
+     "n70": 54,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 38,
+     "n70": 88,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 81,
+     "n70": 188,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": 15,
+     "n70": 34,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 41,
+     "n70": 96,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 37,
+     "n70": 85,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 46,
+     "n70": 108,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 29,
+     "n70": 66,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 58,
+     "n70": 135,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 42,
+     "n70": 98,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 26,
+     "n70": 59,
+     "name": "Pro League"
+    },
+    "174": {
+     "n50": 27,
+     "n70": 63,
+     "name": "1. Division"
+    },
+    "175": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 73,
+     "n70": 171,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 35,
+     "n70": 80,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 22,
+     "n70": 50,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 19,
+     "n70": 43,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 116,
+     "n70": 270,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 45,
+     "n70": 104,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 24,
+     "n70": 56,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 37,
+     "n70": 85,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 41,
+     "n70": 94,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 48,
+     "n70": 112,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 29,
+     "n70": 67,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 33,
+     "n70": 77,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 27,
+     "n70": 62,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 40,
+     "n70": 92,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 40,
+     "n70": 92,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 26,
+     "n70": 61,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 17,
+     "n70": 40,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 27,
+     "n70": 62,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 42,
+     "n70": 96,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 21,
+     "n70": 47,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 81,
+     "n70": 188,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 47,
+     "n70": 109,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 27,
+     "n70": 61,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 44,
+     "n70": 102,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 30,
+     "n70": 70,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 40,
+     "n70": 92,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 31,
+     "n70": 72,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 120,
+     "n70": 279,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 43,
+     "n70": 99,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 36,
+     "n70": 83,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 41,
+     "n70": 95,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 45,
+     "n70": 103,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 64,
+     "n70": 148,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 60,
+     "n70": 139,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 41,
+     "n70": 96,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 63,
+   "n50": 38,
+   "n70": 88,
+   "proposed_min_matches": 38,
+   "verdict": "PASA"
+  },
+  "yellow_cards_for": {
+   "by_league": {
+    "1": {
+     "n50": 29,
+     "n70": 67,
+     "name": "Premier League"
+    },
+    "103": {
+     "n50": 44,
+     "n70": 102,
+     "name": "League One"
+    },
+    "104": {
+     "n50": 36,
+     "n70": 84,
+     "name": "League Two"
+    },
+    "128": {
+     "n50": 23,
+     "n70": 53,
+     "name": "J1 League"
+    },
+    "13": {
+     "n50": 44,
+     "n70": 101,
+     "name": "Ligue 1"
+    },
+    "138": {
+     "n50": 40,
+     "n70": 93,
+     "name": "Serie A Women"
+    },
+    "14": {
+     "n50": 47,
+     "n70": 108,
+     "name": "Ligue 2"
+    },
+    "144": {
+     "n50": 76,
+     "n70": 177,
+     "name": "Super League"
+    },
+    "145": {
+     "n50": 106,
+     "n70": 248,
+     "name": "First League"
+    },
+    "146": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Premiership"
+    },
+    "147": {
+     "n50": 45,
+     "n70": 104,
+     "name": "A-League"
+    },
+    "148": {
+     "n50": 22,
+     "n70": 50,
+     "name": "Super League 1"
+    },
+    "149": {
+     "n50": 92,
+     "n70": 214,
+     "name": "Süper Lig"
+    },
+    "150": {
+     "n50": 67,
+     "n70": 155,
+     "name": "1. Lig"
+    },
+    "152": {
+     "n50": 54,
+     "n70": 126,
+     "name": "Super League"
+    },
+    "153": {
+     "n50": 33,
+     "n70": 76,
+     "name": "HNL"
+    },
+    "154": {
+     "n50": 29,
+     "n70": 67,
+     "name": "Bundesliga"
+    },
+    "155": {
+     "n50": null,
+     "n70": null,
+     "name": "2. Liga"
+    },
+    "156": {
+     "n50": 51,
+     "n70": 119,
+     "name": "Premier League"
+    },
+    "157": {
+     "n50": 37,
+     "n70": 86,
+     "name": "Premier League"
+    },
+    "159": {
+     "n50": 53,
+     "n70": 124,
+     "name": "Liga Pro"
+    },
+    "161": {
+     "n50": 124,
+     "n70": 290,
+     "name": "NWSL Women"
+    },
+    "17": {
+     "n50": 44,
+     "n70": 101,
+     "name": "Serie B"
+    },
+    "171": {
+     "n50": 69,
+     "n70": 160,
+     "name": "Pro League"
+    },
+    "173": {
+     "n50": 63,
+     "n70": 146,
+     "name": "Pro League"
+    },
+    "174": {
+     "n50": 20,
+     "n70": 45,
+     "name": "1. Division"
+    },
+    "175": {
+     "n50": 31,
+     "n70": 71,
+     "name": "Indian Super League"
+    },
+    "176": {
+     "n50": 306,
+     "n70": 712,
+     "name": "Super Liga"
+    },
+    "177": {
+     "n50": 20,
+     "n70": 46,
+     "name": "Premier League"
+    },
+    "179": {
+     "n50": 74,
+     "n70": 172,
+     "name": "Czech Liga"
+    },
+    "180": {
+     "n50": 29,
+     "n70": 66,
+     "name": "Premier Division"
+    },
+    "182": {
+     "n50": 26,
+     "n70": 61,
+     "name": "Paulista - A1"
+    },
+    "19": {
+     "n50": 39,
+     "n70": 91,
+     "name": "2. Bundesliga"
+    },
+    "2": {
+     "n50": 34,
+     "n70": 79,
+     "name": "Serie A"
+    },
+    "20": {
+     "n50": 60,
+     "n70": 138,
+     "name": "3. Liga"
+    },
+    "22": {
+     "n50": 87,
+     "n70": 202,
+     "name": "Eredivisie"
+    },
+    "23": {
+     "n50": 71,
+     "n70": 165,
+     "name": "Eerste Divisie"
+    },
+    "25": {
+     "n50": 38,
+     "n70": 89,
+     "name": "Primeira Liga"
+    },
+    "26": {
+     "n50": 51,
+     "n70": 119,
+     "name": "Segunda Liga"
+    },
+    "27": {
+     "n50": 37,
+     "n70": 87,
+     "name": "Eliteserien"
+    },
+    "3": {
+     "n50": 23,
+     "n70": 52,
+     "name": "La Liga"
+    },
+    "30": {
+     "n50": 36,
+     "n70": 83,
+     "name": "Ekstraklasa"
+    },
+    "33": {
+     "n50": 20,
+     "n70": 45,
+     "name": "Allsvenskan"
+    },
+    "34": {
+     "n50": 16,
+     "n70": 37,
+     "name": "Superettan"
+    },
+    "36": {
+     "n50": 33,
+     "n70": 77,
+     "name": "Superliga"
+    },
+    "4": {
+     "n50": 35,
+     "n70": 80,
+     "name": "Bundesliga"
+    },
+    "40": {
+     "n50": 33,
+     "n70": 77,
+     "name": "Liga Profesional Argentina"
+    },
+    "43": {
+     "n50": 31,
+     "n70": 71,
+     "name": "Serie B"
+    },
+    "45": {
+     "n50": 32,
+     "n70": 74,
+     "name": "Segunda División"
+    },
+    "47": {
+     "n50": 26,
+     "n70": 60,
+     "name": "Jupiler Pro League"
+    },
+    "48": {
+     "n50": 29,
+     "n70": 67,
+     "name": "Challenger Pro League"
+    },
+    "49": {
+     "n50": 36,
+     "n70": 83,
+     "name": "Primera A"
+    },
+    "5": {
+     "n50": 73,
+     "n70": 169,
+     "name": "Championship"
+    },
+    "52": {
+     "n50": 36,
+     "n70": 84,
+     "name": "Major League Soccer"
+    },
+    "55": {
+     "n50": 49,
+     "n70": 114,
+     "name": "Liga MX"
+    },
+    "57": {
+     "n50": 98,
+     "n70": 229,
+     "name": "Primera División"
+    },
+    "6": {
+     "n50": 69,
+     "n70": 161,
+     "name": "Serie A"
+    },
+    "61": {
+     "n50": 72,
+     "n70": 168,
+     "name": "Primera División"
+    },
+    "63": {
+     "n50": 42,
+     "n70": 98,
+     "name": "Liga I"
+    },
+    "65": {
+     "n50": 19,
+     "n70": 44,
+     "name": "Super Liga"
+    },
+    "67": {
+     "n50": 55,
+     "n70": 128,
+     "name": "Premier Soccer League"
+    },
+    "69": {
+     "n50": 53,
+     "n70": 124,
+     "name": "K League 1"
+    },
+    "73": {
+     "n50": 18,
+     "n70": 42,
+     "name": "Thai League 1"
+    }
+   },
+   "eligible_leagues": 63,
+   "n50": 39,
+   "n70": 91,
+   "proposed_min_matches": 39,
+   "verdict": "PASA"
+  }
+ },
+ "version": "stabilization-v1"
+}
