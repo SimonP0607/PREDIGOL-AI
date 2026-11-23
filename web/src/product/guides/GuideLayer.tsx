@@ -13,7 +13,7 @@ import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { HOW_PATH, cardAnchor } from "@/product/help/howItWorks";
-import { findAnchor, placeCard, type Box } from "./anchors";
+import { contentBox, findAnchor, placeCard, type Box } from "./anchors";
 import { useGuides } from "./context";
 import { cardsOf, numbered } from "./navigation";
 import { ProfileBody, ProfileTitle } from "./ProfileBody";
@@ -24,11 +24,6 @@ import { GUIDES } from "./registry";
 const PRIMARY = buttonVariants({ variant: "primary", size: "sm" });
 const QUIET = buttonVariants({ variant: "secondary", size: "sm" });
 const TEXT = cn(buttonVariants({ variant: "text", size: "sm" }), "-ml-2");
-
-function box(el: HTMLElement): Box {
-  const r = el.getBoundingClientRect();
-  return { top: r.top, left: r.left, width: r.width, height: r.height };
-}
 
 /** Below 1024 px: how far above the foot of the screen the card sits - 8 px over the highest fixed bar or parlay button. */
 function dockBottom(): number | null {
@@ -53,6 +48,8 @@ export function GuideLayer() {
   const title = useRef<HTMLHeadingElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<Box | null>(null);
+  // which `data-guide` the ring is on: the end-to-end tests measure the frame against what that element holds (AP-P03)
+  const [framed, setFramed] = useState<string | null>(null);
   const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
   // Below 1024 px: the room the page gets at its foot, so an element near the end can still go up above the card (UX-074)
   const [room, setRoom] = useState(0);
@@ -65,8 +62,9 @@ export function GuideLayer() {
 
   const measure = useCallback(() => {
     const el = anchors && anchors.length > 0 ? findAnchor(anchors) : null;
-    const found = el ? box(el) : null;
+    const found = el ? contentBox(el) : null;
     setTarget(found);
+    setFramed(el?.getAttribute("data-guide") ?? null);
     if (!desk) setDock(dockBottom());
     if (!desk && card.current) {
       setRoom(
@@ -139,15 +137,40 @@ export function GuideLayer() {
     window.addEventListener("resize", again);
     window.addEventListener("scroll", again, true);
     window.visualViewport?.addEventListener("resize", again);
+    // The frame follows what the element holds, not only the element: its children are watched too (AP-P03: «matches-days»
+    // was measured before its row settled), and again when the fonts arrive, which changes every text's width.
     const observer = el && typeof ResizeObserver !== "undefined" ? new ResizeObserver(again) : null;
-    if (el) observer?.observe(el);
+    const watchKids = () => {
+      if (!el || !observer) return;
+      observer.disconnect();
+      observer.observe(el);
+      for (const kid of Array.from(el.children)) observer.observe(kid);
+    };
+    watchKids();
+    const mutations =
+      el && typeof MutationObserver !== "undefined"
+        ? new MutationObserver(() => {
+            watchKids();
+            again();
+          })
+        : null;
+    if (el) mutations?.observe(el, { childList: true, subtree: true, characterData: true });
+    const fonts = typeof document !== "undefined" ? document.fonts : undefined;
+    let gone = false;
+    void fonts?.ready.then(() => {
+      if (!gone) again();
+    });
+    fonts?.addEventListener?.("loadingdone", again);
     return () => {
+      gone = true;
       cancelAnimationFrame(placing);
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", again);
       window.removeEventListener("scroll", again, true);
       window.visualViewport?.removeEventListener("resize", again);
+      fonts?.removeEventListener?.("loadingdone", again);
       observer?.disconnect();
+      mutations?.disconnect();
     };
   }, [anchors, measure, desk, active?.index, active?.mode]);
 
@@ -192,6 +215,7 @@ export function GuideLayer() {
         <div
           aria-hidden
           data-testid="guide-ring"
+          data-anchor={framed ?? undefined}
           className="pointer-events-none fixed z-[60] rounded-[1.125rem] shadow-[0_0_0_2px_var(--color-gold),0_0_0_9999px_rgb(3_7_5/0.62)]"
           style={{
             top: target.top - 6,
