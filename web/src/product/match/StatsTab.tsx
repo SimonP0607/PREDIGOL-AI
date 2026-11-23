@@ -9,6 +9,7 @@ import type { MatchCtx } from "./context";
 import { ageLevel, notPlayed, ratedPlayers, seasonRows, statRows } from "./model";
 import { ProfileBlock } from "./ProfileBlock";
 import { PreviewStats } from "./stats/PreviewStats";
+import { preMatchBlocks } from "./stats/order";
 import { MatchVizSection } from "./stats/MatchVizSection";
 import { useMatchVizSwitches, useStatsSwitches } from "@/lib/auth/AuthProvider";
 import { blockAllows, useMatchBlocks } from "./stats/coverage";
@@ -102,43 +103,51 @@ function TopPlayersBlock({ ctx }: { ctx: MatchCtx }) {
 
 /**
  * Before kick-off (REVIEW PREDIGOL, point 5): how the two teams come in - every result and average we hold, by
- * coverage - then the season from the league table.
+ * coverage - then the season from the league table, then the cross of the two in charts (AP-P05: that order, no line of waiting).
  */
 function PreMatchStats({ ctx }: { ctx: MatchCtx }) {
   const { home, away } = ctx.match;
   const { stats: statsV2 } = useStatsSwitches();
-  return (
-    <div className="space-y-4">
-      <SectionNote>{t("match.stats.notStarted")}</SectionNote>
-      {statsV2 ? <PreviewStats fixtureId={ctx.fixtureId} /> : null}
-      <ProfileBlock ctx={ctx} />
-      <Block title={t("match.stats.season")} icon={<Trophy />}>
-        <CenterSection center={ctx.center} pick={(c) => c.standings}>
-          {(rows) => {
-            const h = rows.find((r) => r.side === "home");
-            const a = rows.find((r) => r.side === "away");
-            const bars = seasonRows(h, a);
-            if (bars.length === 0) return <SectionNote />;
-            return (
-              <div className="space-y-4">
-                <TeamsLegend home={home} away={away} />
-                {h?.table || a?.table ? (
-                  <p className="-mt-2 text-caption text-subtle-foreground">
-                    {t("match.standings.tableOf", {
-                      table: [...new Set([h?.table, a?.table].filter(Boolean))].join(" · "),
-                    })}
-                  </p>
-                ) : null}
-                <p className="numeric -mt-2 flex justify-between text-caption text-muted-foreground">
-                  <span>{h ? t("match.stats.position", { rank: h.rank }) : ""}</span>
-                  <span>{a ? t("match.stats.position", { rank: a.rank }) : ""}</span>
+  const season = (
+    <Block key="season" title={t("match.stats.season")} icon={<Trophy />}>
+      <CenterSection center={ctx.center} pick={(c) => c.standings}>
+        {(rows) => {
+          const h = rows.find((r) => r.side === "home");
+          const a = rows.find((r) => r.side === "away");
+          const bars = seasonRows(h, a);
+          if (bars.length === 0) return <SectionNote />;
+          return (
+            <div className="space-y-4">
+              <TeamsLegend home={home} away={away} />
+              {h?.table || a?.table ? (
+                <p className="-mt-2 text-caption text-subtle-foreground">
+                  {t("match.standings.tableOf", {
+                    table: [...new Set([h?.table, a?.table].filter(Boolean))].join(" · "),
+                  })}
                 </p>
-                <StatBars rows={bars} />
-              </div>
-            );
-          }}
-        </CenterSection>
-      </Block>
+              ) : null}
+              <p className="numeric -mt-2 flex justify-between text-caption text-muted-foreground">
+                <span>{h ? t("match.stats.position", { rank: h.rank }) : ""}</span>
+                <span>{a ? t("match.stats.position", { rank: a.rank }) : ""}</span>
+              </p>
+              <StatBars rows={bars} />
+            </div>
+          );
+        }}
+      </CenterSection>
+    </Block>
+  );
+  return (
+    <div className="space-y-4" data-testid="stats-prematch">
+      {preMatchBlocks(statsV2).map((block) =>
+        block === "profile" ? (
+          <ProfileBlock key={block} ctx={ctx} />
+        ) : block === "season" ? (
+          season
+        ) : (
+          <PreviewStats key={block} fixtureId={ctx.fixtureId} />
+        ),
+      )}
     </div>
   );
 }

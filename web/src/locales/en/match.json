@@ -324,7 +324,6 @@
     "title": "Match stats",
     "key": "Key stats",
     "all": "See all",
-    "notStarted": "The match has not started yet: here is how both teams arrive.",
     "season": "Season",
     "position": "#{rank} in the table",
     "label": {

@@ -324,7 +324,6 @@
     "title": "Estadísticas del partido",
     "key": "Estadísticas clave",
     "all": "Ver todas",
-    "notStarted": "El partido aún no ha empezado: así llegan los dos equipos.",
     "season": "Temporada",
     "position": "{rank}.º en la tabla",
     "label": {
