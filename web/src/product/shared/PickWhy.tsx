@@ -5,7 +5,7 @@
  * missing leaves its part out, and a risk is never made up.
  */
 import { t } from "@/lib/i18n";
-import { fmtPct } from "@/lib/i18n/format";
+import { fmtPct, readerLines } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 
 function share(v: string | number | null | undefined): number | null {
@@ -48,10 +48,7 @@ export function RiskChips({
   risks: readonly string[] | null | undefined;
   className?: string | undefined;
 }) {
-  const shown = (risks ?? [])
-    .map((r) => r.trim())
-    .filter((r) => r.length > 0)
-    .slice(0, MAX_RISK_CHIPS);
+  const shown = readerLines(risks).slice(0, MAX_RISK_CHIPS);
   if (shown.length === 0) return null;
   return (
     <ul

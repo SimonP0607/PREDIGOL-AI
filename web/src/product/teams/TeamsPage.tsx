@@ -13,15 +13,15 @@ import { TeamName } from "@/components/football/Logos";
 import { live } from "@/lib/api/v1/queries";
 import type { CompetitionSummary } from "@/lib/api/v1/types";
 import { useAuth, usePmReaderSwitches } from "@/lib/auth/AuthProvider";
-import { t } from "@/lib/i18n";
+import { intlTag, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Card, EmptyState, PageTitle, SkeletonCards } from "@/product/shared/States";
-import { isNation } from "./model";
+import { countryName, isNation, teamLabel } from "./model";
 
 /** The competitions by country, the reader's own country (Colombia) first, then alphabetical. */
 export function byCountry(
   list: readonly CompetitionSummary[],
-): { country: string; competitions: CompetitionSummary[] }[] {
+): { country: string; label: string; competitions: CompetitionSummary[] }[] {
   const by = new Map<string, CompetitionSummary[]>();
   for (const c of list) {
     if (!c.is_tracked) continue;
@@ -29,9 +29,21 @@ export function byCountry(
     by.set(k, [...(by.get(k) ?? []), c]);
   }
   return [...by.entries()]
-    .sort(([a], [b]) => (a === "Colombia" ? -1 : b === "Colombia" ? 1 : a.localeCompare(b)))
     .map(([country, competitions]) => ({
       country,
+      label: countryName(country) ?? country,
+      competitions,
+    }))
+    .sort((a, b) =>
+      a.country === "Colombia"
+        ? -1
+        : b.country === "Colombia"
+          ? 1
+          : a.label.localeCompare(b.label, intlTag()),
+    )
+    .map(({ country, label, competitions }) => ({
+      country,
+      label,
       competitions: competitions.sort(
         (a, b) => (a.tier ?? 9) - (b.tier ?? 9) || a.name.localeCompare(b.name),
       ),
@@ -107,13 +119,13 @@ export function TeamsPage() {
                     className={ROW}
                   >
                     <TeamName
-                      name={team.name}
+                      name={teamLabel(team)}
                       logo={team.logo_url}
                       size={22}
                       className="min-w-0 flex-1 font-semibold"
                     />
                     <span className="shrink-0 text-caption text-muted-foreground">
-                      {team.country}
+                      {countryName(team.country)}
                     </span>
                     <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-subtle-foreground" />
                   </Link>
@@ -174,7 +186,7 @@ export function TeamsPage() {
             {groups.map((g) => (
               <details key={g.country} className="group/c">
                 <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
-                  <span className="min-w-0 flex-1 text-sm font-semibold">{g.country}</span>
+                  <span className="min-w-0 flex-1 text-sm font-semibold">{g.label}</span>
                   <span className="numeric text-caption text-subtle-foreground">
                     {g.competitions.length}
                   </span>
