@@ -436,3 +436,13 @@ export function scatterReading(
     "readchart.thinPlayer",
   );
 }
+
+/** The readings of the same chart for each team (home, then away) said one after the other; the smallest sample caps the level. */
+export function together(readings: TextReading[]): TextReading {
+  return {
+    kind: "text",
+    sentence: readings.map((r) => r.sentence).join(" "),
+    n: Math.min(...readings.map((r) => r.n)),
+    minSample: Math.max(...readings.map((r) => r.minSample)),
+  };
+}

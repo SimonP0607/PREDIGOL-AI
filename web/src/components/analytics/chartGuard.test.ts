@@ -15,7 +15,6 @@ const ROOT = join(import.meta.dir, "..", "..");
 const BEFORE_PM_10_06 = [
   "live/AnalyticsLive.tsx",
   "live/ModelsLive.tsx",
-  "product/match/stats/PreviewStats.tsx",
   "product/match/stats/ProbabilitiesPanel.tsx",
   "product/odds/MovementPanel.tsx",
   "product/odds/explorer/MovementChart.tsx",
