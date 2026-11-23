@@ -24,7 +24,6 @@ import {
   Gauge,
   House,
   Layers,
-  Contact,
   LifeBuoy,
   LineChart,
   ListChecks,
@@ -302,7 +301,7 @@ export interface AdminNavGroup {
 }
 
 /**
- * The console's menu in five groups (decision 12): the same 28 destinations as before - «Resumen» above them - with
+ * The console's menu in five groups (decision 12): the same destinations as before, less «Clientes» (a view of «Usuarios», AP-A03) - «Resumen» above them - with
  * the same routes and the same permissions. Only where each one is listed changes.
  */
 export const adminNav: AdminNavGroup[] = [
@@ -312,7 +311,6 @@ export const adminNav: AdminNavGroup[] = [
     items: [
       { to: "/admin/payments", label: "admin.nav.payments", icon: Banknote },
       { to: "/admin/support", label: "admin.nav.support", icon: LifeBuoy },
-      { to: "/admin/customers", label: "admin.nav.customers", icon: Contact },
       { to: "/admin/announcements", label: "admin.nav.announcements", icon: Megaphone },
       { to: "/admin/messages", label: "admin.nav.messages", icon: Mail },
       { to: "/admin/users", label: "admin.nav.users", icon: UserRound },
@@ -365,7 +363,7 @@ export const adminNav: AdminNavGroup[] = [
   },
 ];
 
-/** Every destination of the console's menu, «Resumen» first: 28. */
+/** Every destination of the console's menu, «Resumen» first: 27. */
 export const adminDestinations: NavItem[] = [adminHome, ...adminNav.flatMap((g) => g.items)];
 
 const ADMIN_NAV_KEY = "predigol.admin.nav.folded";

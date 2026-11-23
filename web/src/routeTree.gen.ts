@@ -57,7 +57,6 @@ import { Route as AdminStorageRouteImport } from './routes/admin.storage'
 import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminSystemRouteImport } from './routes/admin.system'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ComparePlayersRouteImport } from './routes/compare.players'
 import { Route as CompareTeamsRouteImport } from './routes/compare.teams'
 import { Route as CompetitionsIndexRouteImport } from './routes/competitions.index'
@@ -86,6 +85,8 @@ import { Route as AdminPlayersIndexRouteImport } from './routes/admin.players.in
 import { Route as AdminPlayersPlayerIdRouteImport } from './routes/admin.players.$playerId'
 import { Route as AdminRefereesIndexRouteImport } from './routes/admin.referees.index'
 import { Route as AdminRefereesRefereeIdRouteImport } from './routes/admin.referees.$refereeId'
+import { Route as AdminUsersIndexRouteImport } from './routes/admin.users.index'
+import { Route as AdminUsersUserIdRouteImport } from './routes/admin.users.$userId'
 import { Route as HelpMessagesTicketIdRouteImport } from './routes/help.messages.$ticketId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -328,11 +329,6 @@ const AdminTeamsRoute = AdminTeamsRouteImport.update({
   path: '/teams',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AdminRoute,
-} as any)
 const ComparePlayersRoute = ComparePlayersRouteImport.update({
   id: '/compare/players',
   path: '/compare/players',
@@ -474,6 +470,16 @@ const AdminRefereesRefereeIdRoute = AdminRefereesRefereeIdRouteImport.update({
   path: '/referees/$refereeId',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersUserIdRoute = AdminUsersUserIdRouteImport.update({
+  id: '/users/$userId',
+  path: '/users/$userId',
+  getParentRoute: () => AdminRoute,
+} as any)
 const HelpMessagesTicketIdRoute = HelpMessagesTicketIdRouteImport.update({
   id: '/help/messages/$ticketId',
   path: '/help/messages/$ticketId',
@@ -528,7 +534,6 @@ export interface FileRoutesByFullPath {
   '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/compare/players': typeof ComparePlayersRoute
   '/compare/teams': typeof CompareTeamsRoute
   '/competitions/$competitionId': typeof CompetitionsCompetitionIdRoute
@@ -555,10 +560,12 @@ export interface FileRoutesByFullPath {
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
   '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
   '/admin/referees/': typeof AdminRefereesIndexRoute
+  '/admin/users/': typeof AdminUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -607,7 +614,6 @@ export interface FileRoutesByTo {
   '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/compare/players': typeof ComparePlayersRoute
   '/compare/teams': typeof CompareTeamsRoute
   '/competitions/$competitionId': typeof CompetitionsCompetitionIdRoute
@@ -634,10 +640,12 @@ export interface FileRoutesByTo {
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
   '/admin/customers': typeof AdminCustomersIndexRoute
   '/admin/players': typeof AdminPlayersIndexRoute
   '/admin/referees': typeof AdminRefereesIndexRoute
+  '/admin/users': typeof AdminUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -688,7 +696,6 @@ export interface FileRoutesById {
   '/admin/support': typeof AdminSupportRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/teams': typeof AdminTeamsRoute
-  '/admin/users': typeof AdminUsersRoute
   '/compare/players': typeof ComparePlayersRoute
   '/compare/teams': typeof CompareTeamsRoute
   '/competitions/$competitionId': typeof CompetitionsCompetitionIdRoute
@@ -715,10 +722,12 @@ export interface FileRoutesById {
   '/admin/customers/$userId': typeof AdminCustomersUserIdRoute
   '/admin/players/$playerId': typeof AdminPlayersPlayerIdRoute
   '/admin/referees/$refereeId': typeof AdminRefereesRefereeIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/help/messages/$ticketId': typeof HelpMessagesTicketIdRoute
   '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/players/': typeof AdminPlayersIndexRoute
   '/admin/referees/': typeof AdminRefereesIndexRoute
+  '/admin/users/': typeof AdminUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -770,7 +779,6 @@ export interface FileRouteTypes {
     | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
-    | '/admin/users'
     | '/compare/players'
     | '/compare/teams'
     | '/competitions/$competitionId'
@@ -797,10 +805,12 @@ export interface FileRouteTypes {
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/admin/users/$userId'
     | '/help/messages/$ticketId'
     | '/admin/customers/'
     | '/admin/players/'
     | '/admin/referees/'
+    | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -849,7 +859,6 @@ export interface FileRouteTypes {
     | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
-    | '/admin/users'
     | '/compare/players'
     | '/compare/teams'
     | '/competitions/$competitionId'
@@ -876,10 +885,12 @@ export interface FileRouteTypes {
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/admin/users/$userId'
     | '/help/messages/$ticketId'
     | '/admin/customers'
     | '/admin/players'
     | '/admin/referees'
+    | '/admin/users'
   id:
     | '__root__'
     | '/'
@@ -929,7 +940,6 @@ export interface FileRouteTypes {
     | '/admin/support'
     | '/admin/system'
     | '/admin/teams'
-    | '/admin/users'
     | '/compare/players'
     | '/compare/teams'
     | '/competitions/$competitionId'
@@ -956,10 +966,12 @@ export interface FileRouteTypes {
     | '/admin/customers/$userId'
     | '/admin/players/$playerId'
     | '/admin/referees/$refereeId'
+    | '/admin/users/$userId'
     | '/help/messages/$ticketId'
     | '/admin/customers/'
     | '/admin/players/'
     | '/admin/referees/'
+    | '/admin/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1344,13 +1356,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTeamsRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/compare/players': {
       id: '/compare/players'
       path: '/compare/players'
@@ -1547,6 +1552,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRefereesRefereeIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/users/': {
+      id: '/admin/users/'
+      path: '/users'
+      fullPath: '/admin/users/'
+      preLoaderRoute: typeof AdminUsersIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users/$userId': {
+      id: '/admin/users/$userId'
+      path: '/users/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AdminUsersUserIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/help/messages/$ticketId': {
       id: '/help/messages/$ticketId'
       path: '/help/messages/$ticketId'
@@ -1587,14 +1606,15 @@ interface AdminRouteChildren {
   AdminSupportRoute: typeof AdminSupportRoute
   AdminSystemRoute: typeof AdminSystemRoute
   AdminTeamsRoute: typeof AdminTeamsRoute
-  AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminCustomersUserIdRoute: typeof AdminCustomersUserIdRoute
   AdminPlayersPlayerIdRoute: typeof AdminPlayersPlayerIdRoute
   AdminRefereesRefereeIdRoute: typeof AdminRefereesRefereeIdRoute
+  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
   AdminCustomersIndexRoute: typeof AdminCustomersIndexRoute
   AdminPlayersIndexRoute: typeof AdminPlayersIndexRoute
   AdminRefereesIndexRoute: typeof AdminRefereesIndexRoute
+  AdminUsersIndexRoute: typeof AdminUsersIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -1627,14 +1647,15 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSupportRoute: AdminSupportRoute,
   AdminSystemRoute: AdminSystemRoute,
   AdminTeamsRoute: AdminTeamsRoute,
-  AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminCustomersUserIdRoute: AdminCustomersUserIdRoute,
   AdminPlayersPlayerIdRoute: AdminPlayersPlayerIdRoute,
   AdminRefereesRefereeIdRoute: AdminRefereesRefereeIdRoute,
+  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
   AdminCustomersIndexRoute: AdminCustomersIndexRoute,
   AdminPlayersIndexRoute: AdminPlayersIndexRoute,
   AdminRefereesIndexRoute: AdminRefereesIndexRoute,
+  AdminUsersIndexRoute: AdminUsersIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

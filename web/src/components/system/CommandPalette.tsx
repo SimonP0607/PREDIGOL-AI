@@ -104,7 +104,7 @@ export function CommandPalette({
     onOpenChange(false);
     setTerm("");
     if (to === "/matches/$fixtureId" && fixtureId) {
-      void navigate({ to, params: { fixtureId } });
+      void navigate({ to: "/matches/$fixtureId", params: { fixtureId } });
     } else {
       void navigate({ to });
     }
