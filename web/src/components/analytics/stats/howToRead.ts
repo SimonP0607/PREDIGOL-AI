@@ -19,6 +19,7 @@ import type {
   RadarAxis,
   StatFigure,
   StripItem,
+  TeamRecord,
   Survival,
   TrendRow,
 } from "@/lib/api/v1/types_stats";
@@ -444,5 +445,35 @@ export function together(readings: TextReading[]): TextReading {
     sentence: readings.map((r) => r.sentence).join(" "),
     n: Math.min(...readings.map((r) => r.n)),
     minSample: Math.max(...readings.map((r) => r.minSample)),
+  };
+}
+
+/** The three sentences at the top of a team's statistics (AP-E03): its form, its strength and its weak point, from the contract's own figures. */
+export function teamSummary(
+  team: string,
+  record: TeamRecord,
+  figures: StatFigure[],
+): { form: string; strength: string | null; weakness: string | null } {
+  const e = extremes(figures);
+  const form = t("readchart.summary.form", {
+    team,
+    n: localInt(record.matches),
+    won: localInt(record.wins),
+    drawn: localInt(record.draws),
+    lost: localInt(record.losses),
+    gf: localInt(record.goals_for),
+    ga: localInt(record.goals_against),
+  });
+  if (!e || e.best.f.key === e.worst.f.key) return { form, strength: null, weakness: null };
+  return {
+    form,
+    strength: t("readchart.summary.strength", {
+      fig: figName(e.best.f.key),
+      words: placeInWords(e.best.good),
+    }),
+    weakness: t("readchart.summary.weakness", {
+      fig: figName(e.worst.f.key),
+      words: placeInWords(e.worst.good),
+    }),
   };
 }

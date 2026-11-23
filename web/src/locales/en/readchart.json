@@ -101,5 +101,11 @@
     "radarTitle": "Where are they alike and where do they differ?",
     "figuresTitle": "Figure by figure",
     "statesTitle": "When the match moves"
+  },
+  "summary": {
+    "title": "In short",
+    "form": "Form: {team} has played {n} matches with {won} won, {drawn} drawn and {lost} lost ({gf} goals for and {ga} against).",
+    "strength": "Strength: {fig}, {words}.",
+    "weakness": "Weak point: {fig}, {words}."
   }
 }

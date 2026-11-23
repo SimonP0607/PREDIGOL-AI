@@ -101,5 +101,11 @@
     "radarTitle": "¿En qué se parecen y en qué se diferencian?",
     "figuresTitle": "Cifra a cifra",
     "statesTitle": "Cuando el partido se mueve"
+  },
+  "summary": {
+    "title": "En resumen",
+    "form": "Forma: {team} ha jugado {n} partidos con {won} ganados, {drawn} empatados y {lost} perdidos ({gf} goles a favor y {ga} en contra).",
+    "strength": "Punto fuerte: {fig}, {words}.",
+    "weakness": "Punto débil: {fig}, {words}."
   }
 }
