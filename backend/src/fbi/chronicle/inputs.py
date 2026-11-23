@@ -9,6 +9,8 @@
     the figures       the single figure ``forecast-v2`` as of ``at`` (``fbi.api.services.match_intelligence.read_figures``: the private
                       C-01's reader; a match the models do not cover has none)
     the previous plan the keys of the newest plan stored for the match (``ai.chronicles``): what it did not have is new
+    the C-13 sheet    with ``FBI_CHRONICLE_STAT_SHEET`` on only (PM-11-07, ``fbi.chronicle.stat_sheet``): each side's statistics document of
+                      the match's competition season, the figures its profile shows (``analytics.stat_documents``)
     the corpus        the recent chronicles of other matches and each team's previous one (``ai.chronicles``), for the rule of stock
                       phrases and repetitions (``fbi.chronicle.repetition``, IA-117)
 
@@ -33,7 +35,7 @@ from fbi.ai.gates import typed_visible
 from fbi.api.services import reading as reading_service
 from fbi.api.services import story as story_service
 from fbi.chronicle import plan as cp
-from fbi.chronicle import repetition
+from fbi.chronicle import repetition, stat_sheet
 from fbi.protosign import store as signatures
 
 log = structlog.get_logger(__name__)
@@ -124,8 +126,17 @@ def previous_keys(conn: psycopg.Connection[Any], fixture_id: int, at: datetime, 
     return cp.previous_for(current, rows[0]["plan"] if rows and isinstance(rows[0]["plan"], Mapping) else None)
 
 
-def plan_input(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, figures: bool = True) -> cp.PlanInput | str:
-    """Everything the plan of a match at ``at`` is made from, or why there is nothing (a code): ``no_packet``."""
+def sheet_of(conn: psycopg.Connection[Any], fixture_id: int, *, home_id: int, away_id: int,
+             sheet: bool | None = None) -> dict[str, stat_sheet.SideSheet] | None:
+    """PM-11-07: the C-13 sheet of both sides while ``FBI_CHRONICLE_STAT_SHEET`` is on (``sheet`` forces it either way), else None."""
+    wanted = stat_sheet.mode() == "on" if sheet is None else sheet
+    return stat_sheet.read(conn, fixture_id, home_id=home_id, away_id=away_id) if wanted else None
+
+
+def plan_input(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, figures: bool = True,
+               sheet: bool | None = None) -> cp.PlanInput | str:
+    """Everything the plan of a match at ``at`` is made from, or why there is nothing (a code): ``no_packet``. ``sheet``: the C-13 sheet
+    forced on or off (None: ``FBI_CHRONICLE_STAT_SHEET`` decides)."""
     basis = reading_service.reading_basis(conn, fixture_id, at=at)
     if basis.packet_id is None or basis.data_at is None:
         return "no_packet"
@@ -142,7 +153,8 @@ def plan_input(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, 
         away_team_id=int(fx["away_team_id"]), packet_id=basis.packet_id, data_at=basis.data_at, story=told.facts, thin=told.thin,
         news=news_of(conn, basis.packet_id, fixture_id),
         lineups_confirmed=bool(lineups.get("confirmed")) if isinstance(lineups, Mapping) else None,
-        scenarios=scenarios_of(conn, fixture_id, at), figures=figures_of(conn, fixture_id, at) if figures else ())
+        scenarios=scenarios_of(conn, fixture_id, at), figures=figures_of(conn, fixture_id, at) if figures else (),
+        sheet=sheet_of(conn, fixture_id, home_id=int(fx["home_team_id"]), away_id=int(fx["away_team_id"]), sheet=sheet))
     return replace(first, previous=previous_keys(conn, fixture_id, at, cp.keys(cp.build(first))))
 
 
@@ -191,4 +203,4 @@ def claims_for(conn: psycopg.Connection[Any], plan: cp.ContentPlan) -> dict[str,
     return out
 
 
-__all__ = ["SCENARIOS_MAX_AGE", "claims_for", "figures_of", "news_of", "plan_input", "previous_keys", "repetition_corpus", "scenarios_of"]
+__all__ = ["SCENARIOS_MAX_AGE", "claims_for", "figures_of", "news_of", "plan_input", "previous_keys", "repetition_corpus", "scenarios_of", "sheet_of"]
