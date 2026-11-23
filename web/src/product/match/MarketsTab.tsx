@@ -72,6 +72,8 @@ import { familyViews } from "./marketFamilies";
 import {
   catalogChooser,
   catalogParlayOf,
+  type CatalogParlay,
+  lookupReasonOf,
   NO_CATALOG_PARLAY,
   withCatalogParlay,
 } from "./catalogParlay";
@@ -520,7 +522,7 @@ function FoldList({
   /** The catalogue key a link from Cuotas names: that market is open and in view; the first one only without it. */
   target?: string | undefined;
   /** FBI_MARKETS_V3: the markets as a bookmaker lays them out (no «Seguir» on the row); the match's id reads PrediGol's line. */
-  v3?: { fixtureId: string } | undefined;
+  v3?: { fixtureId: string; cp?: CatalogParlay } | undefined;
 }) {
   const named = target !== undefined && views.some((v) => v.key === target);
   return (
@@ -548,6 +550,7 @@ function FoldList({
             <MarketFoldV3
               view={v}
               fixtureId={v3.fixtureId}
+              lookupReason={v3.cp ? lookupReasonOf(v, v3.cp) : null}
               choose={chooseOf ? chooseOf(v, choose) : choose}
               defaultOpen={named ? v.key === target : i === 0}
             />
@@ -643,7 +646,7 @@ export function CategoryPanel({
         follow={follow}
         testId="markets-category"
         target={target}
-        v3={v3 ? { fixtureId: ctx.fixtureId } : undefined}
+        v3={v3 ? { fixtureId: ctx.fixtureId, cp } : undefined}
       />
     </>
   );

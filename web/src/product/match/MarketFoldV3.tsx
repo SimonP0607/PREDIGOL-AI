@@ -8,7 +8,7 @@ import { useId, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
+import { t, translateOr } from "@/lib/i18n";
 import { t as t3 } from "./marketsV3Text";
 import { fmtLine } from "@/lib/i18n/format";
 import { live } from "@/lib/api/v1/queries";
@@ -103,10 +103,13 @@ export function MarketFoldV3({
   view,
   fixtureId,
   choose,
+  lookupReason = null,
   defaultOpen = false,
 }: {
   view: MarketView;
   fixtureId: string;
+  /** Why this market cannot go to Mi parlay, as a code of `stats.parlay.*` (what the server says); null: no motive known. */
+  lookupReason?: string | null;
   /** What choosing a price saves or adds to the parlay (the markets the server settles only). */
   choose?: Choose | undefined;
   defaultOpen?: boolean;
@@ -160,6 +163,13 @@ export function MarketFoldV3({
             <Rows view={view} rows={rows} choose={pick} />
           </ul>
           {marks ? <MarksLine line={marks} /> : null}
+          {view.parlay || view.catalogParlay ? null : (
+            <p className="mt-1 text-micro text-subtle-foreground" data-testid="market-lookup">
+              {t3("marketsv3.lookup")}
+              {" · "}
+              {translateOr(`stats.parlay.${lookupReason ?? ""}`, t3("marketsv3.lookupDefault"))}
+            </p>
+          )}
           <div className="mt-1 flex flex-wrap items-center gap-x-3">
             {more > 0 ? (
               <MoreButton expanded={allLines} onClick={() => setAllLines((v) => !v)}>

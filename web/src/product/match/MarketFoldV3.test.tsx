@@ -14,6 +14,7 @@ import { catalogView, type MarketView, type MarketsView } from "./marketCatalog"
 import { familyViews } from "./marketFamilies";
 import { markLine, marksOf } from "./marketMarks";
 import { MarketFoldV3, MarksLine } from "./MarketFoldV3";
+import { lookupReasonOf, NO_CATALOG_PARLAY, selectionId } from "./catalogParlay";
 
 setLocale("es");
 afterEach(() => setLocale("es"));
@@ -138,10 +139,20 @@ function client(withMarks: boolean): QueryClient {
   return qc;
 }
 
-function fold(withMarks = false, choose = undefined as undefined) {
+function fold(
+  withMarks = false,
+  choose = undefined as undefined,
+  lookupReason: string | null = null,
+) {
   return renderToStaticMarkup(
     <QueryClientProvider client={client(withMarks)}>
-      <MarketFoldV3 view={view()} fixtureId="7" choose={choose} defaultOpen />
+      <MarketFoldV3
+        view={view()}
+        fixtureId="7"
+        choose={choose}
+        lookupReason={lookupReason}
+        defaultOpen
+      />
     </QueryClientProvider>,
   );
 }
@@ -250,5 +261,44 @@ describe("the market as rows", () => {
     expect(fold(true)).toContain('data-testid="market-marks"');
     expect(fold(true)).toContain("PrediGol 57 %");
     expect(fold(false)).not.toContain('data-testid="market-marks"');
+  });
+});
+
+describe("a market only for consulting (AP-P09)", () => {
+  test("every price shows, and the page says it is only for consulting, with the server's motive in words", () => {
+    const html = fold(false, undefined, "sin_regla");
+    expect(html).toContain("1,90");
+    expect(html).toContain('data-testid="market-lookup"');
+    expect(html).toContain("Solo consulta");
+    expect(html).toContain("Sin regla de liquidación");
+  });
+
+  test("with no motive known it still says so, in plain words", () => {
+    const html = fold();
+    expect(html).toContain("Solo consulta");
+    expect(html).toContain("Este mercado no entra en Mi parlay.");
+  });
+
+  test("the motive is the one the server gives for most of the market's selections", () => {
+    const reasons = new Map([
+      [selectionId(CORNERS.key, "Over", 9.5), "sin_cobertura"],
+      [selectionId(CORNERS.key, "Under", 9.5), "sin_cobertura"],
+      [selectionId(CORNERS.key, "Over", 8.5), "sin_regla"],
+      [selectionId("other.FT.match", "Over", 1.5), "empezado"],
+    ]);
+    const cp = { ...NO_CATALOG_PARLAY, reasons };
+    expect(lookupReasonOf(view(), cp)).toBe("sin_cobertura");
+    expect(lookupReasonOf(view(), NO_CATALOG_PARLAY)).toBeNull();
+  });
+
+  test("a market the server takes shows no «solo consulta»", () => {
+    const taken = { ...view(), catalogParlay: "stats" as const };
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={client(false)}>
+        <MarketFoldV3 view={taken} fixtureId="7" defaultOpen />
+      </QueryClientProvider>,
+    );
+    expect(html).not.toContain('data-testid="market-lookup"');
+    expect(html).toContain('data-testid="market-settles"');
   });
 });
