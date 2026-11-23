@@ -175,6 +175,11 @@ STAKES: Final = "FBI_STAKES"
 TREND_BUILDER: Final = "FBI_TREND_BUILDER"
 """The parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7): OFF while the line is absent, ``=1`` turns it on (the API recreated). Only the owner turns it on, after Intelligence validates contract C-18."""
 
+CALENDAR_FEED: Final = "FBI_CALENDAR_FEED"
+"""A reader's subscribable calendar of the teams they follow (plan PM, PM-14-06; BE-084): OFF while the line is absent - every route of
+``fbi.api.routers.calendar_feed`` answers 404, the secret links included - and ``=1`` opens them (the API recreated). Turned on only
+after the security review of the link's secret (``docs/owner/BE_084_REVISION_SEGURIDAD_CALENDARIO.md``) is approved."""
+
 MARKET_PROBS: Final = "FBI_MARKET_PROBS"
 """The probabilities by market of a match (plan EA, EA-201/EA-202; contract C-14): OFF while the line is absent and ``=1`` shows the
 three marks - model, implied, history - on the Mercados tab. A reader sees a model's figure only for a market the catalogue holds
@@ -358,6 +363,10 @@ def stakes_on() -> bool:
 def trend_builder_on() -> bool:
     """Whether the parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7) is on (``FBI_TREND_BUILDER``, off by default)."""
     return user_switch(TREND_BUILDER, default=False)
+
+def calendar_feed_on() -> bool:
+    """Whether readers get the subscribable calendar (``FBI_CALENDAR_FEED``, off by default)."""
+    return user_switch(CALENDAR_FEED, default=False)
 
 
 def market_probs_on() -> bool:
