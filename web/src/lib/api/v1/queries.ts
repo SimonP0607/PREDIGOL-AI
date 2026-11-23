@@ -394,6 +394,12 @@ export const live = {
     queryFn: () => v1.competition(id),
   }),
   teams: { queryKey: ["v1", "teams"], queryFn: () => v1.teams() },
+  /** The teams of one competition (Equipos → league, AP-E01). */
+  competitionTeams: (competitionId: number) => ({
+    queryKey: ["v1", "teams", "competition", competitionId],
+    queryFn: () => v1.teams(competitionId),
+    staleTime: 10 * MINUTE,
+  }),
   teamSearch: (q: string) => ({
     queryKey: ["v1", "teams", "search", q],
     queryFn: () => v1.teams(undefined, q),
