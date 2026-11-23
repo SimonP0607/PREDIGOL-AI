@@ -54,14 +54,18 @@ def test_the_sixty_are_candidates_with_their_planned_batch_name_and_country() ->
     assert len(ranks) == len(set(ranks))
 
 
-def test_none_of_them_is_tracked_by_the_file() -> None:
+def test_only_the_written_batches_are_tracked_by_the_file() -> None:
+    """Each batch is written by its own task (PM-03-02 batch 5, ... PM-03-06 batch 9) after the previous one was measured."""
     batches = expansion_batches(EXPANSION_FILE)
-    assert [int(b["batch"]) for b in batches] == [1, 2, 3, 4], "batches 5-9 are written by PM-03-02 to PM-03-06"
+    written = {5}
+    assert [int(b["batch"]) for b in batches] == [1, 2, 3, 4, *sorted(written)]
     in_batches = {int(lid) for b in batches for lid in b["leagues"]}
-    assert not in_batches & {lid for v in PLANNED.values() for lid in v}
+    assert not in_batches & {lid for b, v in PLANNED.items() if b not in written for lid in v}
+    for b in written:
+        assert next(x for x in batches if int(x["batch"]) == b)["leagues"] == PLANNED[b]
     assert next(b for b in batches if int(b["batch"]) == 4)["leagues"] == [268, 241], "batch 4 (Plan AD) untouched"
     cfg = load_migration_config()
-    assert max(cfg.tiers) == 8, "no tier is added for a candidate"
+    assert max(cfg.tiers) == 8 + len(written), "one tier per written batch, none for a candidate"
 
 
 def test_every_candidate_has_a_dated_probe_within_the_cap() -> None:

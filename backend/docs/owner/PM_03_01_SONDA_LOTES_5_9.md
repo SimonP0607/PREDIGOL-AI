@@ -193,3 +193,22 @@ Los mismos datos que `probes` de `config/expansion.yaml`, en tablas.
 | 59 | Non League Premier - Northern (England) | 2026 | 462 (200 / 261) | 20 | 100 % | 0 % | 0 % | 0 % | 0 % | 0 % | 100 % | 9 (10) | D · D · D · D | D | C como máximo |
 | 60 | Non League Premier - Southern South (England) | 2026 | 462 (183 / 263) | 20 | 95 % | 0 % | 0 % | 0 % | 0 % | 0 % | 100 % | 9 (10) | D · D · D · D | D | C como máximo |
 | 931 | Non League Premier - Southern Central (England) | 2026 | 462 (186 / 271) | 20 | 100 % | 0 % | 0 % | 0 % | 0 % | 0 % | 100 % | 9 (10) | D · D · D · D | D | C como máximo |
+
+## 8. Lote 5 escrito (OPS-015, PM-03-02, 23-nov-2026)
+
+El lote 4 del Plan AD se aplicó el 20-nov-2026 y se midió el 21 y el 22-nov completos (OPS-014, §6 de `IA_077_COBERTURA_CUATRO_LIGAS.md`):
+dentro del criterio. Con eso, `config/expansion.yaml` lleva el **lote 5** (nivel de migración 9): Superliga (713) y Liga Femenina (712)
+de Colombia, CONMEBOL Recopa (541), OFC Champions League (27), AFC Challenge League (1132) y clasificación de la Copa Africana (36),
+decidido con la sonda `pm-03-01` y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+
+Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
+
+1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 5`. Debe listar las seis con `known` y
+   `tracked False`; si dice `REFUSED`, se para.
+2. Seguimiento: la misma orden con `--apply`. Seguidas 140 → 146.
+3. La clasificación de la Copa Africana es de selecciones: cuando sus equipos estén guardados, `python -m scripts.sync_teams
+   --scopes-only` (0 peticiones), como en el lote 2.
+4. Medir el día UTC completo siguiente (consumo, capturas y nivel), con el criterio de IA-077 (≤ 1.000 peticiones añadidas).
+
+Esperado: ≈ 80 peticiones al día de media y ≈ 720 el día de más carga; Superliga y Recopa quedan en «muestra insuficiente» (una
+eliminatoria al año). Vuelta atrás: `--batch 5 --untrack --apply` (no borra nada).
