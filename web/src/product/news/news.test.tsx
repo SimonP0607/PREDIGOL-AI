@@ -688,3 +688,70 @@ describe("the match's news by team (UX-161, maqueta 15)", () => {
     ]);
   });
 });
+
+describe("a match with no news of its own (AP-P11)", () => {
+  const SEARCHED: NewsSearch = {
+    searched: "yes",
+    last_searched_at: "2026-10-25T15:00:00Z",
+    sources_read: 12,
+  } as NewsSearch;
+
+  test("shows the latest news of each side, with its date, and says when it searched", () => {
+    const html = renderToStaticMarkup(
+      <NewsView
+        load={{ status: "success", envelope: ok([], SEARCHED) }}
+        now={NOW}
+        teamNews={[
+          { team: "Tenerife", items: [item({ id: "t1" })] },
+          { team: "Racing", items: [] },
+        ]}
+      />,
+    );
+    const page = text(html);
+    expect(html).toContain('data-testid="news-team-latest"');
+    expect(page).toContain("Este partido todavía no tiene noticias propias");
+    expect(page).toContain("Últimas noticias de Tenerife");
+    expect(page).not.toContain("Últimas noticias de Racing");
+    expect(page).not.toContain("No encontramos noticias relevantes");
+    expect(html).toContain('data-testid="news-search"');
+    expect(page).toContain("12 fuentes leídas");
+  });
+
+  test("with no news of either side it keeps saying what it said before", () => {
+    const html = renderToStaticMarkup(
+      <NewsView
+        load={{ status: "success", envelope: ok([], SEARCHED) }}
+        now={NOW}
+        teamNews={[
+          { team: "Tenerife", items: [] },
+          { team: "Racing", items: [] },
+        ]}
+      />,
+    );
+    expect(html).not.toContain('data-testid="news-team-latest"');
+    expect(text(html)).toContain("y no encontramos noticias relevantes para este partido");
+  });
+
+  test("a match that has its own news never shows the sides' latest", () => {
+    const html = renderToStaticMarkup(
+      <NewsView
+        load={{ status: "success", envelope: ok([item()]) }}
+        now={NOW}
+        teamNews={[{ team: "Tenerife", items: [item({ id: "t2" })] }]}
+      />,
+    );
+    expect(html).not.toContain('data-testid="news-team-latest"');
+  });
+
+  test("in English", () => {
+    setLocale("en");
+    const html = renderToStaticMarkup(
+      <NewsView
+        load={{ status: "success", envelope: ok([], SEARCHED) }}
+        now={NOW}
+        teamNews={[{ team: "Tenerife", items: [item({ id: "t3" })] }]}
+      />,
+    );
+    expect(text(html)).toContain("Latest news of Tenerife");
+  });
+});
