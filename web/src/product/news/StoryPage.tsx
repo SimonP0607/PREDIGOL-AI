@@ -7,7 +7,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ExternalLink, Newspaper } from "lucide-react";
-import { LiveApiError, v1 } from "@/lib/api/v1/client";
+import { LiveApiError } from "@/lib/api/v1/client";
+import { stories } from "./storiesApi";
 import { isMissing, present } from "@/lib/api/v1/types_intelligence";
 import type { StoryDetail, StoryEntity } from "@/lib/api/v1/types_stories";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -254,7 +255,7 @@ export function StoryPage({ storyKey }: { storyKey: string }) {
   const open = auth?.news_feed === true && auth?.news_v2 === true;
   const q = useQuery({
     queryKey: ["v1", "story", storyKey],
-    queryFn: () => v1.story(storyKey),
+    queryFn: () => stories.story(storyKey),
     enabled: open,
     retry: false,
   });
