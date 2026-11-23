@@ -97,6 +97,19 @@ describe("a row of the list", () => {
     expect(row).toMatch(/sr-only">Aplazado</);
   });
 
+  test("AP-P02: the side column keeps its width with or without bookmakers: the score is in the same place", async () => {
+    const withBooks = await html(<MatchRow item={item(7)} />);
+    const without = await html(<MatchRow item={item(0)} />);
+    for (const out of [withBooks, without]) {
+      // a fixed width beside the teams (its empty state included); hidden only where it would be an empty line of its own
+      expect(out).toContain("@min-[21rem]:w-[4.5rem]");
+      expect(out).toContain("sm:@min-[21rem]:w-28");
+      expect(out).toContain("@max-[21rem]:empty:hidden");
+      expect(out).not.toMatch(/(?:^|\s|")empty:hidden/);
+      expect(out).not.toContain("@min-[21rem]:max-w-[4.5rem]");
+    }
+  });
+
   test("in English too", async () => {
     setLocale("en");
     const out = await html(<MatchRow item={item(1)} />);

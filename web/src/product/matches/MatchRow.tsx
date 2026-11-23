@@ -193,9 +193,10 @@ function MatchRowView({ item, why = null }: { item: MatchItem; why?: Why | null 
       <span
         className={cn(
           // narrow: a line of its own under the teams, after the time's column (3.25 rem + the gap)
-          "flex basis-full flex-wrap items-center justify-end gap-1 empty:hidden",
-          // beside the teams once the row has the room
-          "@min-[21rem]:max-w-[4.5rem] @min-[21rem]:shrink-0 @min-[21rem]:basis-auto @min-[21rem]:flex-col @min-[21rem]:items-end sm:@min-[21rem]:w-28 sm:@min-[21rem]:max-w-none",
+          "flex basis-full flex-wrap items-center justify-end gap-1 @max-[21rem]:empty:hidden",
+          // beside the teams once the row has the room: ALWAYS with its width, empty too, so the score of every row is in
+          // the same place with bookmakers and without them (AP-P02)
+          "@min-[21rem]:w-[4.5rem] @min-[21rem]:shrink-0 @min-[21rem]:basis-auto @min-[21rem]:flex-col @min-[21rem]:items-end sm:@min-[21rem]:w-28",
         )}
       >
         <StatusTag group={group} />
