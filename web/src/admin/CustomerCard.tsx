@@ -14,6 +14,7 @@ import { v1 } from "@/lib/api/v1/client";
 import type { Customer } from "@/lib/api/v1/types_customers";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { t, translateOr } from "@/lib/i18n";
+import { t as tu } from "./userText";
 import { formatDateTime, formatDateYear, formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { Card, ErrorState, SkeletonCards, errorMessage } from "@/product/shared/States";
@@ -26,7 +27,15 @@ const BUTTON =
 const FIELD =
   "mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-base focus:border-primary focus:outline-none sm:text-sm";
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+export function Section({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <Card className="space-y-3 p-4" data-testid={`customer-${id}`}>
       <h2 className="text-sm font-semibold">{title}</h2>
@@ -35,7 +44,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
-function Facts({ rows }: { rows: Array<[string, ReactNode]> }) {
+export function Facts({ rows }: { rows: Array<[string, ReactNode]> }) {
   return (
     <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
       {rows.map(([label, value]) => (
@@ -50,104 +59,44 @@ function Facts({ rows }: { rows: Array<[string, ReactNode]> }) {
 
 const labelOf = (group: string, key: string) => translateOr(`admin.customers.${group}.${key}`, key);
 
-function Actions({ card, onNotice }: { card: Customer; onNotice: (text: string) => void }) {
+/** Renew or extend the membership (the membership's dialog). The account's own acts - active or not, the invitation - are in «Cuenta y acceso». */
+export function MembershipAction({ card }: { card: Customer }) {
   const qc = useQueryClient();
-  const [membershipOpen, setMembershipOpen] = useState(false);
-  const [confirm, setConfirm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const id = card.identity.id;
   const refresh = () => qc.invalidateQueries({ queryKey: ["v1", "admin", "customers"] });
-  const status = useMutation({
-    mutationFn: () =>
-      v1.updateUser(id, { status: card.identity.status === "active" ? "disabled" : "active" }),
-    onSuccess: () => {
-      setConfirm(false);
-      onNotice(t("admin.users.updated"));
-      void refresh();
-    },
-    onError: (e) => setError(errorMessage(e)),
-  });
-  const resend = useMutation({
-    mutationFn: () => v1.resendInvitation(id),
-    onSuccess: () => onNotice(t("admin.users.inviteResent")),
-    onError: (e) => setError(errorMessage(e)),
-  });
-  const invited = card.identity.status === "invited";
+  if (card.identity.status === "invited") {
+    return (
+      <p className="text-xs text-muted-foreground" data-testid="customer-actions">
+        {tu("userfile.invitedNoMembership")}
+      </p>
+    );
+  }
   return (
     <div className="flex flex-wrap gap-2" data-testid="customer-actions">
-      {!invited ? (
-        <button
-          type="button"
-          data-testid="customer-manage-membership"
-          onClick={() => setMembershipOpen(true)}
-          className={BUTTON}
-        >
-          <CalendarPlus aria-hidden className="h-4 w-4" />
-          {t("admin.customers.manageMembership")}
-        </button>
-      ) : (
-        <button
-          type="button"
-          data-testid="customer-resend"
-          disabled={resend.isPending}
-          onClick={() => resend.mutate()}
-          className={BUTTON}
-        >
-          <Mail aria-hidden className="h-4 w-4" />
-          {t("admin.users.resendInvite")}
-        </button>
-      )}
-      {!invited ? (
-        confirm ? (
-          <>
-            <button
-              type="button"
-              data-testid="customer-status-confirm"
-              disabled={status.isPending}
-              onClick={() => status.mutate()}
-              className={cn(BUTTON, "border-negative/50 bg-negative-soft text-negative")}
-            >
-              {t("common.confirm")} ·{" "}
-              {card.identity.status === "active"
-                ? t("admin.users.deactivate")
-                : t("admin.users.activate")}
-            </button>
-            <button type="button" onClick={() => setConfirm(false)} className={BUTTON}>
-              {t("common.cancel")}
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            data-testid="customer-status"
-            onClick={() => setConfirm(true)}
-            className={BUTTON}
-          >
-            {card.identity.status === "active"
-              ? t("admin.users.deactivate")
-              : t("admin.users.activate")}
-          </button>
-        )
-      ) : null}
-      {error ? (
-        <span role="alert" className="self-center text-caption text-negative">
-          {error}
-        </span>
-      ) : null}
+      <button
+        type="button"
+        data-testid="customer-manage-membership"
+        onClick={() => setOpen(true)}
+        className={BUTTON}
+      >
+        <CalendarPlus aria-hidden className="h-4 w-4" />
+        {t("admin.customers.manageMembership")}
+      </button>
       <MembershipDialog
         userId={id}
         email={card.identity.email}
-        open={membershipOpen}
-        onOpenChange={(open) => {
-          setMembershipOpen(open);
-          if (!open) void refresh();
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) void refresh();
         }}
       />
     </div>
   );
 }
 
-function Consents({ card }: { card: Customer }) {
+export function Consents({ card }: { card: Customer }) {
   const id = card.identity.id;
   const [proof, setProof] = useState(false);
   const q = useQuery({
@@ -233,7 +182,7 @@ function Consents({ card }: { card: Customer }) {
   );
 }
 
-function Tickets({ card }: { card: Customer }) {
+export function Tickets({ card }: { card: Customer }) {
   const id = card.identity.id;
   const [open, setOpen] = useState<number | null>(null);
   const q = useQuery({
@@ -307,7 +256,7 @@ function Tickets({ card }: { card: Customer }) {
   );
 }
 
-function Notes({ card }: { card: Customer }) {
+export function Notes({ card }: { card: Customer }) {
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -382,7 +331,7 @@ function download(doc: unknown, id: number) {
   window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-function Export({ card, onNotice }: { card: Customer; onNotice: (text: string) => void }) {
+export function Export({ card, onNotice }: { card: Customer; onNotice: (text: string) => void }) {
   const auth = useAuth();
   const needsCode = Boolean(auth.user?.mfa_enabled);
   const [open, setOpen] = useState(false);
@@ -479,7 +428,7 @@ function Export({ card, onNotice }: { card: Customer; onNotice: (text: string) =
 }
 
 /** Where the customer stands today and why, and the days it changed (plan UX, B11). */
-function Lifecycle({ card }: { card: Customer }) {
+export function Lifecycle({ card }: { card: Customer }) {
   const now = card.lifecycle;
   return (
     <Section id="lifecycle" title={t("admin.customers.lifecycle.title")}>
@@ -504,176 +453,5 @@ function Lifecycle({ card }: { card: Customer }) {
         </p>
       )}
     </Section>
-  );
-}
-
-function Body({ card }: { card: Customer }) {
-  const [notice, setNotice] = useState<string | null>(null);
-  const { identity: who, usage, notifications: mail, feedback } = card;
-  return (
-    <div className="space-y-4">
-      {notice ? (
-        <p
-          role="status"
-          data-testid="customer-notice"
-          className="rounded-md border border-positive/40 bg-positive/10 px-3 py-2 text-sm text-positive"
-        >
-          {notice}
-        </p>
-      ) : null}
-      <Actions card={card} onNotice={setNotice} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Section id="identity" title={t("admin.customers.identity")}>
-          <Facts
-            rows={[
-              [
-                t("admin.users.email"),
-                <span key="e" className="break-all">
-                  {who.email}
-                </span>,
-              ],
-              [t("admin.customers.alias"), who.display_name ?? "—"],
-              [t("admin.users.status"), t(`admin.customers.status.${who.status}`)],
-              [t("admin.users.language"), `${who.language.toUpperCase()} · ${who.timezone}`],
-              [t("admin.users.created"), formatDateTime(who.created_at)],
-              [
-                t("admin.customers.lastSeen"),
-                who.last_seen_at ? formatRelative(who.last_seen_at) : t("admin.users.never"),
-              ],
-              [
-                t("admin.users.lastLogin"),
-                who.last_login_at ? formatDateTime(who.last_login_at) : t("admin.users.never"),
-              ],
-              [
-                t("admin.customers.security"),
-                `${who.mfa_enabled ? "2FA" : t("admin.customers.noMfa")} · ${t("admin.customers.openSessions", { count: who.open_sessions })}`,
-              ],
-            ]}
-          />
-        </Section>
-        <Section id="membership" title={t("admin.membership.column")}>
-          <MembershipBadge membership={card.membership} />
-          {card.suspended_reason ? (
-            <p className="text-xs text-warning">{card.suspended_reason}</p>
-          ) : null}
-          {card.membership?.will_not_renew ? (
-            <p className="text-xs text-muted-foreground">{t("admin.customers.willNotRenew")}</p>
-          ) : null}
-        </Section>
-        <Lifecycle card={card} />
-        <Section id="usage" title={t("admin.customers.usage")}>
-          {usage.measured ? null : (
-            <p className="text-xs text-warning">{t("admin.customers.notMeasured")}</p>
-          )}
-          <Facts
-            rows={[
-              [t("admin.customers.activeDays7"), `${usage.active_days_7}/7`],
-              [t("admin.customers.activeDays30"), `${usage.active_days_30}/30`],
-              [t("admin.customers.matches30"), usage.matches_viewed_30],
-              [t("admin.customers.picksOpened30"), usage.picks_opened_30],
-              [t("admin.customers.picksSaved"), usage.picks_saved],
-              [t("admin.customers.parlaysSaved"), usage.parlays_saved],
-              [t("admin.customers.errors24"), usage.errors_24h],
-            ]}
-          />
-        </Section>
-        <Section id="notifications" title={t("admin.customers.notifications")}>
-          <Facts
-            rows={[
-              [
-                t("admin.customers.emailStatus"),
-                t(`admin.customers.emailStatuses.${mail.email_status}`),
-              ],
-              [
-                t("admin.customers.emailOff"),
-                mail.email_off.length ? mail.email_off.join(", ") : t("admin.customers.none"),
-              ],
-              [
-                t("admin.customers.pushOff"),
-                mail.push_off.length ? mail.push_off.join(", ") : t("admin.customers.none"),
-              ],
-              [
-                t("admin.customers.emails30"),
-                t("admin.customers.emailCounts", {
-                  sent: mail.sent_30,
-                  failed: mail.failed_30,
-                  bounced: mail.bounced_30,
-                  suppressed: mail.suppressed_30,
-                }),
-              ],
-            ]}
-          />
-          <h3 className="text-xs font-semibold">{t("admin.customers.devices")}</h3>
-          {mail.devices.length === 0 ? (
-            <p className="text-xs text-muted-foreground">{t("admin.customers.noDevices")}</p>
-          ) : (
-            <ul className="text-xs" data-testid="customer-devices">
-              {mail.devices.map((d) => (
-                <li key={d.id} className="py-0.5">
-                  {d.family} · {d.system}
-                  {d.installed ? ` · ${t("admin.customers.installed")}` : ""} ·{" "}
-                  {d.last_ok_at
-                    ? t("admin.customers.lastOk", { when: formatRelative(d.last_ok_at) })
-                    : t("admin.customers.neverOk")}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-        <Consents card={card} />
-        <Section id="feedback" title={t("admin.customers.feedback")}>
-          <Facts
-            rows={[
-              [
-                t("admin.customers.lastCsat"),
-                feedback.last_csat !== null
-                  ? `${feedback.last_csat}/5 · ${feedback.last_csat_at ? formatRelative(feedback.last_csat_at) : ""}`
-                  : "—",
-              ],
-              [t("admin.customers.surveyAnswers"), feedback.survey_answers],
-              [t("admin.customers.helpful"), `${feedback.helpful_yes} / ${feedback.helpful_no}`],
-            ]}
-          />
-        </Section>
-        <Tickets card={card} />
-        <Notes card={card} />
-      </div>
-      <Export card={card} onNotice={setNotice} />
-    </div>
-  );
-}
-
-export function CustomerCard({ userId }: { userId: number }) {
-  const q = useQuery({
-    queryKey: ["v1", "admin", "customers", "card", userId],
-    queryFn: () => v1.customer(userId),
-  });
-  return (
-    <div className="space-y-5">
-      <PageHeader
-        title={
-          q.data?.identity.display_name ??
-          q.data?.identity.email ??
-          t("admin.pages.customers.title")
-        }
-        description={q.data?.identity.email ?? ""}
-        actions={
-          <Link
-            to="/admin/customers"
-            className="tap-y relative inline-flex items-center gap-1 text-sm font-medium text-primary"
-          >
-            <ArrowLeft aria-hidden className="h-4 w-4" />
-            {t("admin.customers.back")}
-          </Link>
-        }
-      />
-      {q.isPending ? (
-        <SkeletonCards />
-      ) : q.isError ? (
-        <ErrorState error={q.error} onRetry={() => void q.refetch()} />
-      ) : (
-        <Body card={q.data} />
-      )}
-    </div>
   );
 }
