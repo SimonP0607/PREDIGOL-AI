@@ -161,4 +161,19 @@ describe("«Para ti / Todo» (plan maestro UX/UI 2026, PR-14)", () => {
   test("«Para ti» keeps only what the reader follows", () => {
     expect(shownLayers("mine", own)).toEqual({ selector: true, forYou: true, predigol: false });
   });
+
+  test("Inicio único (AP-I01): nunca hay selector y PrediGol siempre se ve; la franja solo con favoritos", () => {
+    for (const view of ["all", "mine"] as const) {
+      expect(shownLayers(view, own, true)).toEqual({
+        selector: false,
+        forYou: true,
+        predigol: true,
+      });
+      expect(shownLayers(view, none, true)).toEqual({
+        selector: false,
+        forYou: false,
+        predigol: true,
+      });
+    }
+  });
 });

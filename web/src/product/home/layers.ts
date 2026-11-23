@@ -73,7 +73,10 @@ export type HomeView = "all" | "mine";
 export function shownLayers(
   view: HomeView,
   layers: Layers,
+  /** One Inicio for everyone (plan de correcciones UX, AP-I01, D1): no selector, PrediGol always, the reader's strip on top. */
+  unified = false,
 ): { selector: boolean; forYou: boolean; predigol: boolean } {
+  if (unified) return { selector: false, forYou: layers.forYou, predigol: true };
   if (!layers.forYou) return { selector: false, forYou: false, predigol: true };
   return { selector: true, forYou: true, predigol: view === "all" };
 }
