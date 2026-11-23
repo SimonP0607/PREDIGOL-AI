@@ -46,12 +46,36 @@ export function BacktestingLive() {
         title={t("admin.pages.backtesting.title")}
         description={t("admin.pages.backtesting.description")}
       />
+      <BacktestGuide />
       {q.isError ? <ApiErrorNotice error={q.error} /> : null}
       {!d ? (
         <TableSkeleton rows={5} cols={4} />
       ) : (
         <SectionView section={d.backtest}>{(s) => (s ? <SessionView s={s} /> : null)}</SectionView>
       )}
+    </div>
+  );
+}
+
+/** Three lines on top (AP-A05): what the screen is, how to read it and what it decides. */
+export function BacktestGuide() {
+  const lines = ["what", "how", "decides"] as const;
+  return (
+    <div data-testid="backtest-guide">
+      <Panel title={t("research.backtesting.guide.title")}>
+        <dl className="grid gap-x-8 gap-y-3 lg:grid-cols-3">
+          {lines.map((k) => (
+            <div key={k}>
+              <dt className="text-label text-subtle-foreground">
+                {t(`research.backtesting.guide.${k}`)}
+              </dt>
+              <dd className="mt-1 text-sm text-muted-foreground">
+                {t(`research.backtesting.guide.${k}Body`)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </Panel>
     </div>
   );
 }
