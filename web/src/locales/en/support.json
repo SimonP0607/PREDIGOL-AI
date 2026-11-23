@@ -43,7 +43,7 @@
       "whatsappText": "Hi, I am writing from PrediGol:",
       "email": "E-mail",
       "urgent": "Cannot get in, or paid and have no access? Choose “I cannot get in” and we look at it today.",
-      "off": "Messages from PrediGol are paused for now; write to us on WhatsApp or by e-mail.",
+      "off": "Messages from PrediGol are paused for now; {reach}.",
       "nothing": "Messages from PrediGol are paused and no other channel is published yet. Please try again later.",
       "hours": "Hours: {hours}",
       "stillFailing": "Still failing? Write to us",
@@ -110,7 +110,7 @@
       "emailNote": "For when you cannot open PrediGol.",
       "emailOpen": "Write an e-mail",
       "telegramBody": "Maintenance, incidents and news",
-      "telegramNote": "Announcements only. To talk, use WhatsApp or a message.",
+      "telegramNote": "Announcements only. To talk, use another channel on this page.",
       "telegramOpen": "Open the channel",
       "quickTitle": "To make it quick",
       "quick1": "Have your account's e-mail at hand.",
@@ -139,7 +139,7 @@
     },
     "cant_sign_in": {
       "q": "I cannot sign in to my account",
-      "a": "Check that your e-mail is spelled right and that caps lock is off. After several failed attempts the account waits a few minutes before letting you try again. If the sign-in screen shows “Forgot your password?”, use it: a one-use link reaches you. If it does not, or the link expired, write to us on WhatsApp or by e-mail (Contact, below) and we help you the same day."
+      "a": "Check that your e-mail is spelled right and that caps lock is off. After several failed attempts the account waits a few minutes before letting you try again. If the sign-in screen shows “Forgot your password?”, use it: a one-use link reaches you. If it does not, or the link expired, {reach} and we help you the same day."
     },
     "two_steps": {
       "q": "How do I turn on two-step verification?",
@@ -151,7 +151,7 @@
     },
     "renew": {
       "q": "How do I renew my membership?",
-      "a": "PrediGol does not charge cards inside the app. Write to us on WhatsApp or answer the reminder e-mail; once we record your payment, your membership is extended and you see it in your profile, under “Membership”, with its dates."
+      "a": "PrediGol does not charge cards inside the app. To renew, {reach}, or answer the reminder e-mail; once we record your payment, your membership is extended and you see it in your profile, under “Membership”, with its dates."
     },
     "membership_ends": {
       "q": "What happens when my membership ends?",
@@ -321,7 +321,7 @@
       "yours": "Your answer: {answer}."
     },
     "notFound": "That message does not exist or is not yours.",
-    "readOnly": "Writing from PrediGol is paused for now; write to us on WhatsApp or by e-mail."
+    "readOnly": "Writing from PrediGol is paused for now; {reach}."
   },
   "match": {
     "report": "See some wrong data? Tell us"
@@ -653,6 +653,12 @@
         "example": "«Over 2.5 goals: 7/10 (40–89 %)» means it happened in 7 of the last 10 matches, and with so few matches the expected rate lies between 40 and 89 %."
       }
     }
+  },
+  "reach": {
+    "both": "write to us on WhatsApp or by e-mail",
+    "whatsapp": "write to us on WhatsApp",
+    "email": "write to us by e-mail",
+    "none": "write to us from Help → “Talk to a person”"
   },
   "whatsapp": {
     "code": "Reference: {code}"

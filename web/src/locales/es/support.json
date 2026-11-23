@@ -43,7 +43,7 @@
       "whatsappText": "Hola, les escribo desde PrediGol:",
       "email": "Correo",
       "urgent": "¿No puedes entrar o pagaste y no accedes? Elige «No puedo entrar» y lo vemos hoy mismo.",
-      "off": "Los mensajes desde PrediGol están pausados por ahora; escríbenos por WhatsApp o por correo.",
+      "off": "Los mensajes desde PrediGol están pausados por ahora; {reach}.",
       "nothing": "Los mensajes desde PrediGol están pausados y todavía no hay otro canal publicado. Vuelve a intentarlo más tarde.",
       "hours": "Atención: {hours}",
       "stillFailing": "¿Sigue fallando? Escríbenos",
@@ -110,7 +110,7 @@
       "emailNote": "Para cuando no puedes abrir PrediGol.",
       "emailOpen": "Escribir un correo",
       "telegramBody": "Mantenimientos, incidencias y novedades",
-      "telegramNote": "Solo avisos. Para conversar, usa WhatsApp o un mensaje.",
+      "telegramNote": "Solo avisos. Para conversar, usa otro canal de esta página.",
       "telegramOpen": "Abrir el canal",
       "quickTitle": "Para que sea rápido",
       "quick1": "Ten a mano el correo de tu cuenta.",
@@ -139,7 +139,7 @@
     },
     "cant_sign_in": {
       "q": "No puedo entrar a mi cuenta",
-      "a": "Revisa que el correo esté bien escrito y que no tengas el bloqueo de mayúsculas activado. Tras varios intentos fallidos la cuenta espera unos minutos antes de dejarte intentar de nuevo. Si en la pantalla de entrada ves «¿Olvidaste tu contraseña?», úsalo: te llega un enlace de un solo uso. Si no lo ves o el enlace caducó, escríbenos por WhatsApp o por correo (Contacto, abajo) y te ayudamos ese mismo día."
+      "a": "Revisa que el correo esté bien escrito y que no tengas el bloqueo de mayúsculas activado. Tras varios intentos fallidos la cuenta espera unos minutos antes de dejarte intentar de nuevo. Si en la pantalla de entrada ves «¿Olvidaste tu contraseña?», úsalo: te llega un enlace de un solo uso. Si no lo ves o el enlace caducó, {reach} y te ayudamos ese mismo día."
     },
     "two_steps": {
       "q": "¿Cómo activo la verificación en dos pasos?",
@@ -151,7 +151,7 @@
     },
     "renew": {
       "q": "¿Cómo renuevo mi membresía?",
-      "a": "PrediGol no cobra con tarjeta dentro de la app. Escríbenos por WhatsApp o respondiendo el correo de aviso; cuando registremos tu pago, tu membresía se extiende y lo ves en tu perfil, en «Membresía», con sus fechas."
+      "a": "PrediGol no cobra con tarjeta dentro de la app. Para renovar, {reach}, o responde el correo de aviso; cuando registremos tu pago, tu membresía se extiende y lo ves en tu perfil, en «Membresía», con sus fechas."
     },
     "membership_ends": {
       "q": "¿Qué pasa cuando termina mi membresía?",
@@ -321,7 +321,7 @@
       "yours": "Tu respuesta: {answer}."
     },
     "notFound": "Ese mensaje no existe o no es tuyo.",
-    "readOnly": "Escribir desde PrediGol está pausado por ahora; escríbenos por WhatsApp o por correo."
+    "readOnly": "Escribir desde PrediGol está pausado por ahora; {reach}."
   },
   "match": {
     "report": "¿Ves un dato incorrecto? Avísanos"
@@ -653,6 +653,12 @@
         "example": "«Más de 2,5 goles: 7/10 (40–89 %)» quiere decir que pasó en 7 de los 10 últimos partidos, y que con tan pocos partidos lo esperable está entre el 40 y el 89 %."
       }
     }
+  },
+  "reach": {
+    "both": "escríbenos por WhatsApp o por correo",
+    "whatsapp": "escríbenos por WhatsApp",
+    "email": "escríbenos por correo",
+    "none": "escríbenos desde Ayuda → «Hablar con una persona»"
   },
   "whatsapp": {
     "code": "Código de consulta: {code}"

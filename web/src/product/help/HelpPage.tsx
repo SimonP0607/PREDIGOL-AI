@@ -44,6 +44,7 @@ import { usePush } from "@/product/push/usePush";
 import { useReportProblem } from "@/product/support/report";
 import { GuidesPanel } from "@/product/guides/GuidesPanel";
 import { AssistantSheet } from "./HelpAssistant";
+import { reachOf, reachPhrase, type Reach } from "./reach";
 import { TERM_KEYS } from "@/lib/glossary";
 import { HOW_PATH } from "./howItWorks";
 import {
@@ -112,6 +113,8 @@ const GROUP_ICON: Record<FaqGroup, LucideIcon> = {
 
 export function HelpPage() {
   const state = useQuery(live.support);
+  // the channels that are published: an answer names only these (AP-H01)
+  const reach = useMemo(() => reachOf(state.data?.contact), [state.data?.contact]);
   const push = usePush();
   const hash = useRouterState({ select: (s) => s.location.hash.replace(/^#/, "") });
   const [query, setQuery] = useState("");
@@ -123,8 +126,8 @@ export function HelpPage() {
     [pushOn],
   );
   const shown = useMemo(
-    () => new Set(visible.filter((id) => faqMatches(id, query))),
-    [query, visible],
+    () => new Set(visible.filter((id) => faqMatches(id, query, reach))),
+    [query, visible, reach],
   );
   const groups = FAQ_GROUPS.map(
     (g) => [g.id, g.items.filter((id) => shown.has(id))] as const,
@@ -218,6 +221,7 @@ export function HelpPage() {
           onOpenChange={setAssistantOpen}
           faqShown={visible}
           whatsapp={whatsapp}
+          reach={reach}
         />
       ) : null}
       <section aria-labelledby="help-faq" className="flex flex-col gap-2" data-testid="help-faq">
@@ -258,6 +262,7 @@ export function HelpPage() {
                         key={`${id}-${searching ? "found" : "all"}`}
                         id={id}
                         open={searching || hash === faqAnchor(id)}
+                        reach={reach}
                       />
                     ))}
                   </div>
@@ -344,7 +349,7 @@ function HelpActions({
   );
 }
 
-function Question({ id, open }: { id: FaqId; open: boolean }) {
+function Question({ id, open, reach }: { id: FaqId; open: boolean; reach: Reach }) {
   const link = FAQ_LINKS[id];
   return (
     <details
@@ -362,7 +367,7 @@ function Question({ id, open }: { id: FaqId; open: boolean }) {
         />
       </summary>
       <div className="px-4 pb-4">
-        <p className="text-sm leading-relaxed text-muted-foreground">{faqAnswer(id)}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{faqAnswer(id, reach)}</p>
         {link ? (
           <AppLink
             to={link.to}
@@ -654,7 +659,9 @@ function Contact({ contact, enabled }: { contact: SupportContact | null; enabled
             : t("support.help.contact.nothing")}
         </p>
         {!canReport && (whatsapp || email) ? (
-          <p className="mt-1 text-caption text-muted-foreground">{t("support.help.contact.off")}</p>
+          <p className="mt-1 text-caption text-muted-foreground">
+            {t("support.help.contact.off", { reach: reachPhrase(reachOf(contact)) })}
+          </p>
         ) : null}
       </div>
       {shown.length > 0 ? <ul className="flex flex-col gap-2">{shown}</ul> : null}
