@@ -137,3 +137,44 @@ Todo lo de abajo gasta **0 peticiones** salvo la consulta de estado del paso 3 (
   (eso es el punto anterior) y no toca la base de datos.
 * Si ya sembraste su historia (paso 6) y la quitas antes de que termine, `python -m scripts.migration status` muestra las unidades
   pendientes del nivel; no lo he probado en producción.
+
+## 6. Lote 4 aplicado y medido (OPS-014, Plan Maestro PM, prerrequisito de PM-03-02)
+
+**Aprobación:** decisión n.º 10 del dueño (16-nov-2026) y autorización definitiva del 17-nov-2026, «Lotes de expansión 3 y 4 … el 4 tras
+un día UTC completo de medida» (estado de ejecución del Plan AD). El lote 3 se siguió el 17-nov a las 13:52 UTC (run 187486); su día
+completo fue el 18-nov. Sin sesión del Plan AD activa ni PR abierto sobre `config/expansion.yaml` cuando se aplicó.
+
+**Aplicado** el 20-nov-2026 con el paso del §4 (0 peticiones), fuera de `fixtures_sync` y de copias:
+
+* 14:24 UTC, ensayo `expand_leagues --batch 4`: 241 «Copa Colombia» (8 temporadas) y 268 «Primera División» (15), actual 2026, nombres y
+  países iguales a los del proveedor.
+* **14:25:29 UTC, `--apply`: run 200930** (`league_expansion`): 2 competiciones y 23 temporadas actualizadas, nivel 8. Seguidas
+  **138 → 140**.
+
+**Primeras horas:** la `fixtures_sync` de las 16:58 UTC pidió 116 calendarios (114 antes) y guardó Copa Colombia (72 partidos, todos
+terminados: la edición 2026 acabó el 18-nov) y Uruguay (297; 5 por jugar). Los tres partidos de Uruguay del 20-nov (19:30 UTC) quedaron
+con eventos y alineaciones; dos con cuotas (342 y 326 lecturas) y uno (1650503) pedido 1 vez sin precio del proveedor.
+
+**Días completos medidos** (23-nov, 22:44 UTC, solo lectura; `quota_lanes report`, `raw.provider_endpoint_usage`,
+`raw.ingestion_runs`, `raw.ingestion_payloads`, `analytics.coverage_cells`):
+
+| Día UTC | Peticiones del día (contador / libro) | Respuestas atribuibles al lote (por `league` / por `fixture`) | Partidos del lote | Carril limitado |
+| --- | ---: | ---: | ---: | --- |
+| 21-nov | 20.259 / 20.185 | 4 (`/standings` 2, `/fixtures` 1, `/injuries` 1) / 7 (`/odds` 5, `/predictions` 2) | 0 | ninguno |
+| 22-nov | 16.951 / 16.948 | 2 (`/fixtures`, `/standings`) / 7 (`/odds`) | 0 | ninguno |
+
+Días anteriores sin el lote (libro): 12.718 a 23.104 (14 al 19-nov). Las respuestas atribuibles son una **cota inferior** (el índice del
+RAW no repite una respuesta idéntica) y no cuentan la referencia, que trabaja con su asignación fija; aun multiplicadas por diez quedan
+muy por debajo del criterio de cierre (**≤ 1.000 peticiones añadidas en el día medido**): **cumplido** en los dos días. Ningún carril
+habría limitado (los carriles siguen apagados).
+
+**Capturas:** los dos partidos de Uruguay del 23-nov tenían 1.980 y 1.988 lecturas de cuotas (6 peticiones cada uno), alineaciones y,
+el terminado, eventos. Próximo: 27-nov 23:30 UTC.
+
+**Nivel de cobertura** (`coverage-levels-v1`, recálculo del 21-nov 08:00 UTC, 295 partidos terminados de Uruguay 2026): eventos,
+alineaciones y árbitro **A**; córners, tiros, tiros a puerta y amarillas **D** (54 de 295: solo los partidos recientes traen estadística
+de equipo, aunque la sonda de IA-077 vio 20 de 20); faltas, xG y jugador **D** (0). **Copa Colombia no tiene celdas todavía**: el
+recálculo incremental solo toma competiciones con un partido terminado en 48 h, y el completo del domingo 22-nov acabó «aborted» dos
+veces (08:40 y 11:20 UTC); se graduará en el próximo completo (29-nov) o con `scripts.availability_refresh --only 3613`.
+
+Vuelta atrás, si hiciera falta: §5 (`--batch 4 --untrack --apply`; no borra nada).

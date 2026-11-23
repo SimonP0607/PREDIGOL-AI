@@ -20,7 +20,9 @@ from psycopg.rows import dict_row
 
 from fbi.api.contracts.messaging import (
     EmailCategory,
+    MessagePreviewIn,
     MessageStatus,
+    MessageTestOut,
     NotificationPreferences,
     NotificationPreferencesIn,
     OutboxMessage,
@@ -31,13 +33,13 @@ from fbi.api.contracts.messaging import (
 )
 from fbi.api.deps import get_db
 from fbi.api.errors import ApiError
-from fbi.api.security import App, client_ip, same_site_only
-from fbi.auth import recovery, throttle, tokens
+from fbi.api.security import App, UsersAdmin, client_ip, same_site_only
+from fbi.auth import recovery, store, throttle, tokens
 from fbi.auth.service import AuthError
 from fbi.customer.db import CustomerError, write_connection
 from fbi.messaging import outbox, preferences, webhooks
 from fbi.messaging import unsubscribe as leaving
-from fbi.messaging.templates import CATEGORIES, MANDATORY, TEMPLATES, render
+from fbi.messaging.templates import CATEGORIES, MANDATORY, TEMPLATES, TemplateError, render
 
 router = APIRouter(prefix="/me", tags=["notifications"], dependencies=[Depends(same_site_only)])
 admin_router = APIRouter(prefix="/messages", tags=["admin"])
@@ -122,6 +124,62 @@ def message_preview(conn: Db, message_id: Annotated[int, Path(ge=1)]) -> OutboxP
     except ValueError as exc:
         raise ApiError(409, "preview_unavailable", f"this message does not render: {exc}"[:200]) from exc
     return OutboxPreview(subject=rendered.subject, text=rendered.text, html=rendered.html, link=rendered.link)
+
+
+def _who(conn: psycopg.Connection[Any], user_id: int) -> tuple[str, str]:
+    """The name and time zone of the account that asks: the preview says them as the e-mail will say them to a reader."""
+    row = conn.execute("SELECT display_name, timezone FROM auth.users WHERE id = %s", (user_id,)).fetchone()
+    return (str(row[0] or ""), str(row[1] or "UTC")) if row else ("", "UTC")
+
+
+@admin_router.post("/preview", response_model=OutboxPreview)
+def preview_template(body: MessagePreviewIn, actor: UsersAdmin, conn: Db) -> OutboxPreview:
+    """The exact e-mail of a template in a language (plan de correcciones UX, AP-M02): the same ``render`` the messenger
+    calls when it sends, with the sample of the template or the parameters given - a communiqué's draft. Nothing is sent
+    or queued, and a link is a stand-in. Only the console's users reach it (a reader gets 403 from the admin gate)."""
+    template = TEMPLATES.get(body.template)
+    if template is None:
+        raise ApiError(404, "not_found", "no such template")
+    params = dict(body.params) if body.params is not None else dict(template.sample)
+    name, zone = _who(conn, actor.user_id)
+    until = datetime.now(UTC) + tokens.LIFETIME[template.grant] if template.grant is not None else None
+    try:
+        rendered = render(template.name, body.locale, params, {"name": name}, zone=zone, until=until)
+    except TemplateError as exc:
+        raise ApiError(422, "preview_unavailable", f"this message does not render: {exc}"[:200]) from exc
+    return OutboxPreview(subject=rendered.subject, text=rendered.text, html=rendered.html, link=rendered.link)
+
+
+TEST_PER_HOUR = 5
+"""Tests an administrator may ask for to their own address in an hour."""
+
+
+@admin_router.post("/test", response_model=MessageTestOut)
+def send_test_to_myself(body: MessagePreviewIn, request: Request, actor: UsersAdmin) -> MessageTestOut:
+    """«Enviarme una prueba» (plan de correcciones UX, AP-M02): the template queued for the administrator's own account and
+    nobody else's, so it leaves with the messenger's own rules (switch, cap, the account's choices). Limited to
+    ``TEST_PER_HOUR`` an hour and recorded in the access trail. A template with a one-use link is not sent as a test."""
+    template = TEMPLATES.get(body.template)
+    if template is None:
+        raise ApiError(404, "not_found", "no such template")
+    if template.grant is not None:
+        raise ApiError(422, "test_unavailable", "an e-mail with a one-use link is previewed, never sent as a test")
+    params = dict(body.params) if body.params is not None else dict(template.sample)
+    with write_connection() as conn:
+        recent = conn.execute(
+            "SELECT count(*) FROM auth.audit_events WHERE action = 'admin.message_test' AND actor_user_id = %s "
+            "AND at > now() - interval '1 hour'", (actor.user_id,)).fetchone()
+        if recent is not None and int(recent[0]) >= TEST_PER_HOUR:
+            raise ApiError(429, "test_limit", f"{TEST_PER_HOUR} tests an hour at most")
+        key = f"adminmsgtest:{actor.user_id}:{template.name}:{body.locale}:{time.time_ns()}"
+        try:
+            queued = outbox.enqueue(conn, user_id=actor.user_id, template=template.name, params=params, dedup_key=key,
+                                    locale=body.locale)
+        except TemplateError as exc:
+            raise ApiError(422, "preview_unavailable", f"this message does not render: {exc}"[:200]) from exc
+        store.record_event(conn, "admin.message_test", actor_user_id=actor.user_id, target_user_id=actor.user_id,
+                           ip=client_ip(request), detail={"template": template.name})
+    return MessageTestOut(queued=queued is not None)
 
 
 # ── the provider ──────────────────────────────────────────────────────────────────────

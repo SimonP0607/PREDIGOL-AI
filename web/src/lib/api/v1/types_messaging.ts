@@ -66,6 +66,18 @@ export interface OutboxPreview {
   link: string | null;
 }
 
+/** What the console asks to see (AP-M02): a template in a language, with its own parameters or, without them, its sample. */
+export interface MessagePreviewIn {
+  template: string;
+  locale: "es" | "en";
+  params?: Record<string, string>;
+}
+
+export interface MessageTestOut {
+  /** False when the same test was already waiting in the queue. */
+  queued: boolean;
+}
+
 /** The page the weekly summary's link opens (plan UX, B8). */
 export interface UnsubscribeResult {
   /** True when this tap withdrew the consent; false when the reader had already left (nothing changed). */
