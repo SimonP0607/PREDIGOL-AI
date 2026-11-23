@@ -271,7 +271,7 @@ describe("«Cómo le va a PrediGol»", () => {
     expect(shown).toContain("Sin picks publicados todavía.");
     expect(shown).toContain("Todavía no hay picks publicados con su referencia de cierre.");
     expect(shown).toContain("Definición clv-v1, vigente desde el 22 oct 2026.");
-    expect(shown).toContain("Sin calibrar");
+    expect(shown).toContain("Estimación preliminar");
     expect(html).toContain('data-testid="transparency-bins-OU"');
     expect(html).not.toContain('data-testid="transparency-bins-1X2"');
     expect(shown).toContain(

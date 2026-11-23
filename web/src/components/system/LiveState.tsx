@@ -87,7 +87,18 @@ export function SectionView<T>({
   return <>{children(section.data)}</>;
 }
 
-export function ApiErrorNotice({ error, className }: { error: unknown; className?: string }) {
+export function ApiErrorNotice({
+  error,
+  className,
+  onRetry,
+  retrying = false,
+}: {
+  error: unknown;
+  className?: string;
+  /** A «Reintentar» button that asks the same question again (AP-A02): each section fails and retries on its own. */
+  onRetry?: (() => void) | undefined;
+  retrying?: boolean;
+}) {
   const e = error instanceof LiveApiError ? error : null;
   const unreachable = e?.code === "unreachable";
   const Icon = unreachable ? WifiOff : AlertTriangle;
@@ -110,10 +121,51 @@ export function ApiErrorNotice({ error, className }: { error: unknown; className
             <span className="numeric"> · {t("admin.state.request", { id: e.requestId })}</span>
           ) : null}
         </p>
+        {e ? (
+          <p className="numeric mt-0.5 text-muted-foreground" data-testid="api-error-code">
+            {t("admin.state.code", { code: e.code, status: e.status })}
+          </p>
+        ) : null}
         {unreachable ? (
           <p className="mt-1 text-muted-foreground">{t("admin.state.downNote")}</p>
         ) : null}
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={retrying}
+            data-testid="api-error-retry"
+            className="mt-2 inline-flex min-h-8 items-center rounded-md border border-border-strong px-3 text-xs font-medium text-foreground hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          >
+            {retrying ? t("admin.state.retrying") : t("admin.state.retry")}
+          </button>
+        ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A section whose data has not arrived: its own skeleton while the question is on its way, and - if the question
+ * failed - its own error with the code and a «Reintentar» (AP-A02). Never a skeleton that waits forever.
+ */
+export function FailedOrSkeleton({
+  isError,
+  error,
+  onRetry,
+  retrying,
+  skeleton,
+}: {
+  isError: boolean;
+  error: unknown;
+  onRetry: () => void;
+  retrying: boolean;
+  skeleton: React.ReactNode;
+}) {
+  if (!isError) return <>{skeleton}</>;
+  return (
+    <div className="p-4" data-testid="section-failed">
+      <ApiErrorNotice error={error} onRetry={onRetry} retrying={retrying} />
     </div>
   );
 }

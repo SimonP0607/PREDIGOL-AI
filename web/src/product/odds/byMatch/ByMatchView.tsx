@@ -15,6 +15,7 @@ import { formatOdds } from "@/lib/i18n/format";
 import { formatKickoff, formatRelative, formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { CompetitionTag } from "@/components/football/Logos";
+import { ScrollStrip } from "@/components/ui/ScrollStrip";
 import { Segmented } from "@/components/ui/segmented";
 import { Card, EmptyState, ErrorState, PageTitle, SkeletonCards } from "@/product/shared/States";
 import { SlipCard } from "@/product/records/SlipCard";
@@ -143,7 +144,7 @@ export function ByMatchView({
               h === 24 ? t("explorer.filters.today") : t("explorer.filters.hours", { count: h }),
           }))}
         />
-        <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto py-1 [scrollbar-width:none]">
+        <ScrollStrip wrapperClassName="max-w-full" className="flex gap-2 py-1">
           {chips.slice(0, 6).map((c) => (
             <button
               key={c.id}
@@ -162,7 +163,7 @@ export function ByMatchView({
               {c.name}
             </button>
           ))}
-        </div>
+        </ScrollStrip>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {/* The box is drawn; the native checkbox lies invisibly over the whole label, so a finger finds 44 px. */}
           <label className="tap-y relative inline-flex h-9 cursor-pointer items-center gap-2 text-sm">
@@ -195,7 +196,7 @@ export function ByMatchView({
 
       {/* A phone and a tablet show one market per card: chosen here (C01). */}
       <div className="@container" data-testid="by-match-market-chips">
-        <div className="flex gap-2 overflow-x-auto py-1 [scrollbar-width:none] @[46rem]:hidden">
+        <ScrollStrip wrapperClassName="@[46rem]:hidden" className="flex gap-2 py-1">
           {BY_MATCH_MARKETS.map((m) => (
             <button
               key={m.key}
@@ -212,7 +213,7 @@ export function ByMatchView({
               {t(`odds.byMatch.markets.${m.key.replace(".", "_")}`)}
             </button>
           ))}
-        </div>
+        </ScrollStrip>
       </div>
 
       <p className="text-caption text-muted-foreground" data-testid="by-match-summary">

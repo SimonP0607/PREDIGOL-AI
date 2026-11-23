@@ -80,6 +80,86 @@ async function problems(page: Page, label: string): Promise<string[]> {
         else if (ring.top < head - 8 || c.top - ring.top < 40)
           out.push("the card hides the start of a tall element it points at");
       }
+      // AP-P03: the ring hugs what its element shows: at most 8 px from the content on each side (6 px of margin + 2 of
+      // rounding), so never a whole row around a few chips. An element that draws a box of its own (a card, a button) is
+      // its own content.
+      const named = document
+        .querySelector('[data-testid="guide-ring"]')
+        ?.getAttribute("data-anchor");
+      if (ring && named) {
+        const el = Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-guide="${named}"]`),
+        ).find((e) => e.getClientRects().length > 0 && e.getBoundingClientRect().width > 0);
+        const paints = (e: Element) => {
+          const cs = getComputedStyle(e);
+          return (
+            (cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent") ||
+            cs.backgroundImage !== "none" ||
+            cs.boxShadow !== "none" ||
+            ["top", "right", "bottom", "left"].some(
+              (s) =>
+                parseFloat(cs.getPropertyValue(`border-${s}-width`)) > 0 &&
+                cs.getPropertyValue(`border-${s}-style`) !== "none",
+            )
+          );
+        };
+        if (el && !paints(el) && !/^(button|a|input|select|textarea)$/.test(el.localName)) {
+          const own = el.getBoundingClientRect();
+          let l = Infinity;
+          let tp = Infinity;
+          let r = -Infinity;
+          let b = -Infinity;
+          const see = (x: DOMRect) => {
+            if (x.width <= 0 || x.height <= 0) return;
+            l = Math.min(l, x.left);
+            tp = Math.min(tp, x.top);
+            r = Math.max(r, x.right);
+            b = Math.max(b, x.bottom);
+          };
+          const walk = (n: Element) => {
+            for (const c of Array.from(n.childNodes)) {
+              if (c.nodeType === 3 && c.textContent?.trim()) {
+                const rg = document.createRange();
+                rg.selectNodeContents(c);
+                for (const x of Array.from(rg.getClientRects())) see(x);
+              } else if (c.nodeType === 1) {
+                const e = c as HTMLElement;
+                const cs = getComputedStyle(e);
+                if (cs.display === "none" || cs.visibility === "hidden" || cs.position === "fixed")
+                  continue;
+                if (
+                  /^(button|a|input|select|textarea|svg|img|canvas)$/.test(e.localName) ||
+                  paints(e)
+                )
+                  see(e.getBoundingClientRect());
+                else walk(e);
+              }
+            }
+          };
+          walk(el);
+          l = Math.max(l, own.left);
+          tp = Math.max(tp, own.top);
+          r = Math.min(r, own.right);
+          b = Math.min(b, own.bottom);
+          if (r > l && b > tp) {
+            const gaps = {
+              left: l - ring.left,
+              top: tp - ring.top,
+              right: ring.right - r,
+              bottom: ring.bottom - b,
+            };
+            for (const [side, gap] of Object.entries(gaps))
+              if (gap > 8.5)
+                out.push(
+                  `the ring of «${named}» is ${Math.round(gap)} px from its content (${side})`,
+                );
+            if (ring.width - (r - l) > 16.5)
+              out.push(
+                `the ring of «${named}» is wider than its content by ${Math.round(ring.width - (r - l))} px`,
+              );
+          }
+        }
+      }
       for (const bar of Array.from(document.querySelectorAll(`nav[aria-label="${nav}"]`))) {
         const r = box(bar);
         if (r && getComputedStyle(bar.closest("header") ?? bar).position !== "static" && meet(c, r))

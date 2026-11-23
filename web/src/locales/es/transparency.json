@@ -112,8 +112,8 @@
       "BTTS": "Ambos marcan"
     },
     "calibrated": "Calibrado",
-    "uncalibrated": "Sin calibrar",
-    "uncalibratedNote": "Mostramos el número del modelo y lo rotulamos «sin calibrar»: todavía no hay una calibración validada.",
+    "uncalibrated": "Estimación preliminar",
+    "uncalibratedNote": "Mostramos la cifra del modelo y la rotulamos «estimación preliminar»: todavía no hay una calibración comprobada.",
     "matches_one": "{count} partido",
     "matches_other": "{count} partidos",
     "calibratedOf": "{calibrated} de {matches} calibrados",

@@ -657,6 +657,9 @@
     "unexpected": "Error inesperado.",
     "request": "petición {id}",
     "downNote": "Mientras la API no responda, nada de esta página se muestra desde memoria ni con datos demo.",
+    "code": "Código: {code} (HTTP {status})",
+    "retry": "Reintentar",
+    "retrying": "Reintentando…",
     "noValue": "Sin valor: {reason}"
   },
   "status": {
@@ -1163,5 +1166,50 @@
     "activity": "Actividad reciente",
     "open": "Abrir",
     "readOnly": "Vista de lectura: desde aquí no se aprueba, cambia ni borra nada."
+  },
+  "evaluationBoard": {
+    "title": "Evaluación de los modelos (privado)",
+    "notice": "No es una prueba de ventaja y no cambia picks, modelos ni probabilidades. «Insuficiente»: no hay muestra propia.",
+    "empty": "Aún no hay informe semanal: se calcula los lunes con el interruptor encendido.",
+    "week": "Semana {from} a {to}",
+    "cumulative": "Desde {from}",
+    "matches": "{n} partidos con pronóstico; {common} con todas las fuentes",
+    "source": "Fuente",
+    "n": "n",
+    "logLoss": "Log loss",
+    "brier": "Brier",
+    "reliability": "Fiabilidad (menor es mejor)",
+    "resolution": "Resolución (mayor es mejor)",
+    "uncertainty": "Incertidumbre",
+    "pairs": "Diferencias pareadas (modelo menos la otra fuente)",
+    "metric": "Medida",
+    "difference": "Diferencia",
+    "verdictLabel": "Lectura",
+    "sources": {
+      "modelo": "PrediGol",
+      "mercado": "Mercado (Shin)",
+      "proveedor": "Proveedor (API-Football)"
+    },
+    "verdicts": {
+      "modelo_mejor": "el modelo puntúa mejor",
+      "modelo_peor": "el modelo puntúa peor",
+      "indistinguible": "indistinguible",
+      "insuficiente": "muestra insuficiente",
+      "apta": "apta",
+      "sin_habilidad": "sin habilidad"
+    },
+    "competitions": "Por competición (lo que ve un lector)",
+    "competition": "Competición",
+    "market": "Mercado",
+    "skill": "Habilidad frente a sus frecuencias",
+    "verdict": "Veredicto",
+    "needed": "Una competición necesita {n} partidos propios; sin veredicto, no autorizada.",
+    "reproduced": "Los segmentos reproducen la cifra global",
+    "notReproduced": "Los segmentos NO reproducen la cifra global",
+    "markets": {
+      "1X2": "1X2",
+      "OU": "Más/menos 2,5",
+      "BTTS": "Ambos marcan"
+    }
   }
 }

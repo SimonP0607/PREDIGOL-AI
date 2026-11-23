@@ -8,7 +8,16 @@
  * account, and goes the next time; meanwhile the page counts it, so the guide does not come back. The survey and the offer of
  * notices wait while a guide is up (`active`).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { v1 } from "@/lib/api/v1/client";
@@ -20,7 +29,6 @@ import { live } from "@/lib/api/v1/queries";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { originOf, track } from "@/lib/track";
 import { anotherLayerOpen, findAnchor } from "./anchors";
-import { GuideLayer } from "./GuideLayer";
 import {
   GuidesContext,
   type ActiveGuide,
@@ -33,6 +41,10 @@ import { firstFrom, neighbour } from "./navigation";
 import { dequeue, dropLegacy, enqueue, flush, readQueue, refused, type Owner } from "./queue";
 import { GUIDES, GUIDE_LIST, launchable } from "./registry";
 import { applied, seenOf, withGuide } from "./state";
+
+// The layer (the ring, the card and their measuring) is a chunk of its own: only a reader with a guide open downloads it, so
+// the first visit's JS does not grow with it (bundle budget, plan de cierre UX 5.2).
+const GuideLayer = lazy(() => import("./GuideLayer").then((m) => ({ default: m.GuideLayer })));
 
 const ME_KEY = ["auth", "me"] as const;
 
@@ -553,7 +565,11 @@ export function GuideProvider({ children }: { children: ReactNode }) {
   return (
     <GuidesContext.Provider value={value}>
       {children}
-      {active ? <GuideLayer /> : null}
+      {active ? (
+        <Suspense fallback={null}>
+          <GuideLayer />
+        </Suspense>
+      ) : null}
     </GuidesContext.Provider>
   );
 }

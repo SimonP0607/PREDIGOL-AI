@@ -136,18 +136,14 @@ describe("the strip (pure)", () => {
 describe("the cards", () => {
   test("the balance: «dominio aproximado; no es field tilt», sample and origin, E1, ficha and table", () => {
     const html = renderToStaticMarkup(
-      <BalanceCard
-        rows={balanceRows(LINES)!}
-        teams={TEAMS}
-        source="estadísticas del partido de API-Football"
-      />,
+      <BalanceCard rows={balanceRows(LINES)!} teams={TEAMS} source="estadísticas del partido" />,
     );
     expect(html).toContain("Balanza del partido");
     expect(html).toContain("Dominio aproximado; no es field tilt");
     expect(html).toContain("No mide en qué zona del campo se jugó");
     expect(html).toContain('data-evidence="E1"');
     expect(html).toContain('data-review="completa"');
-    expect(html).toContain("Fuente: estadísticas del partido de API-Football · 1 partido.");
+    expect(html).toContain("Fuente: estadísticas del partido · 1 partido.");
     for (const s of ["Posesión", "Remates en el área", "Córners", "Ver como tabla"]) {
       expect(html).toContain(s);
     }
@@ -165,7 +161,7 @@ describe("the cards", () => {
     expect(html).toContain("36 min");
     expect(html).toContain("0 min");
     expect(html).toContain('data-testid="knowledge-bar"');
-    expect(html).toContain("1 partido; eventos del partido de API-Football");
+    expect(html).toContain("1 partido; eventos del partido");
     expect(html).not.toContain("score-state-beyond90");
   });
 

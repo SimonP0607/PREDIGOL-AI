@@ -54,7 +54,7 @@
     "calibrated": {
       "name": "Calibrado",
       "short": "Un pronóstico está calibrado cuando sus porcentajes se cumplen: de todo lo que dio con un 70 %, pasó más o menos el 70 %.",
-      "long": "PrediGol marca su pronóstico como «Calibrada» cuando corrigió la probabilidad del modelo con partidos ya jugados y esa corrección se comprobó. «Sin calibrar» es la probabilidad del modelo tal cual: puede ser útil, pero sus porcentajes no están comprobados."
+      "long": "PrediGol marca su pronóstico como «Calibrada» cuando corrigió la probabilidad del modelo con partidos ya jugados y esa corrección se comprobó. «Estimación preliminar» es la probabilidad del modelo tal cual: puede ser útil, pero sus porcentajes no están comprobados."
     },
     "value": {
       "name": "Valor",

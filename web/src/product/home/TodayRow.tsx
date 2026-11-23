@@ -1,7 +1,7 @@
 /**
  * One match of Inicio (plan UX, A9 and A13; section 24): when - the hour in the reader's zone, the minute while it is played
  * or its final state -, who, the score, where it comes from and why it is shown («Sigues a Nacional», «Tu liga» or
- * «Sugerida»: plan section 38, every personalised item says why), PrediGol's forecast labelled («sin calibrar» where it is
+ * «Sugerida»: plan section 38, every personalised item says why), PrediGol's forecast labelled («estimación preliminar» where it is
  * the model's own number) and one line of its reading. The whole row opens the match; a figure's help opens with a tap
  * without opening it (A1).
  */

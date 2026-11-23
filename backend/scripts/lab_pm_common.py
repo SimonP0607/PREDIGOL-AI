@@ -52,8 +52,8 @@ def open_export(folder: Path, *, need: Sequence[str] = ()) -> Any:
     if problems:
         raise ExportError("the export does not match its manifest: " + "; ".join(problems[:5]))
     run = manifest_run(folder)
-    if not str(run.get("version", "")).startswith("lab-export-v2"):
-        raise ExportError(f"need a lab-export-v2 export, this one is {run.get('version')!r}")
+    if run.get("version") not in ("lab-export-v2", "lab-export-v3"):
+        raise ExportError(f"need a lab-export-v2 or later export, this one is {run.get('version')!r}")
     con = duckdb.connect()
     con.execute("SET TimeZone = 'UTC'")
     for p in sorted(folder.glob("*.parquet")):

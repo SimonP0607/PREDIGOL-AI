@@ -82,7 +82,7 @@ describe("the pieces", () => {
     const raw = renderToStaticMarkup(
       <ProbabilityLine label="Arsenal W" value={0.785} calibration="uncalibrated" />,
     );
-    expect(raw).toContain("Sin calibrar");
+    expect(raw).toContain("Estimación preliminar");
     expect(raw).toContain("text-warning");
   });
 

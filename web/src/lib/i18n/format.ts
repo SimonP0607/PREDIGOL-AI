@@ -167,3 +167,43 @@ export function localInt(n: number): string {
   if (getLocale() === "en") return n.toLocaleString("en-US");
   return nf({}).format(n);
 }
+
+/**
+ * A script that is not the Latin one: Arabic, Cyrillic, Hebrew, Han, Thai... A reader of PrediGol reads Spanish or
+ * English; a sentence of the server written in another script is not for them.
+ */
+const FOREIGN_SCRIPT = /(?=\p{L})(?!\p{Script=Latin})./u;
+
+/** A claim the server marks, or words that mark it, as a rumour: it never reaches a reader (plan AP-T02, C-02 1.1). */
+const RUMOUR = /\b(?:rumou?rs?|rumou?red|rumores?|rumorea(?:n|ron)?)\b/i;
+
+/**
+ * A decimal with a point inside a sentence («0.473», «73.7 %»): Spanish writes «0,473» and «73,7 %». Left alone: a
+ * version or a date («1.2.3»), a number glued to letters, and a group of exactly three digits after a non-zero integer
+ * («4.000» is a thousands separator in Spanish, not a decimal).
+ */
+const POINT_DECIMAL = /(?<![\w.,])(\d{1,3})\.(\d{1,4})(?![\w]|\.\d|,\d)/g;
+
+/**
+ * A text the server wrote for a reader (a pick's reason, a risk, a note), made safe for this screen (AP-T02):
+ *   - null when it is a rumour or is written in a script the reader does not read: it is not drawn, the structured
+ *     reasons the screen already has take its place (PickWhy);
+ *   - decimals with a point rewritten in the reader's format (Spanish: comma). English text is left as it is.
+ * The definitive fix is the contract (C-02 1.1): the text arrives in the reader's language, without rumours or raw numbers.
+ */
+export function localizeServerText(text: string | null | undefined): string | null {
+  const raw = (text ?? "").trim();
+  if (!raw) return null;
+  if (FOREIGN_SCRIPT.test(raw) || RUMOUR.test(raw)) return null;
+  if (getLocale() === "en") return raw;
+  return raw.replace(POINT_DECIMAL, (m, whole: string, frac: string) =>
+    frac.length === 3 && whole !== "0" ? m : `${whole},${frac}`,
+  );
+}
+
+/** The server's lines for a reader, each through `localizeServerText`; the ones that must not be drawn are left out. */
+export function readerLines(lines: readonly string[] | null | undefined): string[] {
+  return (lines ?? [])
+    .map((line) => localizeServerText(line))
+    .filter((line): line is string => line !== null);
+}

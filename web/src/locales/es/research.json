@@ -144,6 +144,7 @@
       "notStored": "no guardado en esta sesión"
     },
     "shadow": {
+      "failed": "no se pudo leer ahora.",
       "loading": "Picks shadow: cargando…",
       "label": "Picks shadow",
       "unavailable": "{reason} Ver Rendimiento.",

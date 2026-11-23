@@ -40,7 +40,7 @@
     "why_pick": "Why this pick?",
     "glossary": "Glossary"
   },
-  "uncalibrated": ", uncalibrated",
+  "uncalibrated": ", preliminary estimate",
   "source": {
     "model": "according to PrediGol",
     "market": "according to the market, margin removed"
@@ -75,7 +75,7 @@
     "forecast_market": "{market}: the most likely is «{likely}» ({pct}{uncal}). The rest: {others}.",
     "forecast_market_even": "{market}: {others}.",
     "forecast_calibrated": "«Calibrated» means those probabilities were checked against results: when PrediGol said 60 %, it happened about 6 times in 10.",
-    "forecast_uncalibrated": "«Uncalibrated» means it is the model's own number, not yet checked against enough results: take it with more caution.",
+    "forecast_uncalibrated": "«Preliminary estimate» means it is the model's figure, not yet checked against enough results: take it with more caution.",
     "forecast_not_pick": "A forecast is not a pick: the most likely outcome can pay little. There is only a pick when the price pays more than that outcome is worth.",
     "risks_hidden": "PrediGol is not showing this match's reading right now.",
     "risks_intro": "What could turn the match, according to PrediGol's data:",

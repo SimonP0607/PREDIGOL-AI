@@ -6,7 +6,6 @@
  */
 import { useState, type ReactNode } from "react";
 import { Segmented } from "@/components/ui/segmented";
-import { toNumber } from "@/lib/i18n/format";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowRight, Target, Trophy } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -28,6 +27,7 @@ import {
 import { EvaluationBadge } from "./Badges";
 import { DailyItemCard } from "./DailyItemCard";
 import { DayNav } from "./DayNav";
+import { DEFAULT_DAILY_ORDER, orderDaily, type DailyOrder } from "./dailyOrder";
 import { FunnelLine } from "./FunnelLine";
 import type { NoPickLoad } from "./noPick";
 import { NoPickState } from "./NoPickState";
@@ -97,18 +97,11 @@ export function DailySetBlock({
   mine?: ReadonlyMap<number, RelatedPick> | undefined;
 }) {
   const board = query.data?.data;
-  const [order, setOrder] = useState<"time" | "value">("time");
+  const [order, setOrder] = useState<DailyOrder>(DEFAULT_DAILY_ORDER);
   const raw = board?.set?.items ?? [];
-  // «Por hora / Por valor» (sheet K08): the same picks in another order; the rank on each card stays PrediGol's.
-  const items =
-    variant === "page" && order === "value"
-      ? [...raw].sort((a, b) => (toNumber(b.ev) ?? -Infinity) - (toNumber(a.ev) ?? -Infinity))
-      : variant === "page"
-        ? [...raw].sort(
-            (a, b) =>
-              Date.parse(a.match.kickoff_at) - Date.parse(b.match.kickoff_at) || a.rank - b.rank,
-          )
-        : raw;
+  // «Mejores primero / Por hora / Por valor» (lámina K01): las mismas selecciones en otro orden; el rango de cada tarjeta
+  // sigue siendo el de PrediGol. En Inicio y en la columna lateral va siempre del mejor al quinto (AP-K01).
+  const items = orderDaily(raw, variant === "page" ? order : "best");
   const evaluation = board?.evaluation_mode ?? false;
   const reason = board?.reason ?? (evaluation ? "no_shadow_picks" : "no_qualified_picks");
 
@@ -224,6 +217,7 @@ export function DailySetBlock({
               onChange={setOrder}
               testId="daily-order"
               options={[
+                { value: "best", label: t("records.daily.byBest") },
                 { value: "time", label: t("records.daily.byTime") },
                 { value: "value", label: t("records.daily.byValue") },
               ]}

@@ -231,7 +231,7 @@ test.describe("self-service on, with the QA messenger", () => {
       await gate.getByTestId("consent-submit").click();
       await expect(page).toHaveURL(/\/welcome$/);
       await page.getByTestId("welcome-skip").click();
-      await page.getByTestId("welcome-about-skip").click();
+      await page.getByTestId("welcome-enter").click();
       await expect(page).toHaveURL(/\/home$/);
       await settle(page);
       await assertClean(page, w);

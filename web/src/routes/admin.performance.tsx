@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { DATA_MODE } from "@/lib/api/mode";
 import { DemoRegion } from "@/components/system/DataSources";
 import { PerformanceLive } from "@/live/MarketLive";
+import { EvaluationBoardPanel } from "@/admin/EvaluationBoardPanel";
 import { useQuery } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -47,7 +48,13 @@ function RouteComponent() {
       </DemoRegion>
     );
   }
-  return <PerformanceLive />;
+  // PM-12-01 (IA-153): the private evaluation board below the economic figures; nothing while FBI_EVALUATION_BOARD is off.
+  return (
+    <div className="space-y-4">
+      <PerformanceLive />
+      <EvaluationBoardPanel />
+    </div>
+  );
 }
 
 const metrics: Array<{ key: string; label: string; term: GlossaryKey }> = [
