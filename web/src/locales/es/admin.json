@@ -657,6 +657,9 @@
     "unexpected": "Error inesperado.",
     "request": "petición {id}",
     "downNote": "Mientras la API no responda, nada de esta página se muestra desde memoria ni con datos demo.",
+    "code": "Código: {code} (HTTP {status})",
+    "retry": "Reintentar",
+    "retrying": "Reintentando…",
     "noValue": "Sin valor: {reason}"
   },
   "status": {
