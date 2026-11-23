@@ -4,6 +4,7 @@
  * matches or markets, and their notices. The favourites order and label: no pick, probability or price changes.
  */
 import type { Iso } from "./types";
+import type { FollowedMarketKey } from "./types_records";
 import type { CompetitionBadge, TeamBadge } from "./types_product";
 import type { FollowReason } from "./types_today";
 
@@ -84,7 +85,7 @@ export interface MeToday {
   /** The reader chose a league, a team, a player or a market (the suggested ones never count) and personalisation is on. */
   chosen: boolean;
   players: WatchedPlayer[];
-  markets: MarketKey[];
+  markets: FollowedMarketKey[];
   picks: RelatedPicks | null;
   notices: Notices | null;
 }

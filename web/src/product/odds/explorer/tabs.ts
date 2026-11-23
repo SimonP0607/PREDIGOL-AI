@@ -12,6 +12,7 @@
  * total under «Mitades» and the match's under «Goles», and the reader of «Más/menos goles» switches between them in the card.
  */
 import { t } from "@/lib/i18n";
+import { familiesFirst } from "@/product/favorites/follow";
 import { fold } from "@/product/matches/model";
 import {
   chipTitle,
@@ -143,7 +144,10 @@ function familyRank(tab: TabKey, family: string): number {
 }
 
 /** The tabs of these families, in their fixed order; a tab without a market is left out. */
-export function buildTabs(families: readonly OddsFamily[] | undefined): ExplorerTab[] {
+export function buildTabs(
+  families: readonly OddsFamily[] | undefined,
+  followed: readonly string[] = [],
+): ExplorerTab[] {
   const entries: Entry[] = [];
   const familyFixtures = new Map<string, number>();
   for (const f of families ?? []) {
@@ -196,7 +200,12 @@ export function buildTabs(families: readonly OddsFamily[] | undefined): Explorer
     const own = [...familyFixtures].filter(([f]) => ownTab(f) === key).map(([, n]) => n);
     tabs.push({ key, markets, fixtures: Math.max(0, ...own, ...markets.map((m) => m.fixtures)) });
   }
-  return tabs;
+  // The families the reader follows come right after the first tab (AP-B05); the product's own order otherwise.
+  const order = familiesFirst(
+    tabs.map((x) => x.key),
+    followed,
+  );
+  return order.map((k) => tabs.find((x) => x.key === k) as ExplorerTab);
 }
 
 /** The last market used in each tab (a viewer's convenience, kept in their browser). */

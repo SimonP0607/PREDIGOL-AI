@@ -89,7 +89,11 @@ export function OddsExplorer({
 
   const families = data.useFamilies(familiesQuery(state), { paused, enabled: true });
   useGuideScreen("odds", { ready: guide === true && !families.isPending });
-  const tabs = useMemo(() => buildTabs(families.data?.families), [families.data]);
+  const followedFamilies = follow?.families;
+  const tabs = useMemo(
+    () => buildTabs(families.data?.families, followedFamilies),
+    [families.data, followedFamilies],
+  );
   const view = useMemo(
     () =>
       resolveView(

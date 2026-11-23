@@ -44,11 +44,19 @@ from fbi.customer.db import CustomerError, write_connection
 MAX_LEAGUES: Final = 10
 MAX_TEAMS: Final = 20
 MAX_PLAYERS: Final = 20
-MAX_MARKETS: Final = 5
+MAX_MARKETS: Final = 7
+"""The five classic markets and the two families (AP-B05, D14): seven in all."""
 MAX_CATALOG: Final = 10
-"""Markets of the catalogue a reader may follow besides the five classic ones (widens without a migration)."""
+"""Markets of the catalogue a reader may follow besides the markets above (widens without a migration)."""
 FOLLOWABLE_MARKETS: Final = ("1X2", "OU", "BTTS", "AH", "DC")
 """The markets PrediGol reads and a reader may follow (the product's MarketKey: a test keeps both lists the same)."""
+FAMILIES: Final = {"CORNERS": "family.corners", "CARDS": "family.cards"}
+"""The two families a reader may follow besides the five (AP-B05): any corners line, any cards line of a match goes first in
+Mercados and Cuotas. They are not rows of ``market.markets`` (the odds' ingestion reads that table): each is kept as a row of
+the ``catalog`` kind under a reserved key, and the layer says them as markets - the one place that translates is here."""
+_FAMILY_OF_KEY: Final = {key: name for name, key in FAMILIES.items()}
+FOLLOWABLE_ALL: Final = (*FOLLOWABLE_MARKETS, *FAMILIES)
+"""What ``markets`` may hold when a reader saves: the five classic ones and the two families, in the order the page lists them."""
 HINTS: Final = ("picks", "match", "parlay", "my_picks")
 """The pages with a first-visit hint (plan section 20)."""
 ONBOARDING_SWITCH: Final = "FBI_ONBOARDING"
@@ -207,8 +215,9 @@ def extras(conn: psycopg.Connection[Any], user_id: int) -> Extras:
     """The players and markets the reader follows, in the order chosen (none while they follow none)."""
     rows = conn.execute(EXTRAS_SQL, (user_id,)).fetchall()
     return Extras(players=tuple(int(r[1]) for r in rows if r[0] == "player"),
-                  markets=tuple(str(r[2]) for r in rows if r[0] == "market"),
-                  catalog=tuple(str(r[2]) for r in rows if r[0] == "catalog"))
+                  markets=tuple(_FAMILY_OF_KEY.get(str(r[2]), str(r[2])) for r in rows
+                                if r[0] == "market" or (r[0] == "catalog" and str(r[2]) in _FAMILY_OF_KEY)),
+                  catalog=tuple(str(r[2]) for r in rows if r[0] == "catalog" and str(r[2]) not in _FAMILY_OF_KEY))
 
 
 def validate_extras(conn: psycopg.Connection[Any], players: Sequence[int], markets: Sequence[str],
@@ -228,7 +237,7 @@ def validate_extras(conn: psycopg.Connection[Any], players: Sequence[int], marke
         raise CustomerError(422, "too_many_players", f"at most {MAX_PLAYERS} players")
     if len(want_markets) > MAX_MARKETS:
         raise CustomerError(422, "too_many_markets", f"at most {MAX_MARKETS} markets")
-    if unknown := [m for m in want_markets if m not in FOLLOWABLE_MARKETS]:
+    if unknown := [m for m in want_markets if m not in FOLLOWABLE_ALL]:
         raise CustomerError(422, "unknown_market", f"not a market PrediGol reads: {unknown[0]}")
     kept = already.players if already else ()
     new = [i for i in want_players if i not in kept]
@@ -280,12 +289,14 @@ def replace(user_id: int, leagues: Sequence[int], teams: Sequence[int], *, at: d
             if ids:
                 conn.execute("DELETE FROM customer.favorites WHERE user_id = %s AND kind = %s AND ref_id = ANY(%s)",
                              (user_id, kind, list(ids)))
-        if extras_removed.markets:
+        removed_classic = [m for m in extras_removed.markets if m not in FAMILIES]
+        removed_catalog = [FAMILIES[m] for m in extras_removed.markets if m in FAMILIES] + list(extras_removed.catalog)
+        if removed_classic:
             conn.execute("DELETE FROM customer.favorites WHERE user_id = %s AND kind = 'market' "
-                         "AND market_key = ANY(%s)", (user_id, list(extras_removed.markets)))
-        if extras_removed.catalog:
+                         "AND market_key = ANY(%s)", (user_id, removed_classic))
+        if removed_catalog:
             conn.execute("DELETE FROM customer.favorites WHERE user_id = %s AND kind = 'catalog' "
-                         "AND catalog_key = ANY(%s)", (user_id, list(extras_removed.catalog)))
+                         "AND catalog_key = ANY(%s)", (user_id, removed_catalog))
         # The reader's order: a favourite is listed by when it was chosen, and the ones of one save a microsecond apart in
         # the order sent (leagues, teams, players, then markets) - so the list reads back as the reader put it.
         step = 0
@@ -296,8 +307,12 @@ def replace(user_id: int, leagues: Sequence[int], teams: Sequence[int], *, at: d
                                           at + timedelta(microseconds=step)))
                 step += 1
         for key in extras_added.markets:
-            conn.execute(INSERT_SQL, (user_id, "market", None, None, None, None, key, None,
-                                      at + timedelta(microseconds=step)))
+            if key in FAMILIES:  # a family is kept as a ``catalog`` row under its reserved key
+                conn.execute(INSERT_SQL, (user_id, "catalog", None, None, None, None, None, FAMILIES[key],
+                                          at + timedelta(microseconds=step)))
+            else:
+                conn.execute(INSERT_SQL, (user_id, "market", None, None, None, None, key, None,
+                                          at + timedelta(microseconds=step)))
             step += 1
         for key in extras_added.catalog:
             conn.execute(INSERT_SQL, (user_id, "catalog", None, None, None, None, None, key,

@@ -80,9 +80,9 @@ def test_the_limits_of_players_and_markets_refuse_rather_than_trim() -> None:
     with pytest.raises(CustomerError) as players:
         favorites.validate_extras(conn(), list(range(1, favorites.MAX_PLAYERS + 2)), [])
     assert (players.value.status, players.value.code) == (422, "too_many_players")
-    six = ["1X2", "OU", "BTTS", "AH", "DC", "XX"]
+    eight = ["1X2", "OU", "BTTS", "AH", "DC", "CORNERS", "CARDS", "XX"]
     with pytest.raises(CustomerError) as markets:
-        favorites.validate_extras(conn(), [], six)
+        favorites.validate_extras(conn(), [], eight)
     assert (markets.value.status, markets.value.code) == (422, "too_many_markets")
     twenty = list(range(1, favorites.MAX_PLAYERS + 1))
     kept = favorites.validate_extras(conn([(i,) for i in twenty]), [*twenty, 3], ["OU", "OU"])
@@ -116,7 +116,7 @@ def test_a_player_already_followed_is_not_asked_for_again() -> None:
 
 def test_the_markets_a_reader_may_follow_are_the_products_markets() -> None:
     assert set(favorites.FOLLOWABLE_MARKETS) == set(get_args(MarketKey)), "one list: the API's MarketKey"
-    assert len(favorites.FOLLOWABLE_MARKETS) <= favorites.MAX_MARKETS, "every market can be followed"
+    assert len(favorites.FOLLOWABLE_ALL) <= favorites.MAX_MARKETS, "every market can be followed"
     assert favorites.PLAYER_SEARCH_MIN > 2, "a player's name is searched from three letters"
 
 
@@ -182,3 +182,27 @@ def test_a_match_says_why_it_is_the_readers_a_team_first_then_the_league() -> No
     league = today.why(m, Follows(leagues=(5,), teams=(), suggested=False))
     assert league is not None and (league.kind, league.names) == ("league", ["Liga BetPlay"])
     assert today.why(m, Follows(leagues=(6,), teams=(12,), suggested=False)) is None, "not theirs"
+
+
+def test_seven_markets_are_kept_and_the_two_families_are_markets_of_their_own() -> None:
+    """AP-B05: the five classic markets and Córners and Tarjetas; an eighth is refused, never trimmed."""
+    seven = ["1X2", "OU", "BTTS", "AH", "DC", "CORNERS", "CARDS"]
+    got = favorites.validate_extras(conn(), [], seven)
+    assert got.markets == tuple(seven) and got.catalog == (), "a family is a market for the reader, never a catalogue key"
+    with pytest.raises(CustomerError) as eighth:
+        favorites.validate_extras(conn(), [], [*seven, "XX"])
+    assert eighth.value.code == "too_many_markets"
+    with pytest.raises(CustomerError) as unknown:
+        favorites.validate_extras(conn(), [], ["CORNER"])
+    assert unknown.value.code == "unknown_market"
+
+
+def test_a_family_is_stored_apart_from_the_markets_table_and_read_back_as_a_market() -> None:
+    """The odds' ingestion reads ``market.markets``: the families live as ``catalog`` rows under a reserved key."""
+    assert favorites.FAMILIES == {"CORNERS": "family.corners", "CARDS": "family.cards"}
+    rows = [("market", None, "OU"), ("catalog", None, "family.corners"), ("catalog", None, "goals_over_under.FT.match"),
+            ("catalog", None, "family.cards"), ("player", 7, None)]
+    got = favorites.extras(conn(rows), 1)
+    assert got.markets == ("OU", "CORNERS", "CARDS"), "in the order the reader chose them"
+    assert got.catalog == ("goals_over_under.FT.match",), "a family never counts against the ten catalogue markets"
+    assert got.players == (7,)
