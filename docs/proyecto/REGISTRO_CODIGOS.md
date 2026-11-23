@@ -519,7 +519,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-226 · BE-087 · FE-010 · OPS-017 · DOC-013
+CI-020 · SEG-003 · UX-225 · BE-087 · FE-010 · OPS-017 · DOC-013
 
 IA-161
 
