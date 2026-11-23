@@ -176,6 +176,15 @@
       "subtitle": "Log loss de validación en {season}, sobre los partidos que predijeron todos los candidatos. Elegidos: ξ={xi}, penalización={penalty}.",
       "extended": "El mejor candidato quedó en el borde de la rejilla inicial, así que la rejilla se amplió con una regla fijada de antemano (solo puntuaciones de validación).",
       "corner": "ξ (por día) \\ penalización"
+    },
+    "guide": {
+      "title": "Cómo leer esta pantalla",
+      "what": "Qué es",
+      "whatBody": "Es el examen de los modelos sobre temporadas pasadas, partido a partido y sin ver el futuro: cada predicción usa solo lo que se sabía antes de que empezara el partido.",
+      "how": "Cómo leerlo",
+      "howBody": "Cuanto menor es el error, mejor. En cada rejilla, el número en verde es la combinación elegida con la temporada de validación.",
+      "decides": "Qué decide",
+      "decidesBody": "Qué modelo puede generar picks: solo uno que supere al mercado en la temporada de prueba. Los resultados frente al mercado están en Modelos."
     }
   },
   "settings": {
