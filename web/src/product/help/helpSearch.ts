@@ -108,23 +108,105 @@ export function isBlocked(query: string): boolean {
 }
 
 /**
+ * Words readers use for what the help calls something else (folded). A word matches its own synonyms too: «clave» finds
+ * the answer about the contraseña, «plata» the one about payments.
+ */
+const SYNONYMS: Record<string, readonly string[]> = {
+  clave: ["contrasena", "password"],
+  contrasena: ["clave", "password"],
+  password: ["contrasena", "clave"],
+  plata: ["pago", "pagar"],
+  dinero: ["pago", "pagar"],
+  cobran: ["pago", "pagar"],
+  cobrar: ["pago", "pagar"],
+  cuesta: ["membresia", "pago"],
+  precio: ["membresia", "pago"],
+  vale: ["membresia", "pago"],
+  suscripcion: ["membresia"],
+  subscription: ["membership"],
+  ingresar: ["entrar", "acceso"],
+  loguear: ["entrar", "acceso"],
+  login: ["entrar", "acceso"],
+  celular: ["telefono", "movil"],
+  movil: ["telefono", "celular"],
+  email: ["correo", "correos"],
+  mail: ["correo", "correos"],
+  mails: ["correos"],
+  notificaciones: ["avisos"],
+  notificacion: ["avisos"],
+  notifications: ["notices", "alerts"],
+  borrar: ["eliminar"],
+  eliminar: ["borrar"],
+  combinada: ["parlay"],
+  combinadas: ["parlay"],
+  apuesta: ["pick"],
+};
+
+/** The words of a text, folded. */
+function tokensOf(text: string): string[] {
+  return fold(text)
+    .split(/[^a-z0-9ñ]+/)
+    .filter((w) => w.length > 0);
+}
+
+/** Whether two words differ by one letter at most (a typo): one inserted, left out, changed or swapped. */
+export function nearly(a: string, b: string): boolean {
+  if (a === b) return true;
+  const la = a.length;
+  const lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  if (la === lb) {
+    let diff = 0;
+    let first = -1;
+    for (let i = 0; i < la; i++) {
+      if (a[i] === b[i]) continue;
+      diff += 1;
+      if (first < 0) first = i;
+      if (diff > 2) return false;
+    }
+    if (diff === 1) return true;
+    // two letters swapped: «membersía»
+    return diff === 2 && a[first] === b[first + 1] && a[first + 1] === b[first];
+  }
+  const [long, short] = la > lb ? [a, b] : [b, a];
+  let i = 0;
+  while (i < short.length && long[i] === short[i]) i++;
+  return long.slice(i + 1) === short.slice(i);
+}
+
+/**
  * How well a text of the help answers: 3 for each word of the question in its title, 1 for each in its body. It counts
  * only if a word is in the title or every word is somewhere in it: never a guess from a stray word of the body.
  */
 function score(words: string[], title: string, body: string): number {
   const head = fold(title);
   const rest = fold(body);
+  const headTokens = tokensOf(title);
+  const restTokens = tokensOf(body);
+  // a word of five letters or more may have a typo (one letter), and its synonyms count as itself
+  const hits = (word: string, text: string, tokens: string[]): boolean => {
+    const variants = [word, ...(SYNONYMS[word] ?? [])];
+    return variants.some((v) => {
+      // the root of a long word, so «renovar» finds «renovación» and «memberships» finds «membership»
+      const w = v.length > 5 ? v.slice(0, -2) : v;
+      if (text.includes(w)) return true;
+      return (
+        v.length >= 5 &&
+        tokens.some(
+          (tok) => nearly(v, tok) || (tok.length > 5 && nearly(v, tok.slice(0, v.length))),
+        )
+      );
+    });
+  };
   let total = 0;
   let inTitle = 0;
   let found = 0;
   for (const word of words) {
-    // the root of a long word, so «renovar» finds «renovación» and «memberships» finds «membership»
-    const w = word.length > 5 ? word.slice(0, -2) : word;
-    if (head.includes(w)) {
+    if (hits(word, head, headTokens)) {
       total += 3;
       inTitle += 1;
       found += 1;
-    } else if (rest.includes(w)) {
+    } else if (hits(word, rest, restTokens)) {
       total += 1;
       found += 1;
     }
@@ -169,6 +251,16 @@ function candidates(faqShown: readonly FaqId[], reach: Reach): AssistantAnswer[]
     hash: cardAnchor(id),
   }));
   return [...faq, ...glossary, ...how];
+}
+
+/** One text of the help as an answer, by its source and id (what a button of a flow or of a topic opens). */
+export function answerOf(
+  source: AssistantSource,
+  id: string,
+  faqShown: readonly FaqId[],
+  reach: Reach = NO_REACH,
+): AssistantAnswer | null {
+  return candidates(faqShown, reach).find((a) => a.source === source && a.id === id) ?? null;
 }
 
 export function ask(

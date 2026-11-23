@@ -23,16 +23,67 @@ import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useReportProblem } from "@/product/support/report";
 import { WhatsappLink } from "@/product/support/WhatsappLink";
-import { ask, type AssistantAnswer } from "./helpSearch";
-import type { FaqId } from "./faq";
+import { answerOf, ask, type AssistantAnswer } from "./helpSearch";
+import { faqQuestion, type FaqId } from "./faq";
 import { NO_REACH, type Reach } from "./reach";
+import {
+  PERSON_TOPIC,
+  SUGGESTED,
+  TOPICS,
+  flowById,
+  flowOf,
+  smalltalkOf,
+  wantsMenu,
+  type FlowId,
+  type Next,
+  type Smalltalk,
+  type TopicId,
+} from "./assistantFlows";
 
 export type Turn =
   | { who: "me"; text: string }
   | { who: "bot"; kind: "found"; answers: AssistantAnswer[]; asked: string }
-  | { who: "bot"; kind: "none" | "blocked"; asked: string }
+  | { who: "bot"; kind: "none"; asked: string; suggest: FaqId[] }
+  | { who: "bot"; kind: "blocked"; asked: string }
   | { who: "bot"; kind: "solved" }
-  | { who: "bot"; kind: "person" };
+  | { who: "bot"; kind: "person" }
+  | { who: "bot"; kind: Smalltalk }
+  | { who: "bot"; kind: "menu" }
+  | { who: "bot"; kind: "topic"; topic: TopicId; questions: FaqId[] }
+  | { who: "bot"; kind: "flow"; flow: FlowId; step: string };
+
+/** The three questions offered when nothing was found: the most asked ones that this page shows. */
+function suggestionsFor(faqShown: readonly FaqId[]): FaqId[] {
+  const shown = SUGGESTED.filter((id) => faqShown.includes(id));
+  return shown.length > 0 ? [...shown] : faqShown.slice(0, 3);
+}
+
+/** What the assistant says to a button: the next turn (pure), as a flow, a question of the help or a person. */
+export function follow(
+  next: Next,
+  faqShown: readonly FaqId[],
+  reach: Reach = NO_REACH,
+  flow?: FlowId,
+): Turn | null {
+  if ("person" in next) return { who: "bot", kind: "person" };
+  if ("step" in next && flow) return { who: "bot", kind: "flow", flow, step: next.step };
+  if ("topic" in next) {
+    const topic = TOPICS.find((x) => x.id === next.topic);
+    if (!topic) return null;
+    return {
+      who: "bot",
+      kind: "topic",
+      topic: topic.id,
+      questions: topic.faq.filter((id) => faqShown.includes(id)),
+    };
+  }
+  if ("faq" in next) {
+    const answer = answerOf("faq", next.faq, faqShown, reach);
+    if (!answer) return null;
+    return { who: "bot", kind: "found", answers: [answer], asked: "" };
+  }
+  return null;
+}
 
 /** The next turns after the reader writes `text` (pure): what they said, and the help's answer to it. */
 export function answerTo(
@@ -42,12 +93,20 @@ export function answerTo(
 ): Turn[] {
   const q = text.trim();
   if (!q) return [];
-  const result = ask(q, faqShown, reach);
   const me: Turn = { who: "me", text: q };
+  const talk = smalltalkOf(q);
+  if (talk) return [me, { who: "bot", kind: talk }];
+  if (wantsMenu(q)) return [me, { who: "bot", kind: "menu" }];
+  const result = ask(q, faqShown, reach);
+  // a bet request is declined before anything else; the rest of the questions may start a flow
+  if (result.kind !== "blocked") {
+    const flow = flowOf(q);
+    if (flow) return [me, { who: "bot", kind: "flow", flow: flow.id, step: "start" }];
+  }
   if (result.kind === "found")
     return [me, { who: "bot", kind: "found", answers: result.answers, asked: q }];
   if (result.kind === "blocked") return [me, { who: "bot", kind: "blocked", asked: q }];
-  return [me, { who: "bot", kind: "none", asked: q }];
+  return [me, { who: "bot", kind: "none", asked: q, suggest: suggestionsFor(faqShown) }];
 }
 
 /** What the reader wrote in this conversation, for the message to a person. */
@@ -65,6 +124,35 @@ const ME =
   "ml-auto max-w-[85%] rounded-feature rounded-tr-md bg-primary-soft px-4 py-3 text-sm leading-relaxed text-foreground";
 const QUICK =
   "tap-y relative inline-flex min-h-9 items-center rounded-full border border-border bg-card px-3.5 text-[0.8125rem] font-semibold hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+/** A row of buttons the reader taps instead of typing (AP-H02): topics, questions, the options of a step. */
+function Choices({
+  label,
+  items,
+  testId,
+  onPick,
+}: {
+  label: string;
+  items: readonly { id: string; text: string }[];
+  testId: string;
+  onPick: (id: string, text: string) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className="mt-3 flex flex-wrap gap-2" data-testid={testId}>
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className={QUICK}
+          data-choice={item.id}
+          onClick={() => onPick(item.id, item.text)}
+        >
+          {item.text}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function AnswerCard({ a }: { a: AssistantAnswer }) {
   return (
@@ -114,6 +202,23 @@ export function Assistant({
     if (!next.length) return;
     setTurns((all) => [...all, ...next]);
     setText("");
+  }
+
+  /** A button: what the reader chose is said as their turn, and the assistant follows. */
+  function say(text: string, reply: Turn | null) {
+    if (!reply) return;
+    setTurns((all) => [...all, { who: "me", text }, reply]);
+  }
+  const topicItems = [
+    ...TOPICS.map((x) => ({ id: x.id as string, text: t(`support.assistant.topics.${x.id}`) })),
+    { id: PERSON_TOPIC, text: t("support.assistant.topics.person") },
+  ];
+  function pickTopic(id: string, text: string) {
+    if (id === PERSON_TOPIC) return say(text, { who: "bot", kind: "person" });
+    say(text, follow({ topic: id as TopicId }, faqShown, reach));
+  }
+  function pickQuestion(id: string, text: string) {
+    say(text, follow({ faq: id as FaqId }, faqShown, reach));
   }
 
   const last = turns[turns.length - 1];
@@ -172,6 +277,17 @@ export function Assistant({
         <p className="rounded-feature border border-border bg-card px-4 py-3 text-[0.8125rem] leading-relaxed text-muted-foreground">
           {t("support.assistant.scope")}
         </p>
+        {turns.length === 0 ? (
+          <div className={BOT} data-testid="assistant-intro">
+            <p>{t("support.assistant.hello")}</p>
+            <Choices
+              label={t("support.assistant.topicsLabel")}
+              items={topicItems}
+              testId="assistant-topics"
+              onPick={pickTopic}
+            />
+          </div>
+        ) : null}
         {turns.map((turn, i) =>
           turn.who === "me" ? (
             <p key={i} className={ME} data-testid="assistant-me">
@@ -207,7 +323,74 @@ export function Assistant({
               ) : turn.kind === "none" ? (
                 <>
                   <p>{t("support.assistant.none", { q: turn.asked })}</p>
-                  {i === turns.length - 1 ? <div className="mt-3">{personOffer}</div> : null}
+                  {i === turns.length - 1 ? (
+                    <>
+                      <p className="mt-2">{t("support.assistant.suggest")}</p>
+                      <Choices
+                        label={t("support.assistant.suggest")}
+                        items={turn.suggest.map((id) => ({ id, text: faqQuestion(id) }))}
+                        testId="assistant-suggest"
+                        onPick={pickQuestion}
+                      />
+                      <div className="mt-3">{personOffer}</div>
+                    </>
+                  ) : null}
+                </>
+              ) : turn.kind === "greeting" || turn.kind === "thanks" || turn.kind === "bye" ? (
+                <>
+                  <p>{t(`support.assistant.talk.${turn.kind}`)}</p>
+                  {turn.kind === "greeting" && i === turns.length - 1 ? (
+                    <Choices
+                      label={t("support.assistant.topicsLabel")}
+                      items={topicItems}
+                      testId="assistant-topics"
+                      onPick={pickTopic}
+                    />
+                  ) : null}
+                </>
+              ) : turn.kind === "menu" ? (
+                <>
+                  <p>{t("support.assistant.menu")}</p>
+                  {i === turns.length - 1 ? (
+                    <Choices
+                      label={t("support.assistant.topicsLabel")}
+                      items={topicItems}
+                      testId="assistant-topics"
+                      onPick={pickTopic}
+                    />
+                  ) : null}
+                </>
+              ) : turn.kind === "topic" ? (
+                <>
+                  <p>{t(`support.assistant.topicIntro.${turn.topic}`)}</p>
+                  {i === turns.length - 1 ? (
+                    <Choices
+                      label={t(`support.assistant.topics.${turn.topic}`)}
+                      items={turn.questions.map((id) => ({ id, text: faqQuestion(id) }))}
+                      testId="assistant-questions"
+                      onPick={pickQuestion}
+                    />
+                  ) : null}
+                </>
+              ) : turn.kind === "flow" ? (
+                <>
+                  <p>{t(`support.assistant.flows.${turn.flow}.${turn.step}.ask`)}</p>
+                  {i === turns.length - 1 ? (
+                    <Choices
+                      label={t(`support.assistant.flows.${turn.flow}.${turn.step}.ask`)}
+                      items={flowById(turn.flow).steps[turn.step]!.options.map((o) => ({
+                        id: o.id,
+                        text: t(`support.assistant.flows.${turn.flow}.${turn.step}.${o.id}`),
+                      }))}
+                      testId="assistant-flow"
+                      onPick={(id, text) => {
+                        const option = flowById(turn.flow).steps[turn.step]!.options.find(
+                          (o) => o.id === id,
+                        );
+                        if (option) say(text, follow(option.next, faqShown, reach, turn.flow));
+                      }}
+                    />
+                  ) : null}
                 </>
               ) : turn.kind === "solved" ? (
                 <p>{t("support.assistant.solvedReply")}</p>

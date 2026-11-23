@@ -694,6 +694,69 @@
     "solvedReply": "¡Qué bien! Si necesitas algo más, escríbelo aquí.",
     "personReply": "Entonces lo mejor es que lo vea una persona. Puedo abrir un mensaje con lo que ya me contaste para que no tengas que repetirlo.",
     "sendPerson": "Enviar a una persona",
-    "whatsapp": "Prefiero WhatsApp"
+    "whatsapp": "Prefiero WhatsApp",
+    "hello": "¡Hola! Soy el asistente de la ayuda. Elige un tema o escribe tu duda con tus palabras.",
+    "topicsLabel": "Temas de la ayuda",
+    "topics": {
+      "account": "Cuenta y acceso",
+      "membership": "Membresía y pagos",
+      "picks": "Picks y cómo leerlos",
+      "parlays": "Parlays y liquidación",
+      "odds": "Cuotas y probabilidades",
+      "notices": "Notificaciones",
+      "privacy": "Privacidad",
+      "person": "Hablar con una persona"
+    },
+    "topicIntro": {
+      "account": "Sobre tu cuenta y el acceso. ¿Cuál de estas es tu duda?",
+      "membership": "Sobre la membresía y los pagos. ¿Cuál de estas es tu duda?",
+      "picks": "Sobre los picks y cómo leerlos. ¿Cuál de estas es tu duda?",
+      "parlays": "Sobre los parlays y cómo se liquidan. ¿Cuál de estas es tu duda?",
+      "odds": "Sobre las cuotas y las probabilidades. ¿Cuál de estas es tu duda?",
+      "notices": "Sobre los correos y los avisos. ¿Cuál de estas es tu duda?",
+      "privacy": "Sobre tus datos y tu privacidad. ¿Cuál de estas es tu duda?"
+    },
+    "menu": "Estos son los temas de la ayuda. Elige uno:",
+    "suggest": "Quizá te sirva una de estas preguntas:",
+    "talk": {
+      "greeting": "¡Hola! ¿En qué te ayudo?",
+      "thanks": "¡Con gusto! Si necesitas algo más, aquí estoy.",
+      "bye": "¡Hasta pronto! Cuando quieras volver, aquí estaré."
+    },
+    "flows": {
+      "signin": {
+        "start": {
+          "ask": "Lamento que no puedas entrar. ¿Qué te pasa?",
+          "forgot": "Olvidé mi contraseña",
+          "wait": "Me dice que espere unos minutos",
+          "code": "Me pide un código de verificación",
+          "mail": "No me llega el correo",
+          "other": "Es otra cosa"
+        }
+      },
+      "nopicks": {
+        "start": {
+          "ask": "¿Qué ves en Picks?",
+          "none": "Dice que hoy no hay picks",
+          "locked": "Veo picks, pero no puedo abrirlos",
+          "empty": "No carga nada"
+        },
+        "locked": {
+          "ask": "¿Tu membresía sigue activa?",
+          "expired": "Ya terminó",
+          "unsure": "No lo sé",
+          "active": "Sí, está activa"
+        }
+      },
+      "pay": {
+        "start": {
+          "ask": "¿Qué quieres hacer con tu membresía?",
+          "renew": "Renovarla o pagarla",
+          "trial": "Probarla primero",
+          "ends": "Saber qué pasa cuando termina",
+          "other": "Es otra cosa"
+        }
+      }
+    }
   }
 }
