@@ -8,6 +8,7 @@
  */
 import { t } from "@/lib/i18n";
 import { fold } from "@/lib/glossary";
+import { NO_REACH, reachPhrase, type Reach } from "./reach";
 
 export const FAQ_GROUPS = [
   { id: "start", items: ["what_is", "no_pick", "forecast_pick", "guarantee"] },
@@ -51,15 +52,19 @@ export function faqQuestion(id: FaqId): string {
   return t(`support.faq.${id}.q`);
 }
 
-export function faqAnswer(id: FaqId): string {
-  return t(`support.faq.${id}.a`);
+/**
+ * The answer. The ones that send the reader to write to us (`{reach}`) name only the channels that are published
+ * (AP-H01): without them, or while the contact has not arrived, «Ayuda → Hablar con una persona».
+ */
+export function faqAnswer(id: FaqId, reach: Reach = NO_REACH): string {
+  return t(`support.faq.${id}.a`, { reach: reachPhrase(reach) });
 }
 
 /** Whether a question answers a search: its question or its answer contain every word (without accents or case). */
-export function faqMatches(id: FaqId, query: string): boolean {
+export function faqMatches(id: FaqId, query: string, reach: Reach = NO_REACH): boolean {
   const words = fold(query).split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
-  const haystack = fold(`${faqQuestion(id)} ${faqAnswer(id)}`);
+  const haystack = fold(`${faqQuestion(id)} ${faqAnswer(id, reach)}`);
   return words.every((w) => haystack.includes(w));
 }
 

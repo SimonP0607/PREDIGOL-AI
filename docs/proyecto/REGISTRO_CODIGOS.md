@@ -367,6 +367,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-184 | Fuera «Cálculo instantáneo · sin IA» de Mi parlay (plan de correcciones UX, AP-L01, hallazgo L4 de la auditoría): se quitan la nota bajo el total, la del pie de la tarjeta y el recuadro de la guía del boleto, que decía «Ninguna IA analiza tu parlay». No se afirma lo contrario y Mi parlay no cambia en nada más; las instantáneas cambian solo en esa nota. Una prueba impide que vuelva una clave con ese texto | en curso | este PR | UX-183 |
 | UX-185 | Los picks del día salen del 1 al 5 por defecto (plan de correcciones UX, AP-K01, hallazgo K1 de la auditoría): «Mejor al quinto» es el orden de entrada, la vista del día deja de abrir por hora; «Por hora» y «Por valor» siguen como opciones. El orden vive en una función pura (`dailyOrder.ts`) con su prueba. No cambia ningún pick, ranking ni probabilidad. | en curso | este PR | UX-183 |
 | UX-186 | El total del parlay deja de encimarse con la cuota y la probabilidad en teléfono (plan de correcciones UX, AP-K02, hallazgo K2 de la auditoría): las cifras de la tarjeta de parlay pasan a una columna en anchos estrechos y a tres en anchos medios, según el ancho de la tarjeta (consulta de contenedor), con su prueba. No cambia ningún cálculo ni dato. | en curso | este PR | UX-185 |
+| UX-187 | Ayuda y su asistente nombran solo los canales publicados (plan de correcciones UX, AP-H01, hallazgo H3 de la auditoría): una respuesta de membresía decía «Escríbenos por WhatsApp» aunque el número no estuviera configurado. Un módulo nuevo (`help/reach.ts`) deduce los canales activos de `FBI_SUPPORT_CHANNELS` y de los datos de contacto; las respuestas que mandan a escribir (no puedo entrar, renovar), el aviso de mensajes pausados, la nota del canal de Telegram y el error de demasiados mensajes se arman con ellos. Sin WhatsApp: «escríbenos desde Ayuda → Hablar con una persona». Pruebas con y sin WhatsApp en español e inglés. | en curso | este PR | UX-186 |
 | FE-001 | Recharts 2.15 → 3.10 (el informe de herramientas gratuitas): los gráficos de analítica, del explorador de cuotas, de Resumen y de modelos, y el `chart.tsx` de shadcn. Cambios de tipos (en Recharts 3 `payload` y `label` ya no están en `TooltipProps`, `formatter` recibe `ValueType | undefined`, `dataKey` puede ser una función) sin cambiar lo que se dibuja: se comparó una página con los seis gráficos de analítica y el gráfico de movimiento del explorador (con su tooltip) renderizados con 2.15 y con 3.10, en Chromium, y salen iguales | en curso | este PR | — |
 | FE-002 | Sin usar: la sesión de Intelligence tomó FE-003 sin pedir el siguiente libre (18-nov-2026). No se reutiliza | sin usar | — | — |
 | FE-003 | Plan de estadísticas avanzadas (EA-202): en «Mercados → Probabilidades», la línea que se muestra de un total siempre tiene su botón entre las ocho visibles (visto en producción con los córners de Flamengo–Athletico) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #390 | BE-047 |
@@ -477,7 +478,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-187 · BE-085 · FE-010 · OPS-017 · DOC-013
+CI-020 · SEG-003 · UX-188 · BE-085 · FE-010 · OPS-017 · DOC-013
 
 IA-161
 

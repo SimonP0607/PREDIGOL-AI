@@ -102,7 +102,7 @@
     "too_many_links": "Three links were already sent to this account in the last hour. Wait a little.",
     "too_many_open": "You already have 3 open messages: add what is new to one of them.",
     "too_many_tests": "You already sent 3 test notices today: try again tomorrow.",
-    "too_many_tickets": "You have written many messages today. Try tomorrow or write to us on WhatsApp.",
+    "too_many_tickets": "You have written many messages today. Try tomorrow.",
     "trial_used": "This account has had its trial already.",
     "unauthenticated": "You need to sign in.",
     "unknown_category": "Choose what your message is about.",
