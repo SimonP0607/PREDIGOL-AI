@@ -3,12 +3,21 @@
  * None for anyone but a reader, or while personalisation is off (the common view); only the order changes.
  */
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { followedFamilies, type FollowedFamily } from "./follow";
 
 export function useFollowedCatalog(): readonly string[] {
   const reader = useAuth().user?.role === "USER";
   const favorites = useQuery({ ...live.favorites, enabled: reader });
   const view = favorites.data;
   return reader && view?.personalization ? (view.catalog_markets ?? []) : [];
+}
+
+/** The families (corners, cards) the reader follows as markets, in their order: their chips come first in a match's «Mercados». */
+export function useFollowedFamilies(): readonly FollowedFamily[] {
+  const reader = useAuth().user?.role === "USER";
+  const favorites = useQuery({ ...live.favorites, enabled: reader });
+  return useMemo(() => (reader ? followedFamilies(favorites.data) : []), [reader, favorites.data]);
 }

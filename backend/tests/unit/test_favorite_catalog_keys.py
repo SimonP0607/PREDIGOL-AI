@@ -33,5 +33,7 @@ def test_what_is_not_a_key_of_the_catalogue_is_refused(key: str) -> None:
 
 
 def test_the_limits_keep_the_classic_five_apart() -> None:
-    assert (favorites.MAX_MARKETS, favorites.MAX_CATALOG) == (5, 10)
+    assert (favorites.MAX_MARKETS, favorites.MAX_CATALOG) == (7, 10), "five classic and two families (AP-B05)"
     assert favorites.FOLLOWABLE_MARKETS == ("1X2", "OU", "BTTS", "AH", "DC")
+    assert favorites.FOLLOWABLE_ALL == ("1X2", "OU", "BTTS", "AH", "DC", "CORNERS", "CARDS")
+    assert len(favorites.FOLLOWABLE_ALL) == favorites.MAX_MARKETS, "every market can be followed at once"

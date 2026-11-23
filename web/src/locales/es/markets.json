@@ -4,14 +4,18 @@
     "OU": "Más/Menos goles",
     "BTTS": "Ambos marcan",
     "AH": "Hándicap asiático",
-    "DC": "Doble oportunidad"
+    "DC": "Doble oportunidad",
+    "CORNERS": "Córners",
+    "CARDS": "Tarjetas"
   },
   "short": {
     "1X2": "1X2",
     "OU": "Goles",
     "BTTS": "Ambos marcan",
     "AH": "Hándicap",
-    "DC": "Doble op."
+    "DC": "Doble op.",
+    "CORNERS": "Córners",
+    "CARDS": "Tarjetas"
   },
   "selection": {
     "1X2": {

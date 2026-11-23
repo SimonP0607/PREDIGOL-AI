@@ -15,6 +15,8 @@ import "@/components/analytics/stats/readText";
 import "@/admin/userText";
 import "@/admin/usageText";
 import "@/admin/emailText";
+import "@/product/news/storyText";
+import "@/live/pipelineText";
 import "@/product/competitions/text";
 import "@/product/match/stats/matchvizText";
 import "@/product/teams/stats/playerText";

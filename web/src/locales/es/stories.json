@@ -1,0 +1,68 @@
+{
+  "level": {
+    "oficial": "Oficial",
+    "dos_origenes": "Dos orígenes",
+    "declaracion": "Declaración",
+    "un_medio": "Un medio",
+    "rumor": "Rumor",
+    "none": "Sin nivel todavía"
+  },
+  "levelHelp": {
+    "oficial": "Lo comunicó una fuente oficial: el club, la liga o la federación.",
+    "dos_origenes": "Lo cuentan dos fuentes que no dependen una de la otra.",
+    "declaracion": "Es una declaración atribuida a quien la dijo.",
+    "un_medio": "Lo cuenta un solo medio; nadie más lo confirma todavía.",
+    "rumor": "Es un rumor: ninguna fuente lo confirma.",
+    "none": "La historia todavía no se ha clasificado."
+  },
+  "warning": {
+    "contradiccion": "Las fuentes se contradicen",
+    "desactualizada": "Puede estar desactualizada"
+  },
+  "category": {
+    "fichajes": "Fichajes",
+    "bajas_y_sanciones": "Bajas y sanciones",
+    "declaraciones": "Declaraciones",
+    "resultados_y_proximos": "Resultados y próximos",
+    "selecciones": "Selecciones",
+    "colombia": "Fútbol colombiano",
+    "internacional": "Internacional",
+    "competiciones": "Competiciones"
+  },
+  "untitled": "Historia sin titular todavía",
+  "noSummary": "PrediGol no puede resumir esta historia todavía: la fuente solo permite el enlace.",
+  "sources_one": "{count} fuente",
+  "sources_other": "{count} fuentes",
+  "by": "Según {names}",
+  "latest": "Última fuente: {when}",
+  "inSpanish": "(en español)",
+  "readSource": "Leer en la fuente",
+  "readSourceNamed": "Leer en la fuente: {name}",
+  "monogram": "Escudo de letras de la historia",
+  "story": {
+    "back": "Volver a Noticias",
+    "essentials": "Lo esencial",
+    "level": "Qué tan confirmada está",
+    "about": "De quién habla",
+    "protagonist": "Protagonista",
+    "mentioned": "Mencionado",
+    "impact": "Cómo afecta al partido",
+    "impactBody": "{aspect}",
+    "impactOpen": "Ver el partido",
+    "impactPending": "El análisis del partido todavía no se publica.",
+    "timeline": "Cómo se fue sabiendo",
+    "timelineLine": "{when} · {source}",
+    "timelineLevel": "nivel: {level}",
+    "sources": "Fuentes",
+    "sourceTime": "Publicada {when}",
+    "sourceDay": "Publicada el {date}",
+    "sourceSeen": "Vista por PrediGol {when}",
+    "related": "Historias relacionadas",
+    "rights": "Resumen elaborado por PrediGol; el artículo completo está en la fuente.",
+    "withdrawn": "Esta historia se retiró a petición de su fuente.",
+    "moderation": "Esta historia está en revisión y todavía no se puede mostrar.",
+    "notFound": "No encontramos esta historia. Puede que ya no esté disponible.",
+    "closed": "Las noticias todavía no están abiertas.",
+    "noSources": "Sin fuentes que mostrar."
+  }
+}

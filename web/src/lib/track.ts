@@ -120,7 +120,7 @@ export const EVENTS = {
     props: {
       kind: { enum: ["team", "competition", "player", "market"] },
       id: { id: true },
-      market: { enum: ["1X2", "OU", "BTTS", "AH", "DC"] },
+      market: { enum: ["1X2", "OU", "BTTS", "AH", "DC", "CORNERS", "CARDS"] },
     },
   },
   favorite_removed: {
@@ -129,7 +129,7 @@ export const EVENTS = {
     props: {
       kind: { enum: ["team", "competition", "player", "market"] },
       id: { id: true },
-      market: { enum: ["1X2", "OU", "BTTS", "AH", "DC"] },
+      market: { enum: ["1X2", "OU", "BTTS", "AH", "DC", "CORNERS", "CARDS"] },
     },
   },
   session_started: {

@@ -22,7 +22,7 @@ from typing import Literal
 from pydantic import Field
 
 from fbi.api.contracts.common import Contract
-from fbi.api.contracts.personal import MarketKey
+from fbi.api.contracts.personal import FollowedMarketKey, MarketKey
 from fbi.api.contracts.product import CompetitionBadge, TeamBadge
 from fbi.api.contracts.today import FollowReason
 
@@ -97,6 +97,6 @@ class MeToday(Contract):
         "shows «Para ti». False: only the PrediGol layer and a discreet «Elige tus favoritos». The leagues and the team "
         "PrediGol suggests until they choose never make it true."))
     players: list[WatchedPlayer] = Field(description="The players the reader follows, in the order chosen.")
-    markets: list[MarketKey] = Field(description="The markets the reader follows, in the order chosen.")
+    markets: list[FollowedMarketKey] = Field(description="The markets the reader follows, in the order chosen.")
     picks: RelatedPicks | None = Field(description="Null while the reader follows no league, team, player or market.")
     notices: Notices | None = Field(description="Null while the reader has chosen nothing (Home shows no «Para ti»).")

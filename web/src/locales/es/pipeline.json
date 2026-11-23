@@ -1,0 +1,50 @@
+{
+  "title": "El camino de un pick",
+  "intro": "Cada caja es una etapa del camino, de los datos de afuera hasta lo que PrediGol aprende. El color y la palabra dicen cómo va; tócala para abrir su página. Se actualiza solo cada minuto.",
+  "diagram": "Diagrama del camino de un pick, de las fuentes al aprendizaje, con el estado de cada etapa",
+  "list": "Las mismas etapas, en lista",
+  "refreshed": "Actualizado a las {time}",
+  "refresh": "Actualizar ahora",
+  "loading": "Leyendo el estado de los trabajos…",
+  "failed": "No se pudo leer el estado de los trabajos. Las demás secciones de esta página siguen funcionando.",
+  "stage": {
+    "sources": "Fuentes",
+    "ingest": "Ingesta",
+    "validation": "Validación",
+    "models": "Modelos",
+    "calibration": "Calibración",
+    "value": "Valor",
+    "intelligence": "Intelligence",
+    "selection": "Selección",
+    "publication": "Publicación",
+    "settlement": "Liquidación",
+    "learning": "Aprendizaje"
+  },
+  "what": {
+    "sources": "Captura de partidos, resultados y cuotas",
+    "ingest": "Ordena lo capturado y lo deja listo",
+    "validation": "Revisa que los datos sean confiables",
+    "models": "Calcula las probabilidades",
+    "calibration": "Comprueba que las probabilidades acierten",
+    "value": "Compara con el precio del mercado",
+    "intelligence": "Investigación, noticias y crónicas",
+    "selection": "Elige los candidatos del día",
+    "publication": "Lo que ve el lector",
+    "settlement": "Cierra cada pick con su resultado",
+    "learning": "La IA revisa el día y propone mejoras"
+  },
+  "state": {
+    "ok": "Al día",
+    "late": "Con retraso",
+    "error": "Con error",
+    "none": "Sin datos",
+    "closed": "Cerrada"
+  },
+  "closedNote": "Cerrada por decisión del dueño: nada experimental se publica.",
+  "last": "Última ejecución: {when}",
+  "never": "Sin ejecuciones registradas",
+  "counts": "{runs} ejecuciones y {errors} con error en 24 h",
+  "worst": "Mira: {job}",
+  "unmapped": "Trabajos que ninguna etapa reclama todavía: {jobs}",
+  "short": "{runs} ejec. · {errors} con error"
+}

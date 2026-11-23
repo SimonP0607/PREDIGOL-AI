@@ -4,7 +4,7 @@
  * change a pick, a probability, a state or a price.
  */
 import type { CompetitionBadge, TeamBadge } from "./types_product";
-import type { MarketKey } from "./types_records";
+import type { FollowedMarketKey } from "./types_records";
 
 /** A player the reader follows or can follow: the id the line-ups carry (`player_id`). */
 export interface PlayerBadge {
@@ -24,7 +24,7 @@ export interface FavoritesView {
   /** The players the reader follows, in the order chosen. */
   players: PlayerBadge[];
   /** The markets the reader follows (the ones they read most), in the order chosen. */
-  markets: MarketKey[];
+  markets: FollowedMarketKey[];
   /**
    * The markets of a match's catalogue the reader follows (`corners_over_under.FT.match`: code, period, subject), in the
    * order chosen (CUOTAS, BE-025). Apart from `markets`, the five classic ones. Absent from an older API.
@@ -47,7 +47,7 @@ export interface FavoritesIn {
   /** Left out: the players the reader follows stay (a page from before 3.1 never clears them); [] clears them. */
   players?: number[];
   /** Left out: the markets the reader follows stay; [] clears them. */
-  markets?: MarketKey[];
+  markets?: FollowedMarketKey[];
   /** Left out: the catalogue markets the reader follows stay (a page from before BE-025 never clears them); [] clears them. */
   catalog_markets?: string[];
 }

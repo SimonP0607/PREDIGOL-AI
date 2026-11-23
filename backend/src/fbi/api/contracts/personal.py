@@ -11,6 +11,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from fbi.api.contracts.common import Contract
 
 MarketKey = Literal["1X2", "OU", "BTTS", "AH", "DC"]
+FollowedMarketKey = Literal["1X2", "OU", "BTTS", "AH", "DC", "CORNERS", "CARDS"]
+"""What a reader may follow as a market (AP-B05): the five classic markets and the two families (any corners line, any cards
+line). Apart from ``MarketKey``: a pick is only ever of the five."""
 
 
 class MarketViews(Contract):
