@@ -34,7 +34,7 @@
       "away": "Pronóstico: gana {team}",
       "draw": "Pronóstico: empate"
     },
-    "uncalibrated": "sin calibrar",
+    "uncalibrated": "estimación preliminar",
     "forecastNote": "El pronóstico dice qué resultado es más probable; no es una recomendación. Lo que PrediGol recomienda es el pick.",
     "titleMine": "Hoy en tus ligas",
     "subtitleMine": "Tus ligas y equipos: los partidos de hoy, en vivo primero",

@@ -127,7 +127,7 @@
     },
     "no_pick": {
       "q": "¿Por qué hoy no hay pick?",
-      "a": "Un pick se publica solo cuando un partido cumple todas las reglas: valor frente a la cuota, evidencia suficiente y un modelo validado. Si ningún partido las cumple, no hay pick ese día. Nunca rellenamos con picks para ocupar espacio: Inicio te dice por qué no hubo."
+      "a": "Un pick se publica solo cuando un partido cumple todas las reglas: valor frente a la cuota, evidencia suficiente y un modelo que haya superado al mercado en sus pruebas. Si ningún partido las cumple, no hay pick ese día. Nunca rellenamos con picks para ocupar espacio: Inicio te dice por qué no hubo."
     },
     "forecast_pick": {
       "q": "¿Qué diferencia hay entre un pronóstico y un pick?",

@@ -1,7 +1,7 @@
 {
   "title": "Families in shadow",
   "subtitle": "Corners, cards, yellow cards and goals by half: what they decide in shadow, how each bet is settled and what they learn. Read only.",
-  "explain": "The families decide in shadow, under versions of their own: their decisions are never a pick, their state reaches Investigation at most and their stake is zero. This is where the last word of each model on each market of each match is read (the revisions of each hour are the same bet seen again), with the rule that settles it, what happened and what the post-mortem and the memory made of it. A family's probability is its model's own number, uncalibrated: it is not a recommendation.",
+  "explain": "The families decide in shadow, under versions of their own: their decisions are never a pick, their state reaches Investigation at most and their stake is zero. This is where the last word of each model on each market of each match is read (the revisions of each hour are the same bet seen again), with the rule that settles it, what happened and what the post-mortem and the memory made of it. A family's probability is its model's own figure, a preliminary estimate: it is not a recommendation.",
   "versions": "Versions: forecast {forecast} · decision {decision} · settlement {outcome} · post-mortem {postmortem} · memory {memory}",
   "mode": {
     "label": "Cycle",
@@ -90,7 +90,7 @@
   "reason": {
     "family_research": "Family under investigation",
     "family_shadow_only": "The family only measures",
-    "not_calibrated": "Not calibrated",
+    "not_calibrated": "Preliminary estimate",
     "data": "Not enough data",
     "model": "The model does not pass",
     "no_price": "No price",
@@ -194,7 +194,7 @@
     "market": "Market and selection",
     "odds": "Odds",
     "pModel": "Family P",
-    "pModelHint": "The probability the family stated, uncalibrated",
+    "pModelHint": "The probability the family stated, as a preliminary estimate",
     "pMarket": "Market P",
     "pMarketHint": "The consensus of the houses at the moment of the decision",
     "ev": "Raw EV",

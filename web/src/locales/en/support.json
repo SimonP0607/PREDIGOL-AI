@@ -127,7 +127,7 @@
     },
     "no_pick": {
       "q": "Why is there no pick today?",
-      "a": "A pick is published only when a match meets every rule: value against the odds, enough evidence and a validated model. If no match meets them, there is no pick that day. We never fill the space with picks: Home tells you why there was none."
+      "a": "A pick is published only when a match meets every rule: value against the odds, enough evidence and a model that has beaten the market in its tests. If no match meets them, there is no pick that day. We never fill the space with picks: Home tells you why there was none."
     },
     "forecast_pick": {
       "q": "What is the difference between a forecast and a pick?",

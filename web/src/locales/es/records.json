@@ -57,7 +57,7 @@
     "count": "{count} de 5",
     "partial_one": "Hoy solo {count} selección ha cumplido el criterio. Nunca rellenamos.",
     "partial_other": "Hoy solo {count} selecciones han cumplido el criterio. Nunca rellenamos.",
-    "emptyBody": "Solo elegimos selecciones de modelos que han superado al mercado, sin el margen de las casas, en sus pruebas con partidos pasados. Un día sin ninguna se queda vacío.",
+    "emptyBody": "Solo publicamos una selección cuando nuestras pruebas con partidos pasados la respaldan. Si ninguna lo cumple, el día se queda vacío.",
     "list": "Picks del día",
     "reason": {
       "no_qualified_picks": "Hoy no hay picks de PrediGol",

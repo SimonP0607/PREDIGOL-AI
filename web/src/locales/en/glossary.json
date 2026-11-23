@@ -54,7 +54,7 @@
     "calibrated": {
       "name": "Calibrated",
       "short": "A forecast is calibrated when its percentages come true: of everything it gave 70%, about 70% happened.",
-      "long": "PrediGol labels its forecast “Calibrated” when it corrected the model's probability with matches already played and that correction was proven. “Uncalibrated” is the model's probability as it is: it can be useful, but its percentages are not proven."
+      "long": "PrediGol labels its forecast “Calibrated” when it corrected the model's probability with matches already played and that correction was proven. “Preliminary estimate” is the model's probability as it is: it can be useful, but its percentages are not proven."
     },
     "value": {
       "name": "Value",

@@ -324,7 +324,7 @@
     "title": "Match stats",
     "key": "Key stats",
     "all": "See all",
-    "notStarted": "Match stats will appear once it kicks off. Meanwhile, here is how both teams arrive.",
+    "notStarted": "The match has not started yet: here is how both teams arrive.",
     "season": "Season",
     "position": "#{rank} in the table",
     "label": {
@@ -716,7 +716,7 @@
     "range": "between {low} and {high}",
     "rangeNone": "no range measured",
     "calibrated": "Calibrated",
-    "uncalibrated": "Uncalibrated",
+    "uncalibrated": "Preliminary estimate",
     "basis": {
       "champion": "PrediGol corrected the model's probability with matches already played.",
       "no_champion": "This is the model's own probability: there is no proven correction for this market yet.",
@@ -742,7 +742,7 @@
       "state": "state",
       "selection": "selection",
       "familiesTitle": "Families for this match (research, admin only)",
-      "familiesNote": "What the families of goals by half, corners, cards and yellow cards forecast: the model's own number, uncalibrated and with no measured range. In brackets, PrediGol's odds (1 / probability). It is research: not the forecast above, and not a recommendation.",
+      "familiesNote": "What the families of goals by half, corners, cards and yellow cards forecast: a preliminary estimate, with no measured range. In brackets, PrediGol's odds (1 / probability). It is research: not the forecast above, and not a recommendation.",
       "familyMarkets": "Markets: {n}",
       "settledWith": "Graded with: {rule}",
       "noRule": "No settlement rule can grade a bet on this market."
@@ -944,7 +944,7 @@
     "coverage": "{n} of {total} with data",
     "noData": "No data",
     "none": "Neither team has a finished match before this one.",
-    "note": "Each figure counts only the matches that carry that data: not every league or season has corners, cards or xG.",
+    "note": "Not every league or season has corners, cards or xG.",
     "metric": {
       "wins": "Matches won",
       "draws": "Draws",
@@ -1059,7 +1059,7 @@
       "draw": "a draw",
       "away": "a {team} win"
     },
-    "uncalibrated": ", uncalibrated",
+    "uncalibrated": ", preliminary estimate",
     "match_intro": {
       "plain": "A {competition} match.",
       "round": "A {competition} match ({round}).",
@@ -1207,7 +1207,7 @@
       "dossier": "the match report",
       "phase": "the competition's stage"
     },
-    "uncalibrated_markets": "The forecast for {markets} is uncalibrated: it is the model's own number.",
+    "uncalibrated_markets": "The forecast for {markets} is a preliminary estimate: it has not yet been checked against enough results.",
     "markets": {
       "1X2": "the result",
       "OU": "goals",
@@ -1229,7 +1229,7 @@
   "postmatch": {
     "title": "Forecast against result",
     "line": "PrediGol saw «{outcome}» as the likeliest ({pct}{uncal}). It ended {score}: {actual}.",
-    "uncalibrated": ", uncalibrated",
+    "uncalibrated": ", preliminary estimate",
     "hit": "It matched the result",
     "miss": "It did not match the result",
     "said": "Forecast of {date}",

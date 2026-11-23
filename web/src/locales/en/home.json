@@ -34,7 +34,7 @@
       "away": "Forecast: {team} to win",
       "draw": "Forecast: a draw"
     },
-    "uncalibrated": "uncalibrated",
+    "uncalibrated": "preliminary estimate",
     "forecastNote": "The forecast says which result is likeliest; it is not a recommendation. What PrediGol recommends is the pick.",
     "titleMine": "Today in your leagues",
     "subtitleMine": "Your leagues and teams: today's matches, live first",
