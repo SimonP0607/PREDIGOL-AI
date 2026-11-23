@@ -145,6 +145,12 @@ class Me(Contract):
                                                                    "by default).")
     what_if: bool = Field(default=False, description="The calculator «¿Qué pasa si…?» of a competition's tables (plan PM, "
                                                      "PM-09-03; FBI_WHAT_IF, off until the owner signs DM-14).")
+    home_unified: bool = Field(default=False, description="One Inicio for everyone, with the «Tus favoritos» strip (plan de correcciones UX, AP-I01, decision D1) (FBI_HOME_UNIFIED, off by default).")
+    markets_v3: bool = Field(default=False, description="A match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6) (FBI_MARKETS_V3, off by default).")
+    day_highlights: bool = Field(default=False, description="«Lo más interesante de hoy» on days without picks (plan de correcciones UX, AP-K04, decision D2) (FBI_DAY_HIGHLIGHTS, off by default).")
+    my_books: bool = Field(default=False, description="«Mis casas»: the bookmakers the reader plays at, in Perfil, Mercados and Cuotas (plan de correcciones UX, AP-P10, decision D5) (FBI_MY_BOOKS, off by default).")
+    stakes: bool = Field(default=False, description="Variable units on picks, parlays, Mis picks and Transparencia (plan de correcciones UX, AP-K07, decision D3) (FBI_STAKES, off by default).")
+    trend_builder: bool = Field(default=False, description="The parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7) (FBI_TREND_BUILDER, off by default).")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")

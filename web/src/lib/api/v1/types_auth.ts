@@ -106,6 +106,18 @@ export interface Me {
   player_profile_extras?: boolean;
   /** The calculator «¿Qué pasa si…?» (plan PM, PM-09-03; FBI_WHAT_IF, off until the owner signs DM-14). */
   what_if?: boolean;
+  /** One Inicio for everyone, with the «Tus favoritos» strip (plan de correcciones UX, AP-I01, decision D1) (FBI_HOME_UNIFIED, off by default). */
+  home_unified?: boolean;
+  /** A match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6) (FBI_MARKETS_V3, off by default). */
+  markets_v3?: boolean;
+  /** «Lo más interesante de hoy» on days without picks (plan de correcciones UX, AP-K04, decision D2) (FBI_DAY_HIGHLIGHTS, off by default). */
+  day_highlights?: boolean;
+  /** «Mis casas»: the bookmakers the reader plays at, in Perfil, Mercados and Cuotas (plan de correcciones UX, AP-P10, decision D5) (FBI_MY_BOOKS, off by default). */
+  my_books?: boolean;
+  /** Variable units on picks, parlays, Mis picks and Transparencia (plan de correcciones UX, AP-K07, decision D3) (FBI_STAKES, off by default). */
+  stakes?: boolean;
+  /** The parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7) (FBI_TREND_BUILDER, off by default). */
+  trend_builder?: boolean;
   /** The data layers of the line-up pitch (plan PM, PM-10-04, lámina I02; FBI_LINEUP_LAYERS, off by default). */
   lineup_layers?: boolean;
   /** The Match Center adapted to the coverage of C-16: tabs and blocks by level (plan PM, PM-14-02; FBI_MATCH_COVERAGE, off). */

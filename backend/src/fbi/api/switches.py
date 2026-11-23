@@ -157,6 +157,24 @@ WHAT_IF: Final = "FBI_WHAT_IF"
 and ``=1`` shows it under the season tables (which need ``FBI_COMPETITION_TABLES``). Computed in the browser from the served rules:
 no probability, no forecast. Turned on only with the owner's signature of publication (DM-14)."""
 
+HOME_UNIFIED: Final = "FBI_HOME_UNIFIED"
+"""One Inicio for everyone, with the «Tus favoritos» strip (plan de correcciones UX, AP-I01, decision D1): OFF while the line is absent, ``=1`` turns it on (the API recreated). The UX session turns it on after verifying it (D1 is approved)."""
+
+MARKETS_V3: Final = "FBI_MARKETS_V3"
+"""A match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6): OFF while the line is absent, ``=1`` turns it on (the API recreated). The UX session turns it on after verifying it."""
+
+DAY_HIGHLIGHTS: Final = "FBI_DAY_HIGHLIGHTS"
+"""«Lo más interesante de hoy» on days without picks (plan de correcciones UX, AP-K04, decision D2): OFF while the line is absent, ``=1`` turns it on (the API recreated). The UX session turns it on after verifying it."""
+
+MY_BOOKS: Final = "FBI_MY_BOOKS"
+"""«Mis casas»: the bookmakers the reader plays at, in Perfil, Mercados and Cuotas (plan de correcciones UX, AP-P10, decision D5): OFF while the line is absent, ``=1`` turns it on (the API recreated). Only the owner turns it on, after the lawyer's answer."""
+
+STAKES: Final = "FBI_STAKES"
+"""Variable units on picks, parlays, Mis picks and Transparencia (plan de correcciones UX, AP-K07, decision D3): OFF while the line is absent, ``=1`` turns it on (the API recreated). Only the owner turns it on, when contract C-17 is active with calibrated models."""
+
+TREND_BUILDER: Final = "FBI_TREND_BUILDER"
+"""The parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7): OFF while the line is absent, ``=1`` turns it on (the API recreated). Only the owner turns it on, after Intelligence validates contract C-18."""
+
 MARKET_PROBS: Final = "FBI_MARKET_PROBS"
 """The probabilities by market of a match (plan EA, EA-201/EA-202; contract C-14): OFF while the line is absent and ``=1`` shows the
 three marks - model, implied, history - on the Mercados tab. A reader sees a model's figure only for a market the catalogue holds
@@ -310,6 +328,36 @@ def player_profile_extras_on() -> bool:
 def what_if_on() -> bool:
     """Whether readers get the calculator «¿Qué pasa si…?» (``FBI_WHAT_IF``, off by default)."""
     return user_switch(WHAT_IF, default=False)
+
+
+def home_unified_on() -> bool:
+    """Whether one Inicio for everyone, with the «Tus favoritos» strip (plan de correcciones UX, AP-I01, decision D1) is on (``FBI_HOME_UNIFIED``, off by default)."""
+    return user_switch(HOME_UNIFIED, default=False)
+
+
+def markets_v3_on() -> bool:
+    """Whether a match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6) is on (``FBI_MARKETS_V3``, off by default)."""
+    return user_switch(MARKETS_V3, default=False)
+
+
+def day_highlights_on() -> bool:
+    """Whether «Lo más interesante de hoy» on days without picks (plan de correcciones UX, AP-K04, decision D2) is on (``FBI_DAY_HIGHLIGHTS``, off by default)."""
+    return user_switch(DAY_HIGHLIGHTS, default=False)
+
+
+def my_books_on() -> bool:
+    """Whether «Mis casas»: the bookmakers the reader plays at, in Perfil, Mercados and Cuotas (plan de correcciones UX, AP-P10, decision D5) is on (``FBI_MY_BOOKS``, off by default)."""
+    return user_switch(MY_BOOKS, default=False)
+
+
+def stakes_on() -> bool:
+    """Whether variable units on picks, parlays, Mis picks and Transparencia (plan de correcciones UX, AP-K07, decision D3) is on (``FBI_STAKES``, off by default)."""
+    return user_switch(STAKES, default=False)
+
+
+def trend_builder_on() -> bool:
+    """Whether the parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7) is on (``FBI_TREND_BUILDER``, off by default)."""
+    return user_switch(TREND_BUILDER, default=False)
 
 
 def market_probs_on() -> bool:
