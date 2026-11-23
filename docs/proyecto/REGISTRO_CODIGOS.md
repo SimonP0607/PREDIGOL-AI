@@ -393,6 +393,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | UX-203 | Bienvenida con emoción y sin texto de contrato (AP-B04, D12): barra de progreso, una luz que barre el campo una vez y escudos que se elevan al elegirlos (todo sin movimiento con «reducir movimiento»); el paso «Qué es PrediGol» pasa a tres tarjetas con icono y una frase, sin el párrafo legal, que se queda en el pie; el recuento de límites solo aparece cerca del límite. Solo web, sin cambios de servidor ni de contrato. | en curso | este PR | UX-202 |
 | UX-204 | Equipos como portada del fútbol (AP-E02): «Tus equipos» con escudos grandes y su próximo partido (lo que ya sabe `GET /today`), «Selecciones» como bloque propio con atajos a la búsqueda, y el directorio por región y país con nombres en español (país → liga → equipos → perfil; nunca Partidos). Solo web, sin cambios de servidor ni de contrato. | en curso | este PR | UX-203 |
 | UX-207 | Estadísticas del partido en el orden natural (AP-P05): antes del partido la pestaña se lee «Cómo llegan los equipos» → «Temporada» → «El cruce en estadísticas» (las gráficas, con `FBI_STATS_V2`), y desaparece la frase «El partido aún no ha empezado»: el título de la pestaña ya lo dice. Un bloque sin datos sigue sin pintarse (la adaptación por niveles de cobertura de UX-177 se conserva). Solo cambia el orden; ningún dato, pick ni probabilidad. Lámina P05 del lienzo actualizada. | en curso | este PR | UX-206 |
+| UX-208 | «Mejores cuotas» del Resumen en filas compactas (AP-P06): la selección y la casa a la izquierda y la cuota (la misma `SelectablePrice`, con su añadido a Mi parlay) a la derecha, una fila por selección, también en la columna de 400 px del escritorio. Nueva pieza `PriceRow` en `product/match/prices.tsx`, que reutilizará la fila de mercado de Mercados (AP-P08). Solo cambia la presentación; ninguna cuota, pick ni probabilidad. Láminas P03 y P11 del lienzo actualizadas. | en curso | este PR | UX-207 |
 | FE-001 | Recharts 2.15 → 3.10 (el informe de herramientas gratuitas): los gráficos de analítica, del explorador de cuotas, de Resumen y de modelos, y el `chart.tsx` de shadcn. Cambios de tipos (en Recharts 3 `payload` y `label` ya no están en `TooltipProps`, `formatter` recibe `ValueType | undefined`, `dataKey` puede ser una función) sin cambiar lo que se dibuja: se comparó una página con los seis gráficos de analítica y el gráfico de movimiento del explorador (con su tooltip) renderizados con 2.15 y con 3.10, en Chromium, y salen iguales | en curso | este PR | — |
 | FE-002 | Sin usar: la sesión de Intelligence tomó FE-003 sin pedir el siguiente libre (18-nov-2026). No se reutiliza | sin usar | — | — |
 | FE-003 | Plan de estadísticas avanzadas (EA-202): en «Mercados → Probabilidades», la línea que se muestra de un total siempre tiene su botón entre las ocho visibles (visto en producción con los córners de Flamengo–Athletico) | desplegado (en producción el 18-nov-2026 con la cadena `20261118T2213Z-auto-f9739d4`, sin migración) | #390 | BE-047 |
@@ -503,7 +504,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-020 · SEG-003 · UX-208 · BE-086 · FE-010 · OPS-017 · DOC-013
+CI-020 · SEG-003 · UX-209 · BE-086 · FE-010 · OPS-017 · DOC-013
 
 IA-161
 
