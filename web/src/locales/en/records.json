@@ -151,7 +151,6 @@
     "priceNow": "Current price",
     "noPrice": "No price",
     "note": "Each selection's price is the best current price we know; it is saved with the parlay.",
-    "noAi": "Instant calculation · no AI",
     "summary": {
       "title": "Your parlay in numbers",
       "estimated": "Estimated probability",
@@ -191,8 +190,7 @@
       "rules": "Rules",
       "ruleCount": "{min} to {max} selections, one per match.",
       "ruleReplace": "Adding another selection from the same match replaces the previous one.",
-      "ruleKickoff": "Nothing after kick-off.",
-      "noAi": "The combined odds, the probability and the dependence are calculated instantly from data we already have. No AI analyses your parlay."
+      "ruleKickoff": "Nothing after kick-off."
     },
     "error": {
       "leg_count": "A parlay needs between {min} and {max} selections.",

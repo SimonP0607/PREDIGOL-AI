@@ -151,7 +151,6 @@
     "priceNow": "Precio actual",
     "noPrice": "Sin precio",
     "note": "La cuota de cada selección es el mejor precio actual que conocemos; la guardamos con el parlay.",
-    "noAi": "Cálculo instantáneo · sin IA",
     "summary": {
       "title": "Resumen de tu parlay",
       "estimated": "Probabilidad estimada",
@@ -191,8 +190,7 @@
       "rules": "Reglas",
       "ruleCount": "De {min} a {max} selecciones, una por partido.",
       "ruleReplace": "Si agregas otra selección de un mismo partido, reemplaza a la anterior.",
-      "ruleKickoff": "Nada después del inicio del partido.",
-      "noAi": "La cuota combinada, la probabilidad y la dependencia se calculan al instante con datos que ya tenemos. Ninguna IA analiza tu parlay."
+      "ruleKickoff": "Nada después del inicio del partido."
     },
     "error": {
       "leg_count": "Un parlay necesita entre {min} y {max} selecciones.",

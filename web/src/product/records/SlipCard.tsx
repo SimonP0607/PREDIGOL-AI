@@ -130,7 +130,6 @@ export function SlipCard({ className }: { className?: string | undefined }) {
               <Trash2 aria-hidden className="h-3.5 w-3.5" />
               {t("records.slip.clear")}
             </button>
-            <span className="text-subtle-foreground">{t("odds.byMatch.noAi")}</span>
           </div>
         </>
       ) : null}
