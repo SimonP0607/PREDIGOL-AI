@@ -694,6 +694,69 @@
     "solvedReply": "Great! If you need anything else, write it here.",
     "personReply": "Then it is best that a person looks at it. I can open a message with what you already told me so you do not have to repeat it.",
     "sendPerson": "Send to a person",
-    "whatsapp": "I prefer WhatsApp"
+    "whatsapp": "I prefer WhatsApp",
+    "hello": "Hi! I'm the help assistant. Pick a topic or write your question in your own words.",
+    "topicsLabel": "Help topics",
+    "topics": {
+      "account": "Account and sign-in",
+      "membership": "Membership and payments",
+      "picks": "Picks and how to read them",
+      "parlays": "Parlays and settlement",
+      "odds": "Odds and probabilities",
+      "notices": "Notifications",
+      "privacy": "Privacy",
+      "person": "Talk to a person"
+    },
+    "topicIntro": {
+      "account": "About your account and signing in. Which of these is your question?",
+      "membership": "About membership and payments. Which of these is your question?",
+      "picks": "About picks and how to read them. Which of these is your question?",
+      "parlays": "About parlays and how they settle. Which of these is your question?",
+      "odds": "About odds and probabilities. Which of these is your question?",
+      "notices": "About emails and notices. Which of these is your question?",
+      "privacy": "About your data and privacy. Which of these is your question?"
+    },
+    "menu": "These are the help topics. Pick one:",
+    "suggest": "One of these questions may help:",
+    "talk": {
+      "greeting": "Hi! How can I help?",
+      "thanks": "My pleasure! If you need anything else, I'm here.",
+      "bye": "See you soon! Come back whenever you like."
+    },
+    "flows": {
+      "signin": {
+        "start": {
+          "ask": "Sorry you can't sign in. What is happening?",
+          "forgot": "I forgot my password",
+          "wait": "It tells me to wait a few minutes",
+          "code": "It asks for a verification code",
+          "mail": "The email doesn't arrive",
+          "other": "Something else"
+        }
+      },
+      "nopicks": {
+        "start": {
+          "ask": "What do you see in Picks?",
+          "none": "It says there are no picks today",
+          "locked": "I see picks but can't open them",
+          "empty": "Nothing loads"
+        },
+        "locked": {
+          "ask": "Is your membership still active?",
+          "expired": "It has ended",
+          "unsure": "I don't know",
+          "active": "Yes, it is active"
+        }
+      },
+      "pay": {
+        "start": {
+          "ask": "What do you want to do with your membership?",
+          "renew": "Renew or pay for it",
+          "trial": "Try it first",
+          "ends": "Know what happens when it ends",
+          "other": "Something else"
+        }
+      }
+    }
   }
 }

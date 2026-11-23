@@ -98,8 +98,11 @@ describe("the answers name only the channels that are published", () => {
       expect(r.kind).toBe("found");
       if (r.kind !== "found") continue;
       for (const a of r.answers) expect(a.text).not.toMatch(/whatsapp/i);
-      const turns = answerTo("no puedo entrar a mi cuenta", FAQ_IDS, reach);
-      const bot = turns[1]!;
+      // «no puedo entrar» starts a step-by-step flow; its first button ends in the same answer of the help
+      expect(answerTo("no puedo entrar a mi cuenta", FAQ_IDS, reach)[1]).toMatchObject({
+        kind: "flow",
+      });
+      const bot = answerTo("olvide mi clave", FAQ_IDS, reach)[1]!;
       expect(bot.who === "bot" && bot.kind).toBe("found");
       if (bot.who === "bot" && bot.kind === "found")
         for (const a of bot.answers) expect(a.text).not.toMatch(/whatsapp/i);

@@ -585,6 +585,13 @@
     "probs": "PrediGol {model} · market {market}",
     "whyValue": "PrediGol sees this result as likelier than the market does.",
     "more": "More about this pick",
-    "audit": "Audit"
+    "audit": "Audit",
+    "priceCurrent": "Current odds",
+    "published": "Published at {odds}",
+    "up": "up {delta}",
+    "down": "down {delta}",
+    "noValueNow": "At this price there is no longer value",
+    "whyLabel": "Why",
+    "oldPrice": "The price now is old"
   }
 }
