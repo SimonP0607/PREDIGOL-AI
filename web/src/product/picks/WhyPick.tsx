@@ -29,6 +29,7 @@ import { Disclaimer } from "@/components/system/Disclaimer";
 import { ProbCompare } from "@/product/shared/Bits";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import { HelpfulVote } from "@/product/feedback/HelpfulVote";
+import { readerLines } from "@/lib/i18n/format";
 import { UserStatusBadge } from "@/product/shared/UserStatusBadge";
 import { reasonText } from "@/product/shared/userStatus";
 import { useTransparencyOpen } from "@/product/transparency/useTransparencyOpen";
@@ -166,9 +167,11 @@ function Fold({ layer, open, children }: { layer: string; open: boolean; childre
 }
 
 function Lines({ lines, testId }: { lines: string[]; testId: string }) {
+  const shown = readerLines(lines);
+  if (shown.length === 0) return null;
   return (
     <ul className="space-y-1.5" data-testid={testId}>
-      {lines.map((line, i) => (
+      {shown.map((line, i) => (
         <li key={i} className="text-sm leading-relaxed text-foreground/90">
           {line}
         </li>
@@ -189,7 +192,8 @@ export function PickExplanationView({
   footer?: ReactNode;
 }) {
   const conclusionId = useId();
-  const context = contextLines(e);
+  // what the server wrote is checked before it is drawn: no rumour, no foreign script (AP-T02)
+  const context = readerLines(contextLines(e));
   const day = e.day;
   return (
     <div className="space-y-3" data-testid="why-explanation" data-status={e.user_status}>
@@ -246,7 +250,7 @@ export function PickExplanationView({
         </Fold>
         <Fold layer="risks" open={false}>
           <Lines lines={riskLines(e)} testId="why-risks" />
-          {e.review && e.review.risks.length ? (
+          {e.review && readerLines(e.review.risks).length > 0 ? (
             <div className="space-y-1" data-testid="why-review">
               <p className="text-xs font-semibold text-muted-foreground">
                 {t("picks.why.risks.review")}

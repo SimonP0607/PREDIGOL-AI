@@ -7,6 +7,7 @@
 import type { MatchSummary, TeamDetail, TeamSummary } from "@/lib/api/v1/types";
 import type { PlayerSummary, TableRow } from "@/lib/api/v1/types_center";
 import { t } from "@/lib/i18n";
+import "@/product/competitions/text";
 import { countryFromEnglish } from "@/product/matches/country";
 
 export type ProfileTab = "summary" | "matches" | "squad" | "stats" | "news";
