@@ -1,6 +1,6 @@
 {
   "source": {
-    "api_football": "estadísticas del partido de API-Football",
+    "api_football": "estadísticas del partido",
     "football_data": "estadísticas del partido de football-data.co.uk"
   },
   "table": {
@@ -31,7 +31,7 @@
     "blocked": "Remates bloqueados",
     "xg": "xG del partido",
     "xgPerShot": "xG por remate",
-    "xgSource": "xG de API-Football.",
+    "xgSource": "xG según los datos del partido.",
     "honest": "Son las dos zonas que entrega el proveedor. No es un mapa de tiros: no se conoce el punto de cada remate.",
     "method": "El proveedor cuenta los remates de cada equipo dentro y fuera del área; el porcentaje es la parte de los remates de ese equipo en cada zona. No da el punto de cada remate, así que no hay mapa: solo estas dos zonas.",
     "aria": "{team}: {inside} remates dentro del área ({insidePct} %) y {outside} fuera ({outsidePct} %)"
@@ -53,7 +53,7 @@
     "title": "Estado del marcador",
     "subtitle": "Quién iba por delante durante los 90 minutos.",
     "subject": "Minutos por delante de {home} y {away}",
-    "source": "eventos del partido de API-Football",
+    "source": "eventos del partido",
     "beyond90": "La franja cubre los 90 minutos: la prórroga y los penaltis no se dibujan.",
     "method": "Se ordenan los goles de los eventos del partido y se cuenta, minuto a minuto, quién iba por delante, quién por detrás o si iban empatados. El tiempo añadido cuenta como el minuto 90 (45 en la primera parte). Solo se dibuja cuando los goles de los eventos suman el resultado final."
   },
@@ -69,7 +69,7 @@
     "nominal": "Posición nominal de formación, no posición real en el campo. Es la casilla que declara el acta; solo titulares.",
     "bestNote": "Borde dorado: valoración más alta del equipo. Escala del proveedor, de 1 a 10.",
     "subject": "Valoración, minutos, tarjetas y goles con asistencias de los titulares de {home} y {away}",
-    "source": "estadísticas por jugador y eventos del partido de API-Football",
+    "source": "estadísticas por jugador y eventos del partido",
     "tableTitle": "Las cuatro capas, en tabla",
     "player": "Jugador",
     "val": "Val.",

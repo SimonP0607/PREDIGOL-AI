@@ -229,7 +229,7 @@ describe("what a user sees once the owner lets users see the forecast", () => {
   });
 
   test("the model and when it was said", () => {
-    expect(out).toContain("Modelo: Dixon-Coles");
+    expect(out).toContain("Modelo: Modelo de goles con ajuste de marcadores bajos");
     expect(out).toContain("Actualizado");
   });
 
@@ -788,9 +788,9 @@ describe("the words and the bar", () => {
   test("a basis this page does not know is blank, a model it does not know is named as it is", () => {
     expect(basisNote("some_future_basis")).toBe("");
     expect(basisNote("champion").length).toBeGreaterThan(10);
-    expect(modelLabel("poisson")).toBe("Poisson (Maher)");
-    expect(modelLabel("dixon_coles")).toBe("Dixon-Coles");
-    expect(modelLabel("elo_ologit")).toBe("Elo (logit ordenado)");
+    expect(modelLabel("poisson")).toBe("Modelo de goles");
+    expect(modelLabel("dixon_coles")).toBe("Modelo de goles con ajuste de marcadores bajos");
+    expect(modelLabel("elo_ologit")).toBe("Modelo de fuerza de los equipos");
     expect(modelLabel("some_future_model")).toBe("some_future_model");
   });
 });

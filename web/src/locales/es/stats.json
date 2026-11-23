@@ -6,7 +6,7 @@
   "loading": "Cargando estadísticas…",
   "updated": "Actualizado {when}",
   "stale": "El cálculo nocturno va con retraso: estas cifras pueden ser de ayer.",
-  "source": "API-Football · cálculo nocturno {version}",
+  "source": "Cálculo nocturno de PrediGol",
   "sample": "n = {n} partidos",
   "sampleNineties": "{n} noventas",
   "scopeLabel": "Alcance",
@@ -112,13 +112,13 @@
   "ceded": "puntos cedidos yendo por delante",
   "pulseTitle": "Pulso goleador · índice 100 = liga",
   "pulseFull": "Pulso del partido",
-  "pulseSub": "Goles por minuto, suavizados · banda = incertidumbre (bootstrap 10–90)",
+  "pulseSub": "Goles por minuto, suavizados · la banda muestra la incertidumbre",
   "pulseFor": "A favor",
   "pulseAgainst": "En contra",
   "pulseCards": "Tarjetas",
   "pulseLeague": "Liga = 100",
-  "pulseNote": "Solo goles con minuto (lo único por minuto del proveedor) · pulso-v1 · historia, no el momentum en vivo",
-  "pulseMethod": "Tasa de goles por minuto en bins de 5' suavizados con núcleo gaussiano (σ = 7,5'), dividida por la de la liga en el mismo minuto (100 = liga); 45+' y 90+' son bins propios; la banda es el percentil 10–90 de 1.000 remuestreos de partidos.",
+  "pulseNote": "Solo goles con minuto · historia, no el momentum en vivo",
+  "pulseMethod": "Goles por minuto en tramos de 5' suavizados, divididos por los de la liga en el mismo minuto (100 = liga); 45+' y 90+' son tramos propios; la banda muestra cuánto cambiaría la cifra con otros partidos.",
   "toPulse": "Análisis temporal →",
   "intervalsTitle": "Goles por intervalo",
   "intervalsSub": "A favor arriba · en contra abajo · la marca gris es la media de la liga",
@@ -126,7 +126,7 @@
   "intervalsGoals": "Goles del tramo {label}",
   "minuteOf": "min {minute}",
   "survivalTitle": "¿Cuánto tarda en abrirse el partido?",
-  "survivalSub": "P(sigue 0-0 en el minuto t) — curva de supervivencia (Kaplan-Meier)",
+  "survivalSub": "Probabilidad de que el marcador siga 0-0 en el minuto t",
   "survivalMedian": "Mediana del primer gol: {label}'",
   "survivalNone": "Sin mediana: más de la mitad de sus partidos no se abre",
   "survivalLeague": "Liga",
@@ -246,8 +246,8 @@
   },
   "settlesWith": {
     "score": "liquida con el marcador",
-    "stats": "liquida con las estadísticas del partido (API-Football)",
-    "player": "liquida con los datos del partido (API-Football) · anulada si no juega"
+    "stats": "liquida con las estadísticas del partido",
+    "player": "liquida con los datos del partido · anulada si no juega"
   },
   "figureHelp": "{name}: {value} {unit} · percentil {pct} · media de la liga {league} · {n} partidos con dato"
 }
