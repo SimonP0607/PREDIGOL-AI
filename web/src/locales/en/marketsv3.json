@@ -17,5 +17,7 @@
   "compare": "Compare bookmakers",
   "hideBooks": "Hide bookmakers",
   "personalize": "Personalize markets",
-  "help": "Each price is the best among the bookmakers we read, with the time it was read. «Preliminary estimate»: PrediGol's figure for that market is not yet checked."
+  "help": "Each price is the best among the bookmakers we read, with the time it was read. «Preliminary estimate»: PrediGol's figure for that market is not yet checked.",
+  "lookup": "Look-up only",
+  "lookupDefault": "This market is not part of My parlay."
 }
