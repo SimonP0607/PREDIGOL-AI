@@ -1,0 +1,100 @@
+{
+  "contract": "C-10",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "query": "atletico",
+  "normalized": "atletico",
+  "per_group": 8,
+  "groups": {
+    "teams": {
+      "items": [
+        {
+          "kind": "team",
+          "id": 101,
+          "label": "Atlético Ejemplo",
+          "sublabel": "Ejemplandia",
+          "matched": "Atlético Ejemplo",
+          "alias_type": "official",
+          "match": "prefijo"
+        },
+        {
+          "kind": "team",
+          "id": 102,
+          "label": "Atlético Ficticio",
+          "sublabel": "Ejemplandia",
+          "matched": "Atletico Ficticio",
+          "alias_type": "alternative",
+          "match": "prefijo"
+        }
+      ]
+    },
+    "national_teams": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "players": {
+      "items": [
+        {
+          "kind": "player",
+          "id": 301,
+          "label": "J. Atletiquez",
+          "sublabel": "Atlético Ejemplo",
+          "matched": "Jaime Atletiquez Ficticio",
+          "alias_type": "full",
+          "match": "palabras"
+        }
+      ]
+    },
+    "competitions": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "coaches": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "referees": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "venues": {
+      "items": [
+        {
+          "kind": "venue",
+          "id": 501,
+          "label": "Estadio Atlético Ejemplo",
+          "sublabel": "Villaejemplo, Ejemplandia",
+          "matched": "Estadio Atlético Ejemplo",
+          "alias_type": "official",
+          "match": "palabras"
+        }
+      ]
+    },
+    "fixtures": {
+      "items": [
+        {
+          "id": 901,
+          "label": "Atlético Ejemplo v Deportivo Ficticio",
+          "sublabel": "Liga Ficticia",
+          "kickoff_at": "2026-11-23T20:00:00Z",
+          "home_team_id": 101,
+          "away_team_id": 103
+        }
+      ]
+    },
+    "news": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-G01"
+    }
+  },
+  "did_you_mean": {
+    "items": [],
+    "missing_reason": "sin_resultados"
+  }
+}
