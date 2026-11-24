@@ -463,10 +463,11 @@ def test_none_of_the_readers_of_production_moves_for_what_the_agent_wrote(db: ps
     window = {"since": KICKOFF - timedelta(days=1), "until": KICKOFF + timedelta(days=1), "limit": 100}
 
     def readers() -> dict[str, Any]:
-        [row] = rows(db, costs.REVIEWS_SQL, since=AT - timedelta(hours=12), until=RUN + timedelta(hours=1))
+        since, until = AT - timedelta(hours=12), RUN + timedelta(hours=1)
+        [row] = rows(db, costs.REVIEWS_SQL, names=["w"], sinces=[since], untils=[until], first=since, last=until)
         return {
             "gate_a": gate_a.coverage(db, day, day),
-            "costs": {k: int(v) for k, v in row.items()},
+            "costs": {k: int(v) for k, v in row.items() if k != "name"},
             "postmortem": sorted(r["id"] for r in rows(db, postmortem.DUE_SQL, version=postmortem.VERSION, **window)),
             "match_review": sorted(r["id"] for r in rows(db, match_review.DUE_SQL, version=match_review.VERSION, **window)),
             "decision": rows(db, decision.REVIEWS_SQL, fixtures=[w.fixture], at=RUN + H),
