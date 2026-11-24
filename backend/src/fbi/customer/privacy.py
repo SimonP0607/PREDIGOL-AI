@@ -299,6 +299,8 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         SELECT created_at, revoked_at, revoked_why, last_read_at
         FROM customer.calendar_feeds WHERE user_id = %s ORDER BY id
     """, (user_id,))
+    # Their choice to see no prices (PM-14-07): the mode and the date a pause ends - nothing else is kept.
+    wellbeing_rows = _all(conn, "SELECT football_only, paused_until, updated_at FROM customer.wellbeing WHERE user_id = %s", (user_id,))
     document: dict[str, Any] = _iso({
         "format": EXPORT_FORMAT,
         "generated_at": now or datetime.now(UTC),
@@ -312,6 +314,7 @@ def export(conn: psycopg.Connection[Any], user_id: int, *, now: datetime | None 
         "messages": messages,
         "notification_preferences": notification_prefs[0] if notification_prefs else None,
         "favorites": favourite_rows,
+        "wellbeing": wellbeing_rows[0] if wellbeing_rows else None,
         "welcome": welcome[0] if welcome else None,
         "guides": guide_rows,
         "product_events": analytics["product_events"],

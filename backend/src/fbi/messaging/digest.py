@@ -31,7 +31,7 @@ import psycopg
 import structlog
 from psycopg.rows import dict_row
 
-from fbi.customer import updates
+from fbi.customer import updates, wellbeing
 from fbi.messaging.outbox import enqueue, sending_enabled
 
 log = structlog.get_logger(__name__)
@@ -204,8 +204,12 @@ def queue(conn: psycopg.Connection[Any], *, at: datetime) -> DigestReport:
     cap = daily_cap()
     synthetic = os.environ.get("FBI_SYNTHETIC_EMAIL", "").strip().lower() or "-"
     candidates = conn.execute(CANDIDATES_SQL, (synthetic,)).fetchall()
+    # «Solo fútbol» and the pause (PM-14-07): the summary counts how the reader's saved picks ended - not for one who sees none
+    quiet = wellbeing.hidden_prices(conn, at)
     conn.commit()
     for user_id, zone in candidates:
+        if int(user_id) in quiet:
+            continue
         if not due_now(int(user_id), zone, at):
             continue
         key = dedup_key(int(user_id), zone, at)

@@ -11,6 +11,7 @@ from fbi.api.contracts.common import Contract
 from fbi.api.contracts.customer import ConsentPurpose
 from fbi.api.contracts.guides import GuideState
 from fbi.api.contracts.membership import MembershipSummary
+from fbi.api.contracts.wellbeing import WellbeingState
 
 Language = Literal["es", "en"]
 Stage = Literal["mfa", "enroll", "password", "full"]
@@ -168,6 +169,7 @@ class Me(Contract):
     matrix_modules: MatrixModules = Field(default_factory=MatrixModules, description=(
         "What Cuotas, Picks, Noticias and Mi parlay do with C-16 (plan PM, PM-14-04; FBI_MATRIX_ODDS, FBI_MATRIX_PICKS, FBI_MATRIX_NEWS, "
         "FBI_MATRIX_PARLAY: off by default; show: they read the matrix and only say what it says; on: it replaces their own check)."))
+    wellbeing: WellbeingState = Field(default_factory=WellbeingState, description="What the reader chose about seeing prices (plan PM, PM-14-07; FBI_WELLBEING, off by default): «solo fútbol» and the voluntary pause; ``available`` False while the choice is not open.")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")

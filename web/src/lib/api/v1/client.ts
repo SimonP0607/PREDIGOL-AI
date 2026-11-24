@@ -286,6 +286,7 @@ import type {
   SignupIn,
   VerifyInfo,
   VerifyIn,
+  WellbeingState,
 } from "./types_auth";
 import type {
   CompetitionScoreRow,
@@ -568,6 +569,9 @@ export const v1 = {
   logout: () => postJson<void>("/auth/logout", {}),
   me: () => getJson<Me>("/auth/me"),
   updatePreferences: (prefs: PreferencesIn) => patchJson<Me>("/auth/me/preferences", prefs),
+  /** «Solo fútbol» and the pause (plan PM, PM-14-07): what the reader chose, and the choice (a field left out stays). */
+  putWellbeing: (body: { football_only?: boolean; pause_days?: 0 | 1 | 7 | 30 }) =>
+    putJson<WellbeingState>("/me/wellbeing", body),
   changePassword: (current_password: string, new_password: string) =>
     postJson<void>("/auth/me/password", { current_password, new_password }),
   // the steps of signing in

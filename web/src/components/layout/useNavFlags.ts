@@ -8,5 +8,6 @@ export function useNavFlags(): NavFlags {
     v2: user?.nav_v2 === true,
     news: user?.news_feed === true,
     profiles: user?.profiles === true,
+    noPrices: user?.wellbeing?.active === true,
   };
 }

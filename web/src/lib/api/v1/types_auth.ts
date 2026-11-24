@@ -19,6 +19,18 @@ export type MatrixMode = "off" | "show" | "on";
 export type MatrixModule = "odds" | "picks" | "news" | "parlay";
 export type MatrixModules = Record<MatrixModule, MatrixMode>;
 
+/** What a reader chose about seeing prices (plan PM, PM-14-07; FBI_WELLBEING, off by default). */
+export interface WellbeingState {
+  /** The owner opened the choice. */
+  available: boolean;
+  /** The reader sees no price, pick or parlay now: the mode, or a pause that runs. */
+  active: boolean;
+  football_only: boolean;
+  /** A pause runs until then. */
+  paused_until: string | null;
+  /** Whether a running pause may be cut short (the owner's rule). */
+  pause_can_be_lifted: boolean;
+}
 export interface Me {
   id: number;
   email: string;
@@ -134,6 +146,8 @@ export interface Me {
   /** What Cuotas, Picks, Noticias and Mi parlay do with C-16 (plan PM, PM-14-04; FBI_MATRIX_ODDS, _PICKS, _NEWS, _PARLAY): off (as they
    * always did), show (they read the matrix and only say what it says) or on (it replaces their own check). Absent: all off. */
   matrix_modules?: MatrixModules;
+  /** «Solo fútbol» and the voluntary pause (plan PM, PM-14-07; FBI_WELLBEING). Absent: the choice is not open. */
+  wellbeing?: WellbeingState;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }

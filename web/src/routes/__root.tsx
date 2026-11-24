@@ -41,6 +41,8 @@ import { ConsentGate } from "@/product/legal/ConsentGate";
 import { isLegalPath } from "@/product/legal/links";
 import { isAccountPath } from "@/product/auth/accountPaths";
 import { isLimitedPath } from "@/product/membership/membership";
+import { isPriceAddress } from "@/components/layout/nav";
+import { WellbeingPage } from "@/product/wellbeing/WellbeingPage";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
 import { noteLocation, noteNoticeLanding, screenOf, startSession, track } from "@/lib/track";
 import { eventCategory, withoutNoticeMark } from "@/lib/push";
@@ -484,6 +486,16 @@ function Gate() {
       <Fragment key={key}>
         <UserShell>
           <LimitedAccess membership={member} />
+        </UserShell>
+      </Fragment>
+    );
+  }
+  // «Solo fútbol» or a pause (PM-14-07; FBI_WELLBEING): an address that IS a price, a pick or a parlay says so instead of drawing it.
+  if (auth.user?.wellbeing?.active === true && !onAdmin && isPriceAddress(path)) {
+    return (
+      <Fragment key={key}>
+        <UserShell>
+          <WellbeingPage />
         </UserShell>
       </Fragment>
     );

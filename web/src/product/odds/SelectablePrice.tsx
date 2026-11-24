@@ -5,6 +5,7 @@
  * line never goes in a parlay (it can still be saved). One component, so every module behaves the same.
  */
 import { Bookmark, BookmarkCheck } from "lucide-react";
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import { t, translateOr } from "@/lib/i18n";
 import { formatOdds } from "@/lib/i18n/format";
@@ -17,7 +18,7 @@ import { isParlayMarket, pickableLeg } from "./parlay";
 import { ParlayToggle, PricePill } from "./ParlayPrice";
 import { blockedText, isToggleable, useParlayLeg } from "./useParlayLeg";
 
-export function SelectablePrice({
+function SelectablePriceView({
   sel,
   best = false,
   size = "md",
@@ -155,4 +156,10 @@ function SaveToggle({ sel, label }: { sel: Pickable; label: string }) {
       trigger={button}
     />
   );
+}
+
+/** One price, chosen everywhere the way the Cuotas board does it - and none at all for a reader who chose «solo fútbol» (PM-14-07). */
+export function SelectablePrice(props: Parameters<typeof SelectablePriceView>[0]) {
+  if (useNoPrices()) return null;
+  return <SelectablePriceView {...props} />;
 }
