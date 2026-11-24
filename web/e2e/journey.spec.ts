@@ -171,14 +171,14 @@ async function todaysTeam(
 
 /** Two upcoming matches with a 1X2 price and no team in common, kicking off more than half an hour from now. */
 async function pricedFixtures(api: APIRequestContext, count: number): Promise<PricedFixture[]> {
-  const { body } = await getJson<{ data: { fixtures: PricedFixture[] } }>(
+  const { body } = await getJson<{ data: { rows: PricedFixture[] } }>(
     api,
-    "/api/v1/odds/best?hours=72&market=1X2",
+    "/api/v1/odds/board?market=result.1x2&hours=72&limit=50",
   );
   const soon = Date.now() + 30 * 60_000;
   const out: PricedFixture[] = [];
   const teams = new Set<number>();
-  for (const f of body.data.fixtures) {
+  for (const f of body.data.rows) {
     if (Date.parse(f.kickoff_at) < soon || teams.has(f.home.id) || teams.has(f.away.id)) continue;
     out.push(f);
     teams.add(f.home.id);

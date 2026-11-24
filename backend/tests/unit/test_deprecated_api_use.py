@@ -1,10 +1,11 @@
-"""The kind of caller of an endpoint on its way out (BE-033): only a reader's browser keeps ``/odds/best`` alive."""
+"""The kind of caller of an endpoint on its way out (BE-033): only a reader's browser keeps it alive. And the register of the routes
+already retired (PM-13-07, UX-232): none of them is mounted, so each answers 404."""
 
 from __future__ import annotations
 
 import pytest
 
-from fbi.api.services.deprecated import SUCCESSORS, caller_kind
+from fbi.api.services.deprecated import RETIRED, SUCCESSORS, caller_kind
 
 
 @pytest.mark.parametrize(
@@ -27,5 +28,15 @@ def test_caller_kind(user_agent: str | None, kind: str) -> None:
     assert caller_kind(user_agent) == kind
 
 
-def test_odds_best_names_its_successor() -> None:
-    assert SUCCESSORS["/odds/best"] == "/api/v1/odds/board"
+def test_no_route_is_on_its_way_out_now() -> None:
+    assert SUCCESSORS == {}, "a route on its way out names its successor here; an empty register is the state after UX-232"
+
+
+def test_a_retired_route_is_not_mounted_and_its_successor_is() -> None:
+    from fbi.api.app import create_app
+
+    mounted = set(create_app().openapi()["paths"])
+    assert RETIRED == {"/odds/best": "/api/v1/odds/board"}
+    for path, successor in RETIRED.items():
+        assert f"/api/v1{path}" not in mounted, f"{path} was retired (PM-13-07) and must answer 404"
+        assert successor in mounted, f"{path} was replaced by {successor}, which must be mounted"

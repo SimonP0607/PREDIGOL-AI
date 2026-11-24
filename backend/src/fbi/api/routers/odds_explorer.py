@@ -1,7 +1,7 @@
 """The odds explorer (plan Cuotas, ola 2, BE-011): families, a market's board, a match's book, the movement of a line, and the
 owner's health panel. Read from the current-price book and the stored history, kept in the shared cache: no reader ever causes a
-request to the provider. The product tier (like ``/odds/best``, which stays until the web switch ``FBI_ODDS_EXPLORER`` is on and
-verified); the health panel is SUPER_ADMIN's."""
+request to the provider. The product tier (it replaced ``/odds/best``, retired in UX-232);
+the health panel is SUPER_ADMIN's."""
 
 from __future__ import annotations
 

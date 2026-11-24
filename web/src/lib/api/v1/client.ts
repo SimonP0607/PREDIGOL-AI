@@ -106,11 +106,6 @@ import type {
   RefereeSplitBody,
 } from "./types_referees";
 
-export interface BestOddsQuery {
-  market?: string | undefined;
-  hours?: number | undefined;
-  picks?: boolean | undefined;
-}
 import type {
   AiFlags,
   AiReport,
@@ -311,7 +306,6 @@ import type {
   ValidationSummary,
 } from "./types_truth";
 import type {
-  BestOddsBoard,
   Home,
   Parlay,
   ParlayKind,
@@ -726,9 +720,6 @@ export const v1 = {
   /** The automatic parlay builder (REVIEW pt 15): nothing is stored - saving it is createParlay. */
   buildParlay: (q: BuilderQuery & Preview) =>
     getJson<Envelope<BuiltParlay>>("/parlays/build", q as unknown as Params),
-  /** `picks: false` - prices only (the Cuotas page, REVIEW pt 17): no picks are read. */
-  bestOdds: (q: BestOddsQuery & Preview = {}) =>
-    getJson<Envelope<BestOddsBoard>>("/odds/best", q as Params),
   // ── the odds explorer (plan Cuotas, BE-011): the current-price book, shared by every reader ──
   /** The families and markets with prices in the window (60 s on the server). */
   oddsFamilies: (q: OddsFamiliesQuery = {}) =>

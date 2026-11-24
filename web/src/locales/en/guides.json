@@ -152,10 +152,6 @@
     "fair": {
       "title": "What are fair odds?",
       "body": "They are the odds without the bookmaker's margin. They show whether the best odds pay more than they are worth."
-    },
-    "above": {
-      "title": "Only above fair",
-      "body": "Filters what pays more than the fair odds. Tap odds to add them to your parlay."
     }
   },
   "my_picks": {
