@@ -1,0 +1,62 @@
+{
+  "contract": "C-06",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T19:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "view": "busqueda",
+  "search": {
+    "query": "Ejémplo Sur",
+    "normalized": "ejemplo sur",
+    "sort": "reciente",
+    "filters_applied": [
+      {
+        "name": "category",
+        "value": "bajas_y_sanciones"
+      }
+    ],
+    "facets": {
+      "category": [
+        {
+          "code": "bajas_y_sanciones",
+          "n": 1
+        },
+        {
+          "code": "fichajes",
+          "n": 1
+        }
+      ],
+      "level": [
+        {
+          "code": "rumor",
+          "n": 1
+        },
+        {
+          "code": "un_medio",
+          "n": 1
+        }
+      ]
+    },
+    "results": {
+      "items": [
+        {
+          "story_id": "st-ej-sancion-sur",
+          "headline_es": {
+            "missing_reason": "sin_datos"
+          },
+          "level": "un_medio",
+          "category": "bajas_y_sanciones",
+          "sources_count": 1,
+          "latest_at": "2026-11-21T13:50:00Z"
+        }
+      ]
+    },
+    "total": 1
+  },
+  "story_status": {
+    "missing_reason": "sin_datos"
+  }
+}

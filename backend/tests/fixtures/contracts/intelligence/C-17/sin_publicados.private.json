@@ -1,0 +1,18 @@
+{
+  "contract": "C-17",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-24T15:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "stake_rule_version": "stake-v1",
+  "lines": {
+    "items": [],
+    "missing_reason": "sin_publicados"
+  },
+  "results": {
+    "missing_reason": "sin_datos"
+  }
+}

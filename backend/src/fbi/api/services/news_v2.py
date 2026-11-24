@@ -60,11 +60,12 @@ from fbi.api.contracts.intelligence.vocab import (
     FactRelation,
     StoryWarning,
 )
+from fbi.api.contracts.news import NewsSearch
 from fbi.api.envelope import Envelope, ok, unavailable
 from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn
 from fbi.api.services.analysis_sources import fact_es
-from fbi.api.services.news import users_may_see
+from fbi.api.services.news import match_search, users_may_see
 from fbi.api.switches import news_feed_on, news_v2_on
 from fbi.core.clock import now
 from fbi.customer.favorites import personalization_on
@@ -210,7 +211,9 @@ def card_fields(b: Bundle, at: datetime) -> dict[str, Any]:
         "image": Image(), "status": cast(StoryStatus, s.status), "status_reason": s.status_reason or NO_DATA, "story_version": s.version,
         "claim_type": s.claim_type or NO_DATA, "lang": s.lang or NO_DATA, "country": s.country or NO_DATA,
         "own_text": OwnText(headline_es=s.headline_es or NO_DATA, summary_es=s.summary_es or NO_DATA,
-                            text_version=s.text_version or NO_DATA),
+                            text_version=s.text_version or NO_DATA, headline_en=s.headline_en or NO_DATA,
+                            summary_en=s.summary_en or NO_DATA),
+        "headline_en": _text(s.headline_en, allowed), "summary_en": _text(s.summary_en, allowed),
         "withheld_sources": [_source(i, "none") for i in b.withheld()],
     }
 
@@ -321,7 +324,8 @@ def related_of(conn: Conn, b: Bundle, publish: Publish, at: datetime) -> list[Re
     keys.discard(b.story.key)
     found = [x for x in reads.bundles(conn, reads.by_keys(conn, sorted(keys)).values(), publish) if public_ok(x)]
     found.sort(key=lambda x: (-x.latest_at().timestamp(), x.story.key))
-    return [RelatedStory(id=x.story.key, headline_es=_text(x.story.headline_es, x.may_summarise()), level=_level(x.story.level))
+    return [RelatedStory(id=x.story.key, headline_es=_text(x.story.headline_es, x.may_summarise()), level=_level(x.story.level),
+                         headline_en=_text(x.story.headline_en, x.may_summarise()))
             for x in found[:MAX_RELATED]]
 
 
@@ -339,7 +343,7 @@ def build_story(conn: Conn, key: str, *, at: datetime, publish: Publish) -> News
     published = {f: factlinks.published_at(conn, f, at) is not None for f in {u.fixture_id for u in uses}}
     fields = card_fields(b, at)
     detail = StoryDetailPrivate(
-        **fields, essentials_es=fields["summary_es"],
+        **fields, essentials_es=fields["summary_es"], essentials_en=fields["summary_en"],
         level_explanation_es=LEVEL_EXPLANATION_ES.get(story.level or "", NO_LEVEL_ES), match_impact=impact_of(uses, published, at),
         timeline=timeline(b, reads.versions(conn, key)), related=_list(related_of(conn, b, publish, at), "sin_resultados"),
         analyses=analysis_links(uses))
@@ -380,6 +384,7 @@ def search_of(bundles: Sequence[Bundle], ranks: Mapping[str, float] | None, f: F
         hits.sort(key=lambda b: (-b.latest_at().timestamp(), b.story.key))
     page = hits[f.offset:f.offset + f.limit]
     results = [SearchHit(story_id=b.story.key, headline_es=_text(b.story.headline_es, b.may_summarise()), level=_level(b.story.level),
+                         headline_en=_text(b.story.headline_en, b.may_summarise()),
                          category=_category(b.story.category), sources_count=len(b.shown()), latest_at=b.latest_at()) for b in page]
     more = f.offset + f.limit < len(hits)
     return Search(query=f.q or "", normalized=reads.normalized(f.q or ""), sort=f.sort, filters_applied=f.applied(), facets=facets,
@@ -408,10 +413,22 @@ def build_match(conn: Conn, fixture_id: int, *, at: datetime, publish: Publish) 
                if public_ok(b) and b.latest_at() >= start]
     bundles.sort(key=lambda b: (order.LEVEL_RANK.get(b.story.level, 5), -b.latest_at().timestamp(), b.story.key))
     uses = [u for u in factlinks.by_items(conn, [i.id for b in bundles for i in b.items]) if u.fixture_id == fixture_id]
+    searched_at, sources_checked = search_fields(match_search(conn, fixture_id, at))
     body = MatchStoriesPrivate(fixture_id=fixture_id, kickoff_at=kickoff, window_from=start,
                                stories=_list([card(b, at) for b in bundles[:MAX_MATCH]], "sin_resultados"),
-                               analyses=analysis_links(uses))
+                               analyses=analysis_links(uses), searched_at=searched_at, sources_checked=sources_checked)
     return NewsPrivate(**_head(at), view="partido", match=body, story_status=NO_DATA)
+
+
+def search_fields(state: NewsSearch) -> tuple[datetime | Missing | None, int | Missing | None]:
+    """C-06 1.1 (AP-P11): when the web was last searched for the match and how many pages were read, from IA-016's record (pure):
+    never searched -> sin_datos and 0; searched with an uncounted pass -> the time and sin_datos; a record that could not be read this
+    time -> both left out (None), as an answer of 1.0.0: nothing is guessed."""
+    if state.searched == "unknown":
+        return None, None
+    if state.searched == "no" or state.last_searched_at is None:
+        return NO_DATA, 0
+    return state.last_searched_at, NO_DATA if state.sources_read is None else int(state.sources_read)
 
 
 # ── the two projections ──────────────────────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,15 @@
+{
+  "contract": "C-06",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T19:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "view": "noticia",
+  "story": {
+    "missing_reason": "retirado_por_derechos"
+  },
+  "story_status": "retirada"
+}

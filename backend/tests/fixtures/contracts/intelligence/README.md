@@ -42,6 +42,10 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | C-09 | `jugador` | Jugador con 630 minutos: tasas por 90 con partidos, minutos e intervalo; los remates cuentan solo los 5 partidos que los registran; foto como monograma; en la privada, lo que añadirá el motor (`not_yet_private`) |
 | C-09 | `jugador_poca_muestra` | Jugador con 180 minutos: `muestra_insuficiente` (450 mínimos) y `sin_datos` donde la planilla no registra la acción; `sancionado` por el parte del proveedor |
 | C-09 | `competicion` | Liga: temporada, tabla, próximos partidos, goleadores y cobertura de estadísticas |
+| C-17 Unidades (sin ruta) | `con_unidades` | Dos picks (0,75 u por un cuarto de Kelly; 1 u por el tope de su estado) y un parlay de 0,25 u; Transparencia con unidades variables y con unidad fija sobre los mismos 24 liquidados. La privada añade lo que leyó la regla |
+| C-17 | `sin_publicados` | Nada publicado: `sin_publicados`, resultados `sin_datos` |
+| C-18 Tendencias (sin ruta) | `armador` | Tres candidatas (córners, tarjetas, goles de la primera parte) con «7 de los últimos 10», frecuencia e intervalo; un boleto de 2 patas a 3,61 bajo el tope; la privada, dos mercados descartados (sin regla, sin dato en la liga) |
+| C-18 | `sin_candidatas` | Ninguna candidata ni boleto: `sin_datos` |
 
 Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su línea en la coordinación entre sesiones. Al subir la versión menor de uno: copia antes sus ejemplos, sin tocarlos, a `<contrato>/anteriores/<versión anterior>/`; la prueba comprueba que se siguen leyendo.
 | C-02 Selección | `publicada` | Una selección que el dueño autorizó: 57 % `calibrada`, precio vigente con su regla y umbrales, por qué, versiones y fuentes; la privada añade el ciclo, la cifra `sin_calibrar` (78,5 %), la validación `INSUFICIENTE` (0 de 300) y la dependencia de alineación `no_entregado` (`AD-D03`) |
@@ -56,6 +60,8 @@ Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su lí
 | C-06 | `noticia_retirada` | Retirada a petición: `retirado_por_derechos` y nada de su contenido en las dos proyecciones |
 | C-06 | `busqueda` | «Ejémplo Sur» con la categoría `bajas_y_sanciones`: facetas contadas antes del filtro, un resultado |
 | C-06 | `partido` | Las historias del partido y de sus equipos dentro de su ventana |
+| C-06 1.1.0 | `general` | Una noticia sin partido (`premios`: el premio de un jugador) y la de un club, encontradas por `player`, con el titular propio en inglés (`headline_en`) |
+| C-06 1.1.0 | `partido_sin_busqueda` | Un partido nunca buscado en la web: `searched_at` `sin_datos` y `sources_checked` 0; en `partido`, la hora de la última búsqueda y 14 páginas leídas. Los ejemplos de 1.0.0 siguen sin cambiar en `C-06/anteriores/1.0.0/` |
 | C-07 Fuentes del análisis | `publicada` | E3 de un análisis publicado: una baja oficial `en_contra` del over (su efecto por selección, solo privado), un contexto y un rumor `no_usada`; la privada añade el hecho rechazado por homónimo y las dos evaluaciones |
 | C-07 | `sin_evaluaciones` | Ninguna evaluación aún: todo `sin_datos` |
 | C-04 Parlays con estado | `ninguno` | Nada cumple la regla: el parlay del producto (`parlay-v5`) y el de la sombra (`parlay-v6`, `sin_candidatos`) llegan con `status: "ninguno"` y `NINGUNO_CUMPLE`, sin tramos; la pública solo trae el del producto |

@@ -16,7 +16,12 @@ export type StoryCategory =
   | "selecciones"
   | "colombia"
   | "internacional"
-  | "competiciones";
+  | "competiciones"
+  // C-06 1.1: the general news
+  | "premios"
+  | "ceremonias"
+  | "polemicas"
+  | "actualidad";
 
 /** How confirmed a story is. Syndication does not raise it. */
 export type StoryLevel = "oficial" | "dos_origenes" | "declaracion" | "un_medio" | "rumor";
@@ -52,6 +57,9 @@ export interface StoryCard {
   id: string;
   headline_es: Maybe<string>;
   summary_es: Maybe<string>;
+  /** C-06 1.1: PrediGol's own text in English, under the same rights; absent from an older API. */
+  headline_en?: Maybe<string>;
+  summary_en?: Maybe<string>;
   category: Maybe<StoryCategory>;
   level: Maybe<StoryLevel>;
   warnings: StoryWarning[];
@@ -87,6 +95,8 @@ export interface StoryTimelineEntry {
 export interface StoryRelated {
   id: string;
   headline_es: Maybe<string>;
+  /** C-06 1.1; absent from an older API. */
+  headline_en?: Maybe<string>;
   level: Maybe<StoryLevel>;
 }
 
@@ -99,6 +109,8 @@ export interface MatchImpact {
 
 export interface StoryDetail extends StoryCard {
   essentials_es: Maybe<string>;
+  /** C-06 1.1; absent from an older API. */
+  essentials_en?: Maybe<string>;
   level_explanation_es: string;
   match_impact: Maybe<MatchImpact>;
   timeline: StoryTimelineEntry[];
@@ -114,6 +126,8 @@ export interface FacetCount {
 export interface SearchHit {
   story_id: string;
   headline_es: Maybe<string>;
+  /** C-06 1.1; absent from an older API. */
+  headline_en?: Maybe<string>;
   level: Maybe<StoryLevel>;
   category: Maybe<StoryCategory>;
   sources_count: number;
@@ -136,6 +150,10 @@ export interface MatchStories {
   kickoff_at: string;
   window_from: string;
   stories: ItemList<StoryCard>;
+  /** C-06 1.1 (AP-P11): the newest search of the web for the match; `sin_datos` if never searched; absent when unknown. */
+  searched_at?: Maybe<string>;
+  /** C-06 1.1: pages read for the match (0 if never searched); `sin_datos` when not counted; absent when unknown. */
+  sources_checked?: Maybe<number>;
 }
 
 /** C-06, public projection: the body `view` names, and no other. */

@@ -1,0 +1,53 @@
+{
+  "contract": "C-17",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-24T15:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "stake_rule_version": "stake-v1",
+  "lines": {
+    "items": [
+      {
+        "kind": "pick",
+        "id": 660001,
+        "stake_units": 0.75,
+        "stake_rule_version": "stake-v1",
+        "stake_reason": "kelly_cuarto",
+        "decided_at": "2026-11-24T15:00:00Z"
+      },
+      {
+        "kind": "pick",
+        "id": 660002,
+        "stake_units": 1.0,
+        "stake_rule_version": "stake-v1",
+        "stake_reason": "tope_estado",
+        "decided_at": "2026-11-24T15:00:00Z"
+      },
+      {
+        "kind": "parlay",
+        "id": 440001,
+        "stake_units": 0.25,
+        "stake_rule_version": "stake-v1",
+        "stake_reason": "tope_parlay",
+        "decided_at": "2026-11-24T15:00:00Z"
+      }
+    ]
+  },
+  "results": {
+    "since": "2026-10-25T15:00:00Z",
+    "settled": 24,
+    "variable": {
+      "staked_units": 15.5,
+      "profit_units": -0.62,
+      "roi_pct": -4.0
+    },
+    "fixed": {
+      "staked_units": 24.0,
+      "profit_units": -1.31,
+      "roi_pct": -5.46
+    }
+  }
+}

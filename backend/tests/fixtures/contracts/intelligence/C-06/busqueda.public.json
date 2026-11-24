@@ -1,6 +1,6 @@
 {
   "contract": "C-06",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "public",
   "freshness": {
     "generated_at": "2026-11-21T19:00:00Z",
@@ -50,7 +50,10 @@
           "level": "un_medio",
           "category": "bajas_y_sanciones",
           "sources_count": 1,
-          "latest_at": "2026-11-21T13:50:00Z"
+          "latest_at": "2026-11-21T13:50:00Z",
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          }
         }
       ]
     },

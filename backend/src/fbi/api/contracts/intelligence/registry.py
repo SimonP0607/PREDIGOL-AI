@@ -36,9 +36,11 @@ from fbi.api.contracts.intelligence.selection import (
     SelectionIntelligencePrivate,
 )
 from fbi.api.contracts.intelligence.sources import AnalysisSources, AnalysisSourcesPrivate
+from fbi.api.contracts.intelligence.stakes import Stakes, StakesPrivate
 from fbi.api.contracts.intelligence.stats_profile import StatsProfile, StatsProfilePrivate
 from fbi.api.contracts.intelligence.stories import News, NewsPrivate
 from fbi.api.contracts.intelligence.tracking import Tracking
+from fbi.api.contracts.intelligence.trends import Trends, TrendsPrivate
 from fbi.api.contracts.intelligence.versioning import parse
 
 PROFILE_PUBLIC_ROUTES: Final = ("/api/v1/teams/{team_id}/profile", "/api/v1/players/{player_id}/profile",
@@ -103,8 +105,11 @@ CATALOGUE: Final[dict[str, Planned]] = {
     "C-13": Planned("Perfil estadístico", "EA-001", STATS_PUBLIC_ROUTES, STATS_PRIVATE_ROUTES),
     "C-14": Planned("Probabilidades por mercado", "EA-002", PROBS_PUBLIC_ROUTES, PROBS_PRIVATE_ROUTES),
     "C-16": Planned("Disponibilidad", "PM-02-05", AVAILABILITY_PUBLIC_ROUTES, AVAILABILITY_PRIVATE_ROUTES),
+    "C-17": Planned("Unidades (sin ruta: FBI_STAKES apagado)", "AP-K07", (), ()),
+    "C-18": Planned("Tendencias (sin ruta: FBI_TREND_BUILDER apagado)", "AP-L02", (), ()),
 }
-"""The twelve contracts of the plan and the reference one, C-13 and C-14 of plan EA and C-16 of plan PM (C-15 is reserved by plan EA).
+"""The twelve contracts of the plan and the reference one, C-13 and C-14 of plan EA, C-16 of plan PM (C-15 is reserved by plan EA), and
+C-17 and C-18 of the plan of corrections UX/UI (contract and example only, no route until their switches).
 A private route is always under ``/api/v1/admin/``."""
 
 
@@ -181,6 +186,8 @@ CONTRACTS: Final[tuple[ContractSpec, ...]] = (
                  private_routes=PROBS_PRIVATE_ROUTES),
     ContractSpec(private=AvailabilityPrivate, public=Availability, public_routes=AVAILABILITY_PUBLIC_ROUTES,
                  private_routes=AVAILABILITY_PRIVATE_ROUTES),
+    ContractSpec(private=StakesPrivate, public=Stakes),
+    ContractSpec(private=TrendsPrivate, public=Trends),
 )
 """Every Intelligence contract. A new one is added here in the PR that merges its models."""
 
