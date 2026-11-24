@@ -68,6 +68,7 @@ from fbi.api.switches import (
     search_on,
     stakes_on,
     stats_v2_on,
+    transparency_export_on,
     transparency_open,
     trend_builder_on,
     usage_console_on,
@@ -122,6 +123,7 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         my_books=my_books_on(),
         stakes=stakes_on(),
         trend_builder=trend_builder_on(),
+        transparency_export=transparency_export_on(),
     )
 
 

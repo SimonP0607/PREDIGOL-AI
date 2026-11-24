@@ -270,6 +270,13 @@ export function useAvailabilityOn(): boolean {
   return useContext(AuthContext)?.user?.availability === true;
 }
 
+/**
+ * Whether the download of the published picks is on (plan PM, PM-14-08; FBI_TRANSPARENCY_EXPORT). Safe outside the provider: off.
+ */
+export function useTransparencyExportOn(): boolean {
+  return useContext(AuthContext)?.user?.transparency_export === true;
+}
+
 /** Whether the owner's console of the provider's requests is on (plan PM, PM-04-05; FBI_USAGE_CONSOLE). Off outside the provider. */
 export function useUsageConsoleOn(): boolean {
   return useContext(AuthContext)?.user?.usage_console === true;

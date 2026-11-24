@@ -309,5 +309,12 @@
     "roi": "Retorno",
     "pending_one": "{count} pendiente",
     "pending_other": "{count} pendientes"
+  },
+  "export": {
+    "title": "Descargar lo publicado",
+    "note": "Los mismos picks de esta lista, tal como se publicaron, y la calibración de lo que PrediGol dijo con su intervalo del 95 %. No es una promesa: con pocos casos una cifra no concluye nada.",
+    "picks": "Picks (CSV)",
+    "calibration": "Calibración (CSV)",
+    "json": "Todo (JSON)"
   }
 }

@@ -205,6 +205,16 @@ def user_switch(name: str, *, default: bool) -> bool:
     return raw.strip().lower() in ON
 
 
+TRANSPARENCY_EXPORT: Final = "FBI_TRANSPARENCY_EXPORT"
+"""The download of the published picks (plan PM, PM-14-08): OFF while the line is absent. It rides on the opening of Transparencia: even
+with ``=1`` nothing downloads while ``FBI_TRANSPARENCY`` is off (the owner's preview excepted)."""
+
+
+def transparency_export_on() -> bool:
+    """Whether the download of the published picks, with its calibration and its uncertainty, is on (``FBI_TRANSPARENCY_EXPORT``, off by default)."""
+    return user_switch(TRANSPARENCY_EXPORT, default=False)
+
+
 def transparency_open() -> bool:
     """Whether readers see «Cómo le va a PrediGol» (``FBI_TRANSPARENCY``, off by default)."""
     return user_switch(TRANSPARENCY, default=False)

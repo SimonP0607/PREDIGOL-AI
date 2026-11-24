@@ -151,6 +151,7 @@ class Me(Contract):
     my_books: bool = Field(default=False, description="«Mis casas»: the bookmakers the reader plays at, in Perfil, Mercados and Cuotas (plan de correcciones UX, AP-P10, decision D5) (FBI_MY_BOOKS, off by default).")
     stakes: bool = Field(default=False, description="Variable units on picks, parlays, Mis picks and Transparencia (plan de correcciones UX, AP-K07, decision D3) (FBI_STAKES, off by default).")
     trend_builder: bool = Field(default=False, description="The parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7) (FBI_TREND_BUILDER, off by default).")
+    transparency_export: bool = Field(default=False, description="The download of the published picks (CSV and JSON, with the calibration and its uncertainty) in «Cómo le va a PrediGol» (plan PM, PM-14-08; FBI_TRANSPARENCY_EXPORT, off by default; it needs the page open).")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")
