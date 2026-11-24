@@ -164,4 +164,4 @@ def test_a_frequency_is_its_hits_of_its_sample_inside_its_interval() -> None:
     for bad in ({"hits": 11, "sample": 10, "pct": 110.0}, {"hits": 7, "sample": 10, "pct": 60.0},
                 {"hits": 7, "sample": 10, "pct": 70.0, "low_pct": 75.0}):
         with pytest.raises(ValidationError):
-            Frequency(**({"low_pct": 39.7, "high_pct": 89.2} | bad))
+            Frequency.model_validate({"low_pct": 39.7, "high_pct": 89.2} | bad)
