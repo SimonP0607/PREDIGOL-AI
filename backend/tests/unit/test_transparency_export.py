@@ -7,6 +7,7 @@ import io
 import json
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import Any
 
 from fbi.api.contracts.transparency import PublishedPick
 from fbi.api.services import transparency_export as export
@@ -66,7 +67,7 @@ def test_the_headings_follow_the_readers_language() -> None:
 def test_no_heading_is_a_return_on_investment() -> None:
     for lang in ("es", "en"):
         for part in ("picks", "calibration"):
-            for heading in export.HEADINGS[lang][part]:  # type: ignore[index]
+            for heading in export.HEADINGS[lang][part]:
                 assert not any(w in heading for w in ("roi", "yield", "rentab", "profit", "beneficio", "total"))
 
 
@@ -76,7 +77,7 @@ def test_a_text_that_a_spreadsheet_would_run_is_defused() -> None:
 
 
 def test_the_json_carries_the_notes_and_never_a_return() -> None:
-    cal = {"picks_won_or_lost": 3, "min_sample": 25, "min_bin": 30, "hit_rate": None, "bins": [], "omitted": 0, "method": "x"}
+    cal: dict[str, Any] = {"picks_won_or_lost": 3, "min_sample": 25, "min_bin": 30, "hit_rate": None, "bins": [], "omitted": 0, "method": "x"}
     body = json.loads(export.picks_json([pick()], cal, tz="UTC", at=AT))
     assert body["count"] == 1 and body["picks"][0]["odds"] == "2.00" and body["calibration"] == cal
     assert any("no return" in n for n in body["notes"])
