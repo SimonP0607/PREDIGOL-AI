@@ -309,5 +309,12 @@
     "roi": "Return",
     "pending_one": "{count} pending",
     "pending_other": "{count} pending"
+  },
+  "export": {
+    "title": "Download what was published",
+    "note": "The same picks as this list, as they were published, and the calibration of what PrediGol said with its 95 % interval. It is not a promise: with few cases a figure proves nothing.",
+    "picks": "Picks (CSV)",
+    "calibration": "Calibration (CSV)",
+    "json": "Everything (JSON)"
   }
 }

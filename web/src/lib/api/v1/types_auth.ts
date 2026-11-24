@@ -48,6 +48,8 @@ export interface Me {
   membership?: MembershipSummary | null;
   /** «Cómo le va a PrediGol» is open to readers (plan UX, A12; FBI_TRANSPARENCY): link to it only then. */
   transparency?: boolean;
+  /** The download of the published picks, CSV and JSON, with the calibration and its 95 % interval (plan PM, PM-14-08; FBI_TRANSPARENCY_EXPORT, off by default). */
+  transparency_export?: boolean;
   /** The account still owes its welcome (plan UX, A13; FBI_ONBOARDING): /welcome after the consents. Readers only, once. */
   welcome_due?: boolean;
   /** football (the favourites) and, for a new account, about («Qué es PrediGol»). */
