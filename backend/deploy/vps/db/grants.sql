@@ -168,6 +168,27 @@ BEGIN
 END
 $evaluation_board$;
 
+-- The team statistics by half and the register of what was asked for them (plan PM, PM-05-01 and PM-05-02, migration 0175). The loop above
+-- already gives the API SELECT (the Match Center and the settlement read them) and the worker everything; here it is narrowed to what the
+-- closing pass and the night-time fill do:
+--   core.fixture_team_stats_period, core.fixture_period_asks   the worker adds a match's rows and rewrites them when it asks again
+--                                                              (INSERT, UPDATE); it never deletes one.
+DO $period_stats$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['core.fixture_team_stats_period', 'core.fixture_period_asks'] LOOP
+    IF to_regclass(t) IS NULL THEN
+      RAISE NOTICE 'grants: % does not exist (yet) - skipped', t;
+      CONTINUE;
+    END IF;
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE ON %s TO predigol_worker', t);
+    EXECUTE format('REVOKE DELETE, TRUNCATE ON %s FROM predigol_worker', t);
+    EXECUTE format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON %s FROM predigol_api', t);
+  END LOOP;
+END
+$period_stats$;
+
 -- The API's writes.
 GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO predigol_api;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA auth TO predigol_api;

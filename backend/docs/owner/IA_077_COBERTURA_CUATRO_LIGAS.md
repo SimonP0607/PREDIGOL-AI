@@ -162,8 +162,9 @@ con eventos y alineaciones; dos con cuotas (342 y 326 lecturas) y uno (1650503) 
 | --- | ---: | ---: | ---: | --- |
 | 21-nov | 20.259 / 20.185 | 4 (`/standings` 2, `/fixtures` 1, `/injuries` 1) / 7 (`/odds` 5, `/predictions` 2) | 0 | ninguno |
 | 22-nov | 16.951 / 16.948 | 2 (`/fixtures`, `/standings`) / 7 (`/odds`) | 0 | ninguno |
+| **23-nov** (medido el 24-nov 02:45 UTC) | 25.560 / 25.555 | 5 (`/fixtures` 2, `/standings` 2, `/fixtures/rounds` 1) / 15 (`/odds`) | **2** (Uruguay, terminados) | ninguno |
 
-Días anteriores sin el lote (libro): 12.718 a 23.104 (14 al 19-nov). Las respuestas atribuibles son una **cota inferior** (el índice del
+Días anteriores sin el lote (libro): 12.718 a 23.104 (14 al 19-nov). El 23-nov (lunes) sube a 25.560 por trabajos ajenos al lote: `reference_refresh` 12.794 (barrido semanal; 7.855 el 22) e `historical_backfill` 6.616 (carril `historicos`, 0 los días anteriores); lo atribuible al lote fue de unas 20 respuestas. Con el 23-nov, **el día con partidos del lote queda medido también y el criterio se cumple los tres días**. Las respuestas atribuibles son una **cota inferior** (el índice del
 RAW no repite una respuesta idéntica) y no cuentan la referencia, que trabaja con su asignación fija; aun multiplicadas por diez quedan
 muy por debajo del criterio de cierre (**≤ 1.000 peticiones añadidas en el día medido**): **cumplido** en los dos días. Ningún carril
 habría limitado (los carriles siguen apagados).
@@ -178,3 +179,46 @@ recálculo incremental solo toma competiciones con un partido terminado en 48 h,
 veces (08:40 y 11:20 UTC); se graduará en el próximo completo (29-nov) o con `scripts.availability_refresh --only 3613`.
 
 Vuelta atrás, si hiciera falta: §5 (`--batch 4 --untrack --apply`; no borra nada).
+
+## 7. Lote 5 aplicado y medido por ventana de horas (OPS-015 y OPS-018, Plan Maestro PM, PM-03-02)
+
+**Aplicado** el 24-nov-2026 a las 02:46:22 UTC (run 221438, 0 peticiones): Superliga (713) y Liga Femenina (712) de Colombia, CONMEBOL Recopa
+(541), OFC Champions League (27), AFC Challenge League (1132) y clasificación de la Copa Africana (36). Seguidas **140 → 146**.
+
+**Regla y por qué se mide por ventana.** La regla del plan (sección 3, «un lote solo tras medir un día el anterior») y el criterio de IA-077
+(§4: **≤ 1.000 peticiones añadidas**) piden saber cuánto añade el lote antes de dar de alta el siguiente. Un día UTC completo es solo la forma
+habitual de verlo: lo que añade un lote son (a) un calendario por competición en cada `fixtures_sync`, (b) el primer llenado de referencia
+y (c) las capturas de cada partido (cuotas, alineaciones, eventos). El 24-nov 17:00 UTC el dueño ordenó adelantar todo lo que tenga
+evidencia equivalente («no falsifiques períodos de medición que deban transcurrir»). La ventana **24-nov 02:46:22 a 20:45 UTC (18 h)** es
+equivalente a un día porque contiene **los tres ciclos de `fixtures_sync` posteriores al alta** (04:58, 10:58 y 16:58; el de las 22:58 es
+el cuarto del día) y **todo el primer llenado**, y porque del lote no hay partidos hasta marzo de 2027, de modo que esperar al 25-nov
+daría exactamente los mismos números (calendarios iguales, sin capturas de partido). Nada que deba transcurrir se ha acortado: lo único
+que no se puede observar todavía (el coste por partido del lote 5) tampoco se observaría esperando un día, y se mide con el primer partido
+real (seguimiento abajo).
+
+**Medido** (solo lectura, 24-nov 20:32–20:41 UTC; `raw.ingestion_runs`, `raw.ingestion_payloads`, `raw.provider_endpoint_usage`,
+`market.odds_asks`, `quota_lanes report`, `capture_odds status`; guion `pm03_ventana_l5_v2.sh`):
+
+| Qué | Resultado |
+| --- | --- |
+| `fixtures_sync` (peticiones por ciclo) | 22:58 (23-nov) 116 → **04:58: 122** (+6, las seis competiciones, primera carga) → **10:58: 118** (+2) → **16:58: 118** (+2) |
+| Por qué +2 y no +6 | solo 1132 (8 partidos desde el 3-mar-2027) y 36 (48 desde el 24-mar-2027) tienen partidos por jugar; las otras cuatro tienen la edición terminada y el calendario ya no se repite |
+| Respuestas del RAW atribuibles al lote (por `league`) en la ventana | **150**: `/teams/statistics` 114 (una vez, 05:xx), `/fixtures/rounds` 12, máximos goleadores/asistentes/rojas/amarillas 12, `/players` 3, `/fixtures` 6, `/injuries` 2, `/standings` 1 |
+| Cota | el índice del RAW no repite respuestas idénticas (**cota inferior**), pero el libro de `fixtures_sync` lo confirma exacto (+10) y la referencia tiene un tope fijo de 300 por pasada (≈ 600 a la hora): su total diario no puede crecer por un lote |
+| Referencia del día | `reference_refresh` 11.474 hasta las 20:20 UTC, ritmo de 600 por hora; los martes anteriores 13.754 (3-nov), 13.417 (10-nov) y 13.581 (17-nov): **sin aumento** |
+| Libro de ejecuciones, misma franja horaria (02:46–20:45) | 24-nov **15.299** frente a 8.910–16.054 los siete días anteriores |
+| Contador del proveedor, día completo | 24-nov 17.527 a las 20:41 UTC (14.857–25.560 los días 20 a 23-nov); límite del plan 75.000, presupuesto propio 60.000 |
+| Partidos del lote en la ventana | **0** (próximos: 1132 el 3-mar-2027, 36 el 24-mar-2027); cuotas pedidas 0, alineaciones 0, eventos 0 |
+| Carriles | ninguno limitado; `FBI_APIFOOTBALL_LANES` apagado (sin interruptor en el entorno del worker), `ACCOUNT_GUARD` sin cambios; carril `ampliacion` 263 del día (sondas de PM-01-05), techo 5.000 |
+| Errores de la ventana | los de siempre y ajenos al lote: `reference_refresh` 32 de 35 pasadas sin `completed` (cortan en el tope de 300: patrón de 3, 10 y 17-nov), `messenger_cycle` 11 de 217 |
+
+**Criterio IA-077 (≤ 1.000 peticiones añadidas): cumplido** (≈ 160 en las 18 h, 10 de ellas calendarios; esperado por el plan ≈ 80 al día de
+media, pero con partidos por jugar). Hasta que haya partidos del lote, el consumo estable del lote 5 es +2 peticiones por ciclo (≈ 8 al día)
+más su parte de la referencia. Nivel de cobertura: **sin celdas todavía** (el recálculo incremental solo toma competiciones con un
+partido terminado en 48 h y no tienen; entran en la pasada completa del 29-nov o con `scripts.availability_refresh --only <id>`); sin
+historia no habría más que «muestra insuficiente» o D, la historia es la tarea PM-03-07.
+
+**Seguimiento:** cuando se juegue el primer partido de 1132 (3-mar-2027) o de 36 (24-mar-2027) —o antes, si el calendario de la Superliga o
+la Recopa de 2027 trae uno— medir sus capturas (cuotas, alineaciones, eventos) y anotarlo aquí: el coste por partido es el del lote 4
+(Uruguay, 23-nov: 6 peticiones de cuotas y ≈ 2.000 lecturas por partido).
+

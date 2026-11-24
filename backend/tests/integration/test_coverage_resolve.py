@@ -146,13 +146,8 @@ def test_mi_parlay_verdict_matches_validate_parlay_on_1000_selections(world, mon
             sel, line = q.selection, q.line
         else:
             sel, line = rng.choice(SELECTIONS), rng.choice(LINES)
-        try:
-            got = validate_parlay(c, [LegIn(fid, key, sel, line)], at=AT, policy=policies[pi])
-            old = tuple(e["code"] for e in got.errors if e.get("leg") == 1)
-        except ValueError as exc:                        # a core market by its catalogue key, unpriced: max() of nothing (a 500)
-            assert "max()" in str(exc)
-            c.rollback()
-            old = (resolve.CRASH,)
+        got = validate_parlay(c, [LegIn(fid, key, sel, line)], at=AT, policy=policies[pi])    # never a 500 (BE-110)
+        old = tuple(e["code"] for e in got.errors if e.get("leg") == 1)
         mine = inputs[(fid, pi)]
         assert mine is not None
         new = resolve.parlay_leg(mine, key, sel, line)

@@ -20,6 +20,7 @@ from fbi.userdata import records
 
 KO = datetime(2034, 5, 1, 20, tzinfo=UTC)
 AT = KO - timedelta(hours=5)
+CORE_MARKET = "result_1x2.FT.match"
 
 
 def test_a_leg_names_its_market_by_the_catalogues_key() -> None:
@@ -82,6 +83,17 @@ def test_fewer_than_three_houses_is_refused(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr("fbi.market.in_force.book", lambda conn, fid: SimpleNamespace(quotes=quotes))
     policy = records.MarketPolicy(enabled=True, state_of=lambda bet: "en_calibracion")
     assert records._catalogue_leg(None, _leg(), _fixture(), AT, policy)[0] == "market_not_priced"  # type: ignore[arg-type]
+
+
+def test_a_core_market_by_its_catalogue_key_with_no_price_is_refused_not_a_500(monkeypatch: pytest.MonkeyPatch) -> None:
+    """BE-110: ``verdict`` takes a core market read through its catalogue key (``result_1x2.FT.match``) without counting houses; with
+    nobody pricing the selection the leg used to die on ``max()`` of an empty list (a 500 on ``validate_parlay``, measured on
+    20-nov-2026). It is refused like any unpriced market, and a priced one is taken as before."""
+    monkeypatch.setattr("fbi.market.in_force.book", lambda conn, fid: SimpleNamespace(quotes=[]))
+    policy = records.MarketPolicy(enabled=True, state_of=lambda bet: "evaluable")
+    leg = records.LegIn(fixture_id=1, market_key=CORE_MARKET, selection="Home", line=Decimal("0"))
+    refused, price = records._catalogue_leg(None, leg, _fixture(), AT, policy)  # type: ignore[arg-type]
+    assert refused == "market_not_priced" and price is None
 
 
 def _state(status: str = "FT", home: int | None = 2, away: int | None = 1) -> settlement.MatchState:

@@ -248,6 +248,30 @@ batches:
       player market in any (decision no. 7). Cost (section 3 of the plan, rates of 10-16 Nov 2026): about 80 requests a day on
       average and 720 on the busiest day; 0.2 GB a year; history priced by `scripts.migration plan --tiers 9` (0 requests).
 
+  # PM-03-03 (Plan Maestro PM, OPS-018; decision DM-03 of 19 Nov 2026: batches 5-9, coverage levels C and D admitted): the second divisions, cups and super cups of the Americas that are still missing (Argentina, Brazil, Chile, Uruguay, Mexico, the United States and Panama; section 3 of the plan, annex A).
+  # Decided on the read-only probe pm-03-01 of this file (BE-066, 20 Nov 2026), after batch 5 was tracked and measured (OPS-015: 18-hour window of 24 Nov 2026 with three fixtures_sync cycles, about 160 requests added, criterion of at most 1,000 met (IA_077 section 7)).
+  # Not tracked by this file: `python -m scripts.expand_leagues --batch 6 --apply`, after the deployment, is the step that tracks it.
+  - batch: 6
+    tier: 10
+    decided: "2026-11-24"
+    probe: >-
+      PM-03-01 read-only probe, 20 Nov 2026 06:54 UTC (probes.pm-03-01 below: shares, flags and expected level per family);
+      guide docs/owner/PM_03_01_SONDA_LOTES_5_9.md
+    rule: >-
+      decision DM-03 of the Plan Maestro PM: the competitions the owner asked for are tracked at coverage levels C and D too;
+      the availability matrix (coverage-levels-v1, PM-02-03) grades each family from the matches stored, and nothing is shown
+      that its level does not support. Batch 1's data rule (line-ups in 80 %, seven bookmakers) does not apply
+    leagues: [129, 130, 517, 810, 1178, 632, 266, 267, 527, 263, 857, 304, 257, 269, 842, 930]
+    notes: >-
+      Expected without odds (probe pm-03-01): 263 Liga de Expansion MX B* (the only one with team statistics 80 %, xG 40 %,
+      players 80 % and a referee in 99 %; ceiling A or B); 129 Primera Nacional, 130 Copa Argentina, 266 Primera B Chile,
+      267 Copa Chile and 257 US Open Cup C* (base B, nothing else declared); 304 Liga Panamena, 269 Segunda Uruguay and 930
+      Copa Uruguay D (line-ups in 30 %, 0 % and 0 %); the seven one-off super cups and trophies (517, 810, 1178, 632, 527,
+      857, 842) stay "muestra insuficiente" until rule 3 pools five editions. 8 of 16 declare odds (129, 130, 810, 266, 267,
+      263, 304, 269). No player market in any (decision no. 7). Cost (section 3 of the plan, rates of 10-16 Nov
+      2026): about 320 requests a day on average and 2,000 on the busiest day; 2.2 GB a year, mostly odds; history priced by
+      `scripts.migration plan --tiers 10` (0 requests).
+
 # Read-only probes of candidates that are not tracked yet, one entry per run. A probe decides nothing and tracks nothing:
 # it is what a batch is later decided on (its `probe` and `measured`). PM-03-01 (BE-066), 20 Nov 2026: the 60 candidates of
 # batches 5-9 with the procedure of scripts.probe_leagues - calendar of the current season of raw.league_coverage and
