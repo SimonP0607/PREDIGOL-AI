@@ -14,7 +14,6 @@ export type PermissionKey = "app" | "admin" | "admin.users" | "admin.shadow_prev
  */
 export type Stage = "mfa" | "enroll" | "password" | "full";
 
-
 /** What a module does with C-16 (plan PM, PM-14-04). */
 export type MatrixMode = "off" | "show" | "on";
 export type MatrixModule = "odds" | "picks" | "news" | "parlay";

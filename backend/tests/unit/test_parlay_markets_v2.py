@@ -20,6 +20,7 @@ from fbi.userdata import records
 
 KO = datetime(2034, 5, 1, 20, tzinfo=UTC)
 AT = KO - timedelta(hours=5)
+CORE_MARKET = "result_1x2.FT.match"
 
 
 def test_a_leg_names_its_market_by_the_catalogues_key() -> None:
@@ -90,7 +91,7 @@ def test_a_core_market_by_its_catalogue_key_with_no_price_is_refused_not_a_500(m
     20-nov-2026). It is refused like any unpriced market, and a priced one is taken as before."""
     monkeypatch.setattr("fbi.market.in_force.book", lambda conn, fid: SimpleNamespace(quotes=[]))
     policy = records.MarketPolicy(enabled=True, state_of=lambda bet: "evaluable")
-    leg = records.LegIn(fixture_id=1, market_key="result_1x2.FT.match", selection="Home", line=Decimal("0"))
+    leg = records.LegIn(fixture_id=1, market_key=CORE_MARKET, selection="Home", line=Decimal("0"))
     refused, price = records._catalogue_leg(None, leg, _fixture(), AT, policy)  # type: ignore[arg-type]
     assert refused == "market_not_priced" and price is None
 
