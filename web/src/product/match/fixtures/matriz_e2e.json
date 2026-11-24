@@ -1,0 +1,977 @@
+{
+  "_": "PM-15-01 (CI-021): generado por backend/tests/integration/test_matrix_e2e_pm1501.py; no editar a mano (PM1501_WRITE=1 lo reescribe).",
+  "cases": {
+    "A": {
+      "annex_b": {
+        "corners": "A",
+        "events": "A",
+        "fouls": "A",
+        "lineups": "A",
+        "player_stats": "A",
+        "referee": "A",
+        "shots": "A",
+        "shots_on_target": "A",
+        "xg": "C",
+        "yellow_cards": "A"
+      },
+      "competition": "Primera A",
+      "league": 239,
+      "match": {
+        "blocks": [
+          {
+            "exists": true,
+            "key": "events",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "lineups",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "team_stats",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "shots_on_target",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "fouls",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "xg",
+            "level": "C",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "player_stats",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "referee",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          }
+        ],
+        "competition_season_id": 1501104,
+        "fixture_id": 1501004,
+        "kickoff_at": "2026-11-23T08:00:00Z",
+        "markets": [
+          {
+            "coverage_ok": true,
+            "exists": true,
+            "key": "1X2",
+            "level": "A",
+            "matrix_market": "1X2",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "ninguno",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "AH",
+            "level": "D",
+            "matrix_market": "AH",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "BTTS",
+            "level": "D",
+            "matrix_market": "BTTS",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": {
+              "missing_reason": "sin_datos"
+            },
+            "exists": false,
+            "key": "DC",
+            "level": {
+              "missing_reason": "sin_datos"
+            },
+            "matrix_market": {
+              "missing_reason": "sin_datos"
+            },
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "MERCADO_NO_EVALUABLE"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "ninguno",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "OU",
+            "level": "D",
+            "matrix_market": "OU",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          }
+        ],
+        "notes": [],
+        "phase": "todas"
+      },
+      "season": 2026
+    },
+    "B": {
+      "annex_b": {
+        "corners": "B",
+        "events": "A",
+        "fouls": "B",
+        "lineups": "A",
+        "player_stats": "B",
+        "referee": "B",
+        "shots": "B",
+        "shots_on_target": "B",
+        "xg": "D",
+        "yellow_cards": "B"
+      },
+      "competition": "NB I",
+      "league": 271,
+      "match": {
+        "blocks": [
+          {
+            "exists": true,
+            "key": "events",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "lineups",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "team_stats",
+            "level": "B",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "shots_on_target",
+            "level": "B",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "fouls",
+            "level": "B",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "xg",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "player_stats",
+            "level": "B",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "referee",
+            "level": "B",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          }
+        ],
+        "competition_season_id": 1501103,
+        "fixture_id": 1501003,
+        "kickoff_at": "2026-11-23T08:00:00Z",
+        "markets": [
+          {
+            "coverage_ok": true,
+            "exists": true,
+            "key": "1X2",
+            "level": "A",
+            "matrix_market": "1X2",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "ninguno",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "AH",
+            "level": "D",
+            "matrix_market": "AH",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "BTTS",
+            "level": "D",
+            "matrix_market": "BTTS",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": {
+              "missing_reason": "sin_datos"
+            },
+            "exists": false,
+            "key": "DC",
+            "level": {
+              "missing_reason": "sin_datos"
+            },
+            "matrix_market": {
+              "missing_reason": "sin_datos"
+            },
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "MERCADO_NO_EVALUABLE"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "ninguno",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "OU",
+            "level": "D",
+            "matrix_market": "OU",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          }
+        ],
+        "notes": [],
+        "phase": "todas"
+      },
+      "season": 2026
+    },
+    "C": {
+      "annex_b": {
+        "corners": "C",
+        "events": "A",
+        "fouls": "D",
+        "lineups": "A",
+        "player_stats": "C",
+        "referee": "A",
+        "shots": "C",
+        "shots_on_target": "C",
+        "xg": "D",
+        "yellow_cards": "C"
+      },
+      "competition": "K League 1",
+      "league": 292,
+      "match": {
+        "blocks": [
+          {
+            "exists": true,
+            "key": "events",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "lineups",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "team_stats",
+            "level": "C",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "shots_on_target",
+            "level": "C",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": false,
+            "key": "fouls",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "no_entregado"
+          },
+          {
+            "exists": true,
+            "key": "xg",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "player_stats",
+            "level": "C",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "referee",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          }
+        ],
+        "competition_season_id": 1501102,
+        "fixture_id": 1501002,
+        "kickoff_at": "2026-11-23T08:00:00Z",
+        "markets": [
+          {
+            "coverage_ok": true,
+            "exists": true,
+            "key": "1X2",
+            "level": "A",
+            "matrix_market": "1X2",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "ninguno",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "AH",
+            "level": "D",
+            "matrix_market": "AH",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "BTTS",
+            "level": "D",
+            "matrix_market": "BTTS",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": {
+              "missing_reason": "sin_datos"
+            },
+            "exists": false,
+            "key": "DC",
+            "level": {
+              "missing_reason": "sin_datos"
+            },
+            "matrix_market": {
+              "missing_reason": "sin_datos"
+            },
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "MERCADO_NO_EVALUABLE"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "ninguno",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "OU",
+            "level": "D",
+            "matrix_market": "OU",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          }
+        ],
+        "notes": [],
+        "phase": "todas"
+      },
+      "season": 2026
+    },
+    "D": {
+      "annex_b": {
+        "corners": "D",
+        "events": "A",
+        "fouls": "D",
+        "lineups": "A",
+        "player_stats": "D",
+        "referee": "D",
+        "shots": "D",
+        "shots_on_target": "D",
+        "xg": "D",
+        "yellow_cards": "D"
+      },
+      "competition": "Primera B",
+      "league": 240,
+      "match": {
+        "blocks": [
+          {
+            "exists": true,
+            "key": "events",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": true,
+            "key": "lineups",
+            "level": "A",
+            "n": 40,
+            "provisional": false,
+            "reason": "ninguno"
+          },
+          {
+            "exists": false,
+            "key": "team_stats",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "no_entregado"
+          },
+          {
+            "exists": false,
+            "key": "shots_on_target",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "no_entregado"
+          },
+          {
+            "exists": false,
+            "key": "fouls",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "no_entregado"
+          },
+          {
+            "exists": false,
+            "key": "xg",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "no_entregado"
+          },
+          {
+            "exists": false,
+            "key": "player_stats",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "no_entregado"
+          },
+          {
+            "exists": false,
+            "key": "referee",
+            "level": "D",
+            "n": 40,
+            "provisional": false,
+            "reason": "no_entregado"
+          }
+        ],
+        "competition_season_id": 1501101,
+        "fixture_id": 1501001,
+        "kickoff_at": "2026-11-23T08:00:00Z",
+        "markets": [
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "1X2",
+            "level": "D",
+            "matrix_market": "1X2",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "AH",
+            "level": "D",
+            "matrix_market": "AH",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "BTTS",
+            "level": "D",
+            "matrix_market": "BTTS",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          },
+          {
+            "coverage_ok": {
+              "missing_reason": "sin_datos"
+            },
+            "exists": false,
+            "key": "DC",
+            "level": {
+              "missing_reason": "sin_datos"
+            },
+            "matrix_market": {
+              "missing_reason": "sin_datos"
+            },
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "MERCADO_NO_EVALUABLE"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "ninguno",
+            "settleable": true
+          },
+          {
+            "coverage_ok": false,
+            "exists": false,
+            "key": "OU",
+            "level": "D",
+            "matrix_market": "OU",
+            "modules": [
+              {
+                "module": "mi_parlay",
+                "ok": false,
+                "reason": "market_not_priced"
+              },
+              {
+                "module": "picks",
+                "ok": false,
+                "reason": "SIN_PROBABILIDAD"
+              },
+              {
+                "module": "cuotas",
+                "ok": false,
+                "reason": "sin_precio"
+              }
+            ],
+            "price_in_force": false,
+            "prob_authorised": false,
+            "prob_computed": false,
+            "reason": "sin_cobertura",
+            "settleable": true
+          }
+        ],
+        "notes": [],
+        "phase": "todas"
+      },
+      "season": 2026
+    }
+  }
+}
