@@ -41,7 +41,6 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | C-09 | `jugador` | Jugador con 630 minutos: tasas por 90 con partidos, minutos e intervalo; los remates cuentan solo los 5 partidos que los registran; foto como monograma; en la privada, lo que añadirá el motor (`not_yet_private`) |
 | C-09 | `jugador_poca_muestra` | Jugador con 180 minutos: `muestra_insuficiente` (450 mínimos) y `sin_datos` donde la planilla no registra la acción; `sancionado` por el parte del proveedor |
 | C-09 | `competicion` | Liga: temporada, tabla, próximos partidos, goleadores y cobertura de estadísticas |
-
 | C-17 Unidades (sin ruta) | `con_unidades` | Dos picks (0,75 u por un cuarto de Kelly; 1 u por el tope de su estado) y un parlay de 0,25 u; Transparencia con unidades variables y con unidad fija sobre los mismos 24 liquidados. La privada añade lo que leyó la regla |
 | C-17 | `sin_publicados` | Nada publicado: `sin_publicados`, resultados `sin_datos` |
 | C-18 Tendencias (sin ruta) | `armador` | Tres candidatas (córners, tarjetas, goles de la primera parte) con «7 de los últimos 10», frecuencia e intervalo; un boleto de 2 patas a 3,61 bajo el tope; la privada, dos mercados descartados (sin regla, sin dato en la liga) |
