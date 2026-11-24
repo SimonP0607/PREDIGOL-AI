@@ -566,7 +566,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-023 · SEG-003 · UX-241 · BE-111 · FE-011 · OPS-020 · DOC-014
+CI-023 · SEG-003 · UX-244 · BE-114 · FE-011 · OPS-020 · DOC-015
 
 IA-167
 
