@@ -100,5 +100,18 @@
       "events": "the minute of the goals"
     },
     "markets": "main odds"
+  },
+  "probs": {
+    "reading": {
+      "evaluable": "{market}: the bar is PrediGol's probability, the │ mark is what the bookmakers say without their margin, and the ● dot is what happened before in up to {n} matches, with its interval.",
+      "evaluableNoHistory": "{market}: the bar is PrediGol's probability and the │ mark is what the bookmakers say without their margin. There are not enough past matches yet.",
+      "validation": "{market}: this market has no published PrediGol probability yet. You see what the bookmakers say without their margin (│ mark) and what happened before in up to {n} matches (● dot), with its interval.",
+      "validationNoHistory": "{market}: this market has no published PrediGol probability yet. You see only what the bookmakers say without their margin (│ mark); there are not enough past matches yet.",
+      "oddsOnly": "{market}: no PrediGol probability of its own. You see what the bookmakers say without their margin (│ mark) and what happened before in up to {n} matches (● dot), with its interval.",
+      "oddsOnlyNoHistory": "{market}: no PrediGol probability of its own. You see only what the bookmakers say without their margin (│ mark); there are not enough past matches yet."
+    },
+    "method": "Bar: PrediGol's probability, only on checked markets and with its seal. │ mark: the bookmakers' average without their margin. ● dot: the selection settled with its rule in the latest matches, with its Wilson interval.",
+    "tableCaption": "Probabilities of {market}, selection by selection",
+    "selection": "Selection"
   }
 }

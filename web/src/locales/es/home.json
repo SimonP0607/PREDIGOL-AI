@@ -230,6 +230,8 @@
     "final": "Final",
     "withReading": "Con análisis"
   },
+  "idleTeams_one": "Todavía sin partidos que sigamos: {teams}. Sigue en tus favoritos y aparecerá aquí cuando juegue una liga que seguimos.",
+  "idleTeams_other": "Todavía sin partidos que sigamos: {teams}. Siguen en tus favoritos y aparecerán aquí cuando jueguen una liga que seguimos.",
   "unified": {
     "title": "Tus favoritos",
     "hint": "Lo que sigues: sus partidos, noticias y picks, cada uno con su motivo"

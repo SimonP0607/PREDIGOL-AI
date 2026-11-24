@@ -30,6 +30,8 @@ export interface FavoritesView {
    * order chosen (CUOTAS, BE-025). Apart from `markets`, the five classic ones. Absent from an older API.
    */
   catalog_markets?: string[];
+  /** The followed teams with no match of a league PrediGol follows in the window (AP-B06): Home says why they do not appear. */
+  idle_teams?: number[];
   /** True while the reader has chosen none: the ones suggested for Colombia, labelled as suggested. */
   suggested: boolean;
   max_leagues: number;
@@ -55,8 +57,13 @@ export interface FavoritesIn {
 export interface FavoriteOptions {
   /** Every league PrediGol follows, by country and name. */
   leagues: CompetitionBadge[];
-  /** Teams of those leagues whose name matches the search (two letters or more, without accents or case), at most 20. */
+  /**
+   * Teams whose name matches the search (two letters or more, without accents or case), at most 20: the ones with matches of
+   * a league PrediGol follows first, then the rest (AP-B06).
+   */
   teams: TeamBadge[];
+  /** Among `teams`, the ones with no match of those leagues: the picker says «Todavía sin partidos que sigamos». */
+  idle_teams?: number[];
   /** Players who appeared in a line-up of those leagues whose name matches the search (three letters or more), at most 20. */
   players: PlayerBadge[];
 }

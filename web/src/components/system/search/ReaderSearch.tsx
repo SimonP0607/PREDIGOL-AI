@@ -1,7 +1,8 @@
 /**
  * The readers' global search (plan maestro unificado, UX-153; maqueta 14): a layer over the page, opened from the top bar,
- * with «/» or Ctrl/⌘ K. It reads the same `GET /search` as the console's palette (one query, `useSearchHits`) and draws
- * the answer grouped - Equipos, Competiciones, Partidos - in the maqueta's order. Before typing: the recent searches of this
+ * with «/» or Ctrl/⌘ K. It reads `GET /search/v2` (C-10, AP-B07; `useReaderSearch`, with the earlier `GET /search` as its
+ * fallback) and draws the answer grouped - Equipos, Selecciones, Jugadores, Competiciones, Partidos - in the maqueta's order;
+ * with nothing found, «¿Quisiste decir…?». Each hit leads to its own page. Before typing: the recent searches of this
  * device (kept here, never sent) and the shortcuts. Arrows move, Intro opens, Esc closes (cmdk and the dialog).
  *
  * Loaded on first use only: no page pays for it until someone searches.
@@ -13,20 +14,21 @@ import {
   Search,
   X,
   Coins,
+  Flag,
   Newspaper,
   RotateCcw,
   Shield,
   Target,
   Trophy,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { Command as CommandPrimitive } from "cmdk";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { t } from "@/lib/i18n";
-import { useProfilesOpen } from "@/lib/auth/AuthProvider";
+import { useProfilesOpen, usePmReaderSwitches } from "@/lib/auth/AuthProvider";
 import { formatKickoff } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import type { SearchHit } from "@/lib/api/v1/types";
 import {
   cleanQuery,
   deviceStore,
@@ -40,10 +42,12 @@ import {
   type RecentHit,
   type SearchGroup,
 } from "./model";
-import { useSearchHits } from "./useSearchHits";
+import { useReaderSearch } from "./useReaderSearch";
 
 const GROUP_ICON: Record<SearchGroup, LucideIcon> = {
   team: Shield,
+  national_team: Flag,
+  player: UserRound,
   competition: Trophy,
   fixture: CalendarDays,
 };
@@ -53,7 +57,7 @@ const ITEM =
 const HEADING =
   "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-label [&_[cmdk-group-heading]]:text-subtle-foreground";
 
-function subline(hit: Pick<SearchHit, "type" | "sublabel">): string {
+function subline(hit: Pick<RecentHit, "type" | "sublabel">): string {
   if (hit.type === "fixture") {
     const at = hitKickoff(hit.sublabel);
     return at ? formatKickoff(at) : "";
@@ -108,11 +112,12 @@ export default function ReaderSearch({
 }) {
   const navigate = useNavigate();
   const profiles = useProfilesOpen();
+  const { competitionPage } = usePmReaderSwitches();
   const [raw, setRaw] = useState("");
   const [recent, setRecent] = useState<RecentHit[]>(() => readRecent(deviceStore()));
   const term = cleanQuery(raw);
   const typing = term.length >= MIN_QUERY;
-  const { hits, pending, error, refetch } = useSearchHits(term, open);
+  const { hits, suggestions, pending, error, refetch } = useReaderSearch(term, open);
   const groups = useMemo(() => groupHits(hits ?? []), [hits]);
 
   function close() {
@@ -125,10 +130,13 @@ export default function ReaderSearch({
     setRecent(next);
     writeRecent(deviceStore(), next);
     close();
-    const link = hitLink(hit, profiles);
-    if (link.to === "/matches/$fixtureId") void navigate({ to: link.to, params: link.params });
+    const link = hitLink(hit, profiles, competitionPage);
+    if (link.to === "/matches") void navigate({ to: link.to, search: link.search });
+    else if (link.to === "/matches/$fixtureId") void navigate({ to: link.to, params: link.params });
     else if (link.to === "/teams/$teamId") void navigate({ to: link.to, params: link.params });
-    else void navigate({ to: link.to, search: link.search });
+    else if (link.to === "/nations/$teamId") void navigate({ to: link.to, params: link.params });
+    else if (link.to === "/players/$playerId") void navigate({ to: link.to, params: link.params });
+    else void navigate({ to: link.to, params: link.params });
   }
 
   function forget() {
@@ -240,6 +248,24 @@ export default function ReaderSearch({
                 <div className="px-4 py-8 text-center" data-testid="search-empty">
                   <p className="font-semibold">{t("nav.search.none", { q: term })}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{t("nav.search.noneHint")}</p>
+                  {suggestions.length > 0 ? (
+                    <div className="mt-3" data-testid="search-did-you-mean">
+                      <p className="text-sm text-muted-foreground">{t("nav.search.didYouMean")}</p>
+                      <ul className="mt-1.5 flex flex-wrap justify-center gap-2">
+                        {suggestions.map((s) => (
+                          <li key={s}>
+                            <button
+                              type="button"
+                              onClick={() => setRaw(s)}
+                              className="tap-y relative rounded-full border border-border px-3 py-1.5 text-sm font-semibold text-primary hover:bg-elevated"
+                            >
+                              {s}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 groups.map((g) => (

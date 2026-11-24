@@ -230,6 +230,8 @@
     "final": "Full time",
     "withReading": "With analysis"
   },
+  "idleTeams_one": "No matches we follow yet: {teams}. It stays in your favourites and will show up here when it plays in a league we follow.",
+  "idleTeams_other": "No matches we follow yet: {teams}. They stay in your favourites and will show up here when they play in a league we follow.",
   "unified": {
     "title": "Your favourites",
     "hint": "What you follow: their matches, news and picks, each with its reason"

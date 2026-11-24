@@ -18,6 +18,7 @@ import type {
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { MarketProbs, StatsContext, StatsProfile, StatsScope } from "./types_stats";
 import type { Availability, AvailabilityPrivate } from "./types_availability";
+import type { SearchV2 } from "./types_search";
 import type { ProviderUsage } from "./types_provider_usage";
 import type { EvaluationBoard } from "./types_evaluation_board";
 import type { SelectionFunnel } from "./types_funnel";
@@ -831,6 +832,8 @@ export const v1 = {
   fixtureOdds: (id: number | string, market?: string) =>
     getJson<Envelope<FixtureOdds>>(`/odds/fixtures/${id}`, { market }),
   search: (q: string) => getJson<Envelope<SearchHit[]>>("/search", { q, limit: 8 }),
+  /** C-10 (AP-B07): the readers' search in groups - teams, national teams, players, competitions, matches. */
+  searchV2: (q: string) => getJson<Envelope<SearchV2>>("/search/v2", { q }),
   center: (id: number | string) => getJson<Envelope<MatchCenter | null>>(`/matches/${id}/center`),
   /** The two teams before the match, each figure with how many matches carry its data (REVIEW pt 5). */
   matchProfile: (id: number | string) =>
