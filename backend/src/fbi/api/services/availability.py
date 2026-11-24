@@ -38,6 +38,7 @@ from fbi.api.contracts.intelligence.projection import to_public
 from fbi.api.envelope import Envelope, ok
 from fbi.api.problem import ApiError
 from fbi.api.repositories import Conn, fetch_all, fetch_one
+from fbi.api.services.forecast import VERSION as PUBLISHED_FORECAST_VERSION
 from fbi.api.services.forecast import users_may_see
 from fbi.api.services.market_probs import parlay_policy
 from fbi.api.switches import availability_on, availability_phases_on, prob_by_competition_on
@@ -190,7 +191,7 @@ def _match(conn: Conn, fixture_id: int, at: datetime) -> MatchAvailabilityPrivat
     policy = parlay_policy()
     found = resolver.availability(conn, fixture_id, at=at, rules=parlay_rules(), parlay_on=policy.enabled, state_of=policy.state_of,
                                   forecast_users=users_may_see(), by_phase=availability_phases_on(),
-                                  by_competition=prob_by_competition_on())
+                                  by_competition=prob_by_competition_on(), published_versions=(PUBLISHED_FORECAST_VERSION,))
     if found is None:
         raise ApiError(404, "not_found", "match not found")
     inputs_cs = fetch_one(conn, "SELECT competition_season_id, kickoff_at FROM core.fixtures WHERE id = %(id)s", {"id": fixture_id})

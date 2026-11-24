@@ -6,6 +6,7 @@
  * From IA-016 the header says when the match was last searched and how many pages were read, and an empty list tells «not searched yet»
  * from «searched, nothing found».
  */
+import { MatrixNotes } from "@/product/shared/matrixModules";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MatchStoriesView } from "./MatchStories";
@@ -304,6 +305,8 @@ export function NewsTab({ ctx }: { ctx: MatchCtx }) {
   const match = storyQuery.data?.data?.match;
   return (
     <div className="space-y-4">
+      {/* PM-14-04 (FBI_MATRIX_NEWS, show or on): one note when the line-ups or the referee the cards lean on are not complete. */}
+      <MatrixNotes module="news" fixtureId={ctx.fixtureId} />
       {storiesOn && match && "stories" in match ? (
         <MatchStoriesView
           data={match}
