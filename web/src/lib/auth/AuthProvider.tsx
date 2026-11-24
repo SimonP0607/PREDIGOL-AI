@@ -305,6 +305,7 @@ export function useMatchVizSwitches(): {
   lineupLayers: boolean;
   coverage: boolean;
   probIcons: boolean;
+  halves: boolean;
 } {
   const u = useContext(AuthContext)?.user;
   return {
@@ -313,6 +314,7 @@ export function useMatchVizSwitches(): {
     lineupLayers: u?.lineup_layers === true,
     coverage: u?.match_coverage === true,
     probIcons: u?.prob_icons === true,
+    halves: u?.match_halves === true,
   };
 }
 

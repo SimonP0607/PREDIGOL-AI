@@ -364,6 +364,15 @@ def home_unified_on() -> bool:
     return user_switch(HOME_UNIFIED, default=False)
 
 
+MATCH_HALVES: Final = "FBI_MATCH_HALVES"
+
+
+def match_halves_on() -> bool:
+    """Whether a match's statistics by half are shown (plan PM, PM-10-03) (``FBI_MATCH_HALVES``, off by default): ``GET /matches/{id}/period-stats``
+    answers 404 while it is off."""
+    return user_switch(MATCH_HALVES, default=False)
+
+
 def markets_v3_on() -> bool:
     """Whether a match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6) is on (``FBI_MARKETS_V3``, off by default)."""
     return user_switch(MARKETS_V3, default=False)
