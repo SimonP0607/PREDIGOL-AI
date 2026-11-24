@@ -32,7 +32,7 @@ Two steps:
    qualifying rounds no longer lower its league phase. The markets stay on ``todas`` (``analytics.market_availability`` has no phase).
 
 Scope: the incremental pass (every night) takes the tracked competitions with a match finished in the last ``RECENT_HOURS``; the full pass
-(Sundays, or ``--full``) every tracked competition. Of each, its last ``SEASONS_KEPT`` seasons with finished matches (``POOLED_EDITIONS``
+(Sundays, and the next nights until one completes - ``full_due`` - or ``--full``) every tracked competition. Of each, its last ``SEASONS_KEPT`` seasons with finished matches (``POOLED_EDITIONS``
 for a one-match competition). Reads stored data only: no provider, no model. Writes only the matrix's tables (and the job ledger, from the
 process). Idempotent: a second pass over the same data changes nothing but the times.
 """
@@ -89,8 +89,10 @@ ODDS_WINDOW_START: Final = date(2026, 10, 5)
 """PrediGol captures prices at scale since 4-5 Oct 2026 (plan PM, annex B): before it a missing price says nothing about the market."""
 BATCH: Final = 400
 MAX_SECONDS: Final = 15 * 60
-SHADOW_SECONDS: Final = 12 * 60
-"""The shadow comparison that follows the pass in the same process (PM-02-06, ``fbi.api.services.availability_shadow``)."""
+SHADOW_SECONDS: Final = 25 * 60
+"""The shadow comparison's budget (PM-02-06, ``fbi.api.services.availability_shadow``): by hand it follows the pass in the same process;
+the scheduler starts it in a process of its own (BE-094). 25 minutes (12 before BE-094): measured in production on 24-nov-2026, a match
+takes 2.8 s (C-14 and the resolver, read-only), so 12 minutes stopped every day at about 260 of the 500 and no day was ever complete."""
 PROCESS_TIMEOUT: Final = MAX_SECONDS + SHADOW_SECONDS + 5 * 60
 """How long the scheduler waits for the process before it stops it."""
 STATEMENT_TIMEOUT: Final = "120s"
@@ -148,6 +150,27 @@ def mode(env: Mapping[str, str] | None = None) -> str:
 
 def is_full_day(at: datetime) -> bool:
     return at.astimezone(UTC).weekday() == FULL_WEEKDAY
+
+
+FULL_DONE_SQL: Final = (
+    "SELECT 1 FROM raw.ingestion_runs WHERE job_type = %(job)s AND status = 'completed' AND started_at >= %(since)s "
+    "AND (params -> 'report' ->> 'full')::boolean AND coalesce(params -> 'report' ->> 'stopped', '') <> 'tiempo_agotado' "
+    "AND params ->> 'only' IS NULL LIMIT 1")
+"""A full pass that ended (not stopped by its time budget, and not a manual ``--only``) since ``since``: the ledger row of
+``scripts.availability_refresh``."""
+
+
+def full_due(conn: psycopg.Connection[Any], at: datetime) -> bool:
+    """Is tonight's pass a full one? On Sundays, and on every later night of the week until one completes: the Sunday's pass can find
+    no room in the worker's memory (22-nov-2026: three attempts, 2.8-2.9 of 3 GiB) and then 120 of the 272 seasons of annex B waited a
+    whole week without a cell. The week starts on Sunday at 00:00 UTC."""
+    day = at.astimezone(UTC)
+    if day.weekday() == FULL_WEEKDAY:
+        return True
+    sunday = datetime(day.year, day.month, day.day, tzinfo=UTC) - timedelta(days=(day.weekday() - FULL_WEEKDAY) % 7)
+    row = conn.execute(FULL_DONE_SQL, {"job": JOB, "since": sunday}).fetchone()
+    conn.commit()
+    return row is None
 
 
 CAP_MIB: Final = 512
@@ -787,8 +810,9 @@ def complete(conn: psycopg.Connection[Any], seasons: list[Season], *, now: datet
 
 def run_pass(conn: psycopg.Connection[Any], *, now: datetime, full: bool | None = None, only: set[int] | None = None,
              max_seconds: float = MAX_SECONDS) -> Report:
-    """One recalculation. ``full`` None: full on Sundays. ``only``: the competitions of these competition seasons (manual runs)."""
-    report = Report(full=is_full_day(now) if full is None else full)
+    """One recalculation. ``full`` None: full on Sundays and until a full one completes that week (``full_due``). ``only``: the
+    competitions of these competition seasons (manual runs)."""
+    report = Report(full=full_due(conn, now) if full is None else full)
     started = time.monotonic()
     conn.execute(f"SET statement_timeout = '{STATEMENT_TIMEOUT}'")
     locked = conn.execute("SELECT pg_try_advisory_lock(%s)", (LOCK,)).fetchone()
