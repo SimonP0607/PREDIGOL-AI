@@ -278,6 +278,13 @@ export function useAvailabilityOn(): boolean {
 }
 
 /**
+ * Whether the download of the published picks is on (plan PM, PM-14-08; FBI_TRANSPARENCY_EXPORT). Safe outside the provider: off.
+ */
+export function useTransparencyExportOn(): boolean {
+  return useContext(AuthContext)?.user?.transparency_export === true;
+}
+
+/**
  * What a module does with the availability matrix (plan PM, PM-14-04; FBI_MATRIX_ODDS, _PICKS, _NEWS, _PARLAY): `off` decides as it
  * always did, `show` reads C-16 and only says what it says, `on` lets it replace the module's own check. It is `off` while C-16 is off
  * (the API says so), while the API says nothing and outside the provider.
@@ -287,6 +294,7 @@ export function useMatrixMode(module: MatrixModule): MatrixMode {
   if (u?.availability !== true) return "off";
   return u.matrix_modules?.[module] ?? "off";
 }
+
 /** Whether the owner's console of the provider's requests is on (plan PM, PM-04-05; FBI_USAGE_CONSOLE). Off outside the provider. */
 export function useUsageConsoleOn(): boolean {
   return useContext(AuthContext)?.user?.usage_console === true;

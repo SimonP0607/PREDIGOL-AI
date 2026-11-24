@@ -420,6 +420,22 @@ export function exportUrl(kind: "picks" | "parlays", filter?: MyPicksFilter): st
   return `/api/v1/me/${kind}/export${query ? `?${query}` : ""}`;
 }
 
+/**
+ * The address of the file of the published picks (plan PM, PM-14-08): a plain download from the page's own origin, with the session
+ * cookie. A GET, like the files of Mis picks. `picks` and `calibration` are the two CSV files; `json` holds both.
+ */
+export function transparencyExportUrl(
+  kind: "picks" | "calibration" | "json",
+  preview?: "shadow" | undefined,
+): string {
+  const params = new URLSearchParams();
+  if (kind === "json") params.set("format", "json");
+  else if (kind === "calibration") params.set("part", "calibration");
+  if (preview) params.set("preview", preview);
+  const query = params.toString();
+  return `/api/v1/transparency/export${query ? `?${query}` : ""}`;
+}
+
 /** A repeated parameter (`?market=1X2&market=OU`) is an array; an empty one is left out. */
 type Params = Record<
   string,

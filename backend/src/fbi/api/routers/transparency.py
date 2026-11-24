@@ -6,6 +6,9 @@
   the owner has reviewed it (``FBI_TRANSPARENCY``, P9); until then it answers ``not_available``.
   ``preview=shadow`` (SUPER_ADMIN only) shows it whatever the switch says - the owner's review.
 
+* ``GET /transparency/export`` (product) - the same published picks as a file (CSV or JSON), with the calibration of what was said
+  and its 95 % interval (PM-14-08; ``FBI_TRANSPARENCY_EXPORT``, off by default, and only while the page is open). No ROI.
+
 * ``GET /transparency/picks`` (product) - the published picks one by one, newest kick-off first, a page at a time with its
   price, probability and result (``fbi.api.services.transparency_picks``). The same gate and the same preview.
 
@@ -17,14 +20,15 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 
 import psycopg
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from fbi.api.contracts.transparency import PublishedPick, Transparency
 from fbi.api.deps import get_db
 from fbi.api.envelope import Envelope, ok, unavailable
 from fbi.api.errors import ApiError
 from fbi.api.security import App
-from fbi.api.services import records, transparency, transparency_picks
+from fbi.api.services import records, transparency, transparency_export, transparency_picks
+from fbi.api.switches import transparency_export_on
 from fbi.auth.roles import Permission
 from fbi.auth.service import Principal
 
@@ -68,3 +72,35 @@ def get_published_picks(
         return transparency_picks.published_picks(conn, tz=principal.timezone, limit=limit, cursor=cursor)
     except records.CursorError as exc:
         raise ApiError(422, "invalid_cursor", str(exc)) from exc
+
+
+@router.get("/transparency/export", response_class=Response,
+            responses={200: {"content": {"text/csv": {}, "application/json": {}},
+                             "description": "The published picks (and their calibration) as a file."}})
+def export_published_picks(
+    conn: Db, principal: App, preview: Preview = None,
+    fmt: Annotated[Literal["csv", "json"], Query(alias="format", description="csv: one line per pick; json: picks and calibration.")] = "csv",
+    part: Annotated[Literal["picks", "calibration"], Query(description="CSV only: the picks or their calibration.")] = "picks",
+) -> Response:
+    """THE PUBLISHED PICKS AS A FILE, for whoever wants to check them: every pick of the qualified set as the table shows it
+    (price and probability frozen, result, units of a flat stake), and the calibration of the probabilities said with its 95 %
+    interval. Same gate as the page (`FBI_TRANSPARENCY`, or the owner's preview) and its own switch; no ROI, never a pick that
+    was not published."""
+    if not transparency_export_on() and not (preview is not None and _preview(preview, principal)):
+        raise ApiError(404, "not_found", "the download of the published picks is not open")
+    if not _preview(preview, principal) and not transparency.shown():
+        raise ApiError(404, "not_found", "PrediGol's track record is not published yet: the owner reviews it first.")
+    tz = principal.timezone
+    picks = transparency_export.all_picks(conn, tz=tz)
+    cal = transparency_export.calibration(conn, tz=tz)
+    if fmt == "json":
+        body = transparency_export.picks_json(picks, cal, tz=tz)
+        name, media = transparency_export.filename("picks-publicados", "json"), "application/json; charset=utf-8"
+    elif part == "calibration":
+        body = transparency_export.calibration_csv(cal, language=principal.language)
+        name, media = transparency_export.filename("calibracion", "csv"), "text/csv; charset=utf-8"
+    else:
+        body = transparency_export.picks_csv(picks, tz=tz, language=principal.language)
+        name, media = transparency_export.filename("picks-publicados", "csv"), "text/csv; charset=utf-8"
+    return Response(content=body.encode("utf-8"), media_type=media,
+                    headers={"content-disposition": f'attachment; filename="{name}"', "cache-control": "no-store"})
