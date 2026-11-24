@@ -10,6 +10,7 @@ import { Freshness, LiveMinute } from "@/product/shared/Bits";
 import { Card } from "@/product/shared/States";
 import { FollowStar } from "@/product/favorites/FollowStar";
 import { MatchBell } from "@/product/push/MatchBell";
+import { MatchCoverageChip } from "./MatchCoverageChip";
 import { venueFacts, venuePlace } from "@/product/shared/venue";
 import type { MatchCtx } from "./context";
 import { tieView } from "./tie";
@@ -289,6 +290,9 @@ export function MatchHeader({ ctx }: { ctx: MatchCtx }) {
           </>
         ) : null}
       </div>
+
+      {/* Plan PM, lámina I04 (UX-243): the level C-16 gives the competition - draws nothing while its switches are off */}
+      <MatchCoverageChip competitionId={m.competition.id} />
 
       <div className="relative mx-auto grid max-w-3xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 px-3 pb-4 pt-3 sm:gap-6 sm:px-6 sm:pb-6 sm:pt-4 short:pb-3 short:pt-2">
         <TeamSide team={m.home} goals={goals.home} dim={winner === "away"} />
