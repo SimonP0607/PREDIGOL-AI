@@ -12,8 +12,10 @@ sync-core``), as ``alias_type`` ``localized`` with their language - a type the t
 WHAT CHANGES
 ------------
 Only the list of allowed values of ``core.entity_aliases.source``: ``localized`` is added. The constraint is replaced by one with
-the old values plus the new one, added NOT VALID and then validated (the validation reads the table under a lock that lets reads
-and writes go on). No row is written, no column or other table is touched.
+the old values plus the new one, added NOT VALID and then validated. All of it runs in the migration's one transaction, so the lock
+the DROP takes (waited for at most 10 s) is held while the validation reads the table: core.entity_aliases is not read for those
+seconds. No reader's route reads it (the search reads its own index, ``core.search_entries``); only the identity scripts and the
+index refresh do, and neither runs during a deploy. No row is written, no column or other table is touched.
 
 Downgrade puts the old list back only while no row has the new source: the table is append-only, so it never deletes an alias
 (retire the load that added them first, or restore the backup).
