@@ -47,6 +47,8 @@
  *   screens   reference screenshots of the product at 320/360/390/412/430 px (E2E_SCREENS=1)
  *   motion    reduced motion stills every animation, and the layout does not shift while three screens load
  *             (E2E_MOTION=1; closing plan 5.1)
+ *   pm-screens  the screens of the láminas I01 to I12 at 390 px, in Chromium and in WebKit (pm-screens-webkit): no console error,
+ *             no horizontal scroll, the lámina's piece drawn, a picture each (E2E_PM_SCREENS=1 and E2E_PM_IDS; plan PM, PM-15-02)
  * A full run loads a few hundred pages: the API's per-client limit must allow it
  * (dev-up sets FBI_API_RATE_LIMIT=3000). The web must run in live mode (web/.env.example:
  * VITE_DATA_MODE=live and VITE_API_BASE_URL set to the web's own origin): without the API address the
@@ -377,6 +379,33 @@ export default defineConfig({
             name: "screens",
             testMatch: /screens\.spec\.ts/,
             use: { ...devices["Pixel 7"], storageState: statePath("phone") },
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
+    ...(process.env["E2E_PM_SCREENS"]
+      ? [
+          // The screens of the láminas I01 to I12 (plan PM, PM-14-11 and PM-15-02): against a stack with the plan's switches on
+          // and E2E_PM_IDS saying which match, team, player and competition to open (e2e/pmscreens.spec.ts). Android's engine
+          // here, an iPhone's in pm-screens-webkit.
+          {
+            name: "pm-screens",
+            testMatch: /pmscreens\.spec\.ts/,
+            use: {
+              ...devices["Pixel 7"],
+              viewport: { width: 390, height: 844 },
+              storageState: statePath("phone"),
+            },
+            dependencies: ["setup"],
+          },
+          {
+            name: "pm-screens-webkit",
+            testMatch: /pmscreens\.spec\.ts/,
+            use: {
+              ...devices["iPhone 13"],
+              viewport: { width: 390, height: 844 },
+              storageState: statePath("phone"),
+            },
             dependencies: ["setup"],
           },
         ]
