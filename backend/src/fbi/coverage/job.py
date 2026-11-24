@@ -14,7 +14,10 @@ Two steps:
 2. **Cells** (``analytics.coverage_cells``, ``analytics.market_availability``): counted from the facts of each competition season whose
    facts are complete, graded by ``fbi.coverage.levels`` (``coverage-levels-v1``), with the rules this measurement owns:
 
-   * rule 2: a season short of sample takes the level of the season before, provisional (``levels.grade_datum``);
+   * rule 2: a season short of sample takes the level of the season before, provisional (``levels.grade_datum``) - only a level that
+     season MEASURED: one it took from the provider's «no» (rule 5, ``no_entregado``) is not inherited (``INHERITABLE``), so the
+     Sudamericana 2026 (5 matches priced, its flag «yes») is ``MI`` and not the ``D`` of 2025, whose odds the provider declared «no»
+     before PrediGol's odds window opened;
    * rule 3: a one-match competition (every one of its last editions has at most ``ONE_MATCH_MAX`` matches) pools its last
      ``POOLED_EDITIONS`` editions (``levels.combine``);
    * rule 4: a level goes down only after two recalculations in a row miss it (``levels.step``);
@@ -466,8 +469,20 @@ COUNT_PHASE_DATA_SQL: Final = ("SELECT x.competition_season_id, p.phase, count(*
 
 HELD_PHASE_CELLS_SQL: Final = ("SELECT competition_season_id, phase_key, datum, level, missed, provisional, reason "
                                "FROM analytics.coverage_cells WHERE competition_season_id = ANY(%s) AND phase_key = ANY(%s)")
+NOT_MEASURED: Final = "no_entregado"
+"""The reason of a level that comes from the provider's flag (rule 5), not from the matches: no season after it inherits it (rule 2)."""
+INHERITABLE: Final = f"CASE WHEN c.reason = '{NOT_MEASURED}' THEN NULL ELSE c.level END"
+"""The level of the season before that rule 2 may take: NULL (nothing to inherit) for a level that was not measured. The row stays, so
+the season before is still the season before - an older season's level is never reached for instead."""
+
+
+def inheritable(result: CellResult) -> Level | None:
+    """What a later season of the same pass may inherit from ``result`` (rule 2): its level, unless the provider's «no» gave it."""
+    return None if result.reason == NOT_MEASURED else result.level
+
+
 PREVIOUS_PHASE_SQL: Final = """
-SELECT s.competition_id, s.season, c.phase_key, c.datum, c.level FROM analytics.coverage_cells c
+SELECT s.competition_id, s.season, c.phase_key, c.datum, """ + INHERITABLE + """ FROM analytics.coverage_cells c
   JOIN core.competition_seasons s ON s.id = c.competition_season_id
  WHERE s.competition_id = ANY(%(comps)s) AND c.phase_key = ANY(%(phases)s)
 """
@@ -500,11 +515,11 @@ HELD_CELLS_SQL: Final = ("SELECT competition_season_id, datum, level, missed, pr
 HELD_MARKETS_SQL: Final = ("SELECT competition_season_id, market_key, level, missed, provisional, reason "
                            "FROM analytics.market_availability WHERE competition_season_id = ANY(%s)")
 PREVIOUS_SQL: Final = """
-SELECT s.competition_id, s.season, 'd:' || c.datum, c.level FROM analytics.coverage_cells c
+SELECT s.competition_id, s.season, 'd:' || c.datum, """ + INHERITABLE + """ FROM analytics.coverage_cells c
   JOIN core.competition_seasons s ON s.id = c.competition_season_id
  WHERE s.competition_id = ANY(%(comps)s) AND c.phase_key = %(phase)s
 UNION ALL
-SELECT s.competition_id, s.season, 'm:' || m.market_key, m.level FROM analytics.market_availability m
+SELECT s.competition_id, s.season, 'm:' || m.market_key, """ + INHERITABLE.replace("c.", "m.") + """ FROM analytics.market_availability m
   JOIN core.competition_seasons s ON s.id = m.competition_season_id
  WHERE s.competition_id = ANY(%(comps)s)
 """
@@ -607,8 +622,9 @@ def grade_seasons(conn: psycopg.Connection[Any], seasons: list[Season], *, now: 
         cur.execute(HELD_MARKETS_SQL, (ids,))
         held.update({(int(r[0]), "m:" + str(r[1])): Published(r[2], bool(r[3]), bool(r[4]), r[5]) for r in cur.fetchall()})
         cur.execute(PREVIOUS_SQL, {"comps": sorted({s.competition_id for s in seasons}), "phase": PHASE_ALL})
-        known: dict[tuple[int, int, str], Level] = {(int(r[0]), int(r[1]), str(r[2])): r[3] for r in cur.fetchall()}
-        """(competition, season, ``d:<datum>`` or ``m:<market>``) -> published level: a datum and a market may share a name."""
+        known: dict[tuple[int, int, str], Level | None] = {(int(r[0]), int(r[1]), str(r[2])): r[3] for r in cur.fetchall()}
+        """(competition, season, ``d:<datum>`` or ``m:<market>``) -> published level, None when it is not inheritable (rule 2,
+        ``INHERITABLE``): a datum and a market may share a name."""
         phases = _phase_inputs(cur, [s for s in seasons if s.cup])
     conn.commit()
 
@@ -638,7 +654,7 @@ def grade_seasons(conn: psycopg.Connection[Any], seasons: list[Season], *, now: 
                     _record(cur, UPSERT_CELL_SQL, "datum", s.id, datum, result, counts,
                             {**base, "n": counts.finished, "k": counts.with_data, "share": share(counts), "pooled": len(editions),
                              "declared": declared if isinstance(declared, bool) else None}, report)
-                    known[(s.competition_id, s.season, "d:" + datum)] = result.level
+                    known[(s.competition_id, s.season, "d:" + datum)] = inheritable(result)
                     report.cells += 1
                 for market in levels.MARKETS:
                     parts = [market_counts.get((e.id, market), (0, 0, None, 0, 0)) for e in editions]
@@ -657,7 +673,7 @@ def grade_seasons(conn: psycopg.Connection[Any], seasons: list[Season], *, now: 
                              "share": share(priced), "books": None if books is None else round(books, 1),
                              "n_settle": settle.finished, "n_settleable": settle.with_data, "settle_share": share(settle),
                              "state": states.get(catalogue) if catalogue else None}, report)
-                    known[(s.competition_id, s.season, "m:" + market)] = result.level
+                    known[(s.competition_id, s.season, "m:" + market)] = inheritable(result)
                     report.markets += 1
                 if s.cup and not pooled:
                     _grade_phases(cur, s, phases, flag, base, report)
@@ -671,8 +687,8 @@ class PhaseInputs:
     counts: dict[tuple[int, str], tuple[int, list[int]]] = field(default_factory=dict)
     """(competition season, phase) -> (finished matches, matches with each datum)."""
     held: dict[tuple[int, str, str], Published] = field(default_factory=dict)
-    known: dict[tuple[int, int, str, str], Level] = field(default_factory=dict)
-    """(competition, season, phase, datum) -> published level (rule 2 reads the season before)."""
+    known: dict[tuple[int, int, str, str], Level | None] = field(default_factory=dict)
+    """(competition, season, phase, datum) -> published level, None when not inheritable (rule 2 reads the season before)."""
 
 
 def _phase_inputs(cur: psycopg.Cursor[Any], cups: list[Season]) -> PhaseInputs:
@@ -720,7 +736,7 @@ def _grade_phases(cur: psycopg.Cursor[Any], s: Season, phases: PhaseInputs, flag
             _record(cur, UPSERT_CELL_SQL, "datum", s.id, datum, result, counts,
                     {**base, "phase": phase, "n": counts.finished, "k": counts.with_data, "share": share(counts), "pooled": 1,
                      "declared": declared if isinstance(declared, bool) else None}, report)
-            phases.known[(s.competition_id, s.season, phase, datum)] = result.level
+            phases.known[(s.competition_id, s.season, phase, datum)] = inheritable(result)
             report.phase_cells += 1
 
 
