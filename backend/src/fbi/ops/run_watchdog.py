@@ -40,6 +40,9 @@ LEGACY_MAX_AGE = timedelta(hours=12)
 DEFAULT_TIMEOUT = timedelta(hours=6)
 
 JOB_TIMEOUTS: dict[str, timedelta] = {
+    # the statistics by half (PM-05-01, BE-098): the closing pass asks at most 40 matches; the night's fill (PM-05-02) runs from 22:30 to 03:25.
+    "period_stats": timedelta(minutes=30),
+    "period_backfill": timedelta(hours=6),
     "lifecycle_shadow": timedelta(minutes=15),
     # decision-v2's kept shadow (IA-093): no provider, no model; at most 24 moments and 60 matches a pass.
     "decision_v2_shadow": timedelta(minutes=10),
