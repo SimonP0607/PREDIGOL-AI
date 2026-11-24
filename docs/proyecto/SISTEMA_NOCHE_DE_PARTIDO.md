@@ -124,6 +124,8 @@ compartida con PM-14-11. El visor suelto de Intelligence queda como copia histó
 | Avisos | `/inbox` y campana | Bandeja con lo que ya se envió al lector (interruptor) |
 | Consola | `/admin/*` | Usuarios con un botón «Acciones» por fila, cola de pagos con selector, comunicados con los campos del sistema |
 
+Láminas I01 a I12 del plan PM frente a sus pantallas reales (coincidencias, diferencias y lo que falta): `plan_maestro_pm_2026/PM_14_11_TRAZABILIDAD_LAMINAS.md` (PM-14-11, UX-231).
+
 ## 4. Interruptores que agregó el plan
 
 Todos nacen apagados y se encienden en `app.env` sin desplegar; el mapa completo está en
