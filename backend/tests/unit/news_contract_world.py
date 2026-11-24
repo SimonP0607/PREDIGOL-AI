@@ -24,6 +24,7 @@ from fbi.api.contracts.intelligence.stories import (
     RelatedStory,
     StoryDetailPrivate,
 )
+from fbi.api.contracts.news import NewsSearch
 from fbi.api.services import analysis_sources as c07
 from fbi.api.services import news_v2 as c06
 from fbi.factlinks import views
@@ -38,11 +39,12 @@ EXAMPLES = Path(__file__).resolve().parents[1] / "fixtures" / "contracts" / "int
 
 
 def story(key: str, *, level: str | None, category: str | None, at: datetime, status: str = "activa", headline: str | None = None,
-          summary: str | None = None, reason: str | None = None, version: int = 3) -> Story:
+          summary: str | None = None, reason: str | None = None, version: int = 3, headline_en: str | None = None,
+          summary_en: str | None = None, claim_type: str = "convocatorias", country: str = "Colombia") -> Story:
     return Story(key=key, id=sum(map(ord, key)), version=version, at=at, first_seen_at=at - timedelta(hours=1), event_at=None,
-                 valid_until=None, claim_type="convocatorias", category=category, level=level, lang="es", country="Colombia",
+                 valid_until=None, claim_type=claim_type, category=category, level=level, lang="es", country=country,
                  headline_es=headline, summary_es=summary, text_version="news-text-v1" if headline else None, status=status,
-                 status_reason=reason)
+                 status_reason=reason, headline_en=headline_en, summary_en=summary_en)
 
 
 def item(iid: int, key: str, name: str, url: str, *, seen: datetime, published: datetime | None, structured: bool = True,
@@ -67,7 +69,9 @@ def convocatoria() -> Bundle:
     key = "st-ej-convocatoria-norte"
     s = story(key, level="oficial", category="selecciones", at=AT - timedelta(minutes=34),
               headline="Club Ejemplo Norte cita a sus dos atacantes titulares",
-              summary="La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.")
+              summary="La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
+              headline_en="Club Ejemplo Norte calls up its two first-choice forwards",
+              summary_en="The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences.")
     items = [
         item(11, key, "Club Ejemplo Norte (oficial)", "https://oficial.ejemplo.invalid/noticias/convocatoria", seen=AT - timedelta(minutes=34),
              published=AT - timedelta(minutes=40)),
@@ -152,14 +156,48 @@ def busqueda() -> NewsPrivate:
 def partido() -> NewsPrivate:
     bundles = [convocatoria(), sancion()]
     uses = [views.ItemUse(11, FIXTURE, KICKOFF, "E2", 1, AT - timedelta(minutes=12), "contexto", "J. Ejemplo", "player", "lineup", "starts")]
+    searched_at, sources_checked = c06.search_fields(NewsSearch(searched="yes", last_searched_at=AT - timedelta(hours=3), searches=2,
+                                                                sources_read=14))
     body = MatchStoriesPrivate(fixture_id=FIXTURE, kickoff_at=KICKOFF, window_from=AT - timedelta(days=6),
-                               stories=ItemList(items=[c06.card(b, AT) for b in bundles]), analyses=c06.analysis_links(uses))
+                               stories=ItemList(items=[c06.card(b, AT) for b in bundles]), analyses=c06.analysis_links(uses),
+                               searched_at=searched_at, sources_checked=sources_checked)
+    return NewsPrivate(freshness=Freshness(generated_at=AT, stale=False), view="partido", match=body, story_status=c06.NO_DATA)
+
+
+def premio() -> Bundle:
+    """C-06 1.1: a general story with no match - an award of a player of the Club Ejemplo Norte, in both languages."""
+    key = "st-ej-premio-j-ejemplo"
+    s = story(key, level="oficial", category="premios", at=AT - timedelta(hours=7), claim_type="contexto",
+              headline="J. Ejemplo, elegido mejor jugador del mes de la Liga Ficticia",
+              summary="La Liga Ficticia eligió a J. Ejemplo mejor jugador de octubre. Es su segundo premio de la temporada.",
+              headline_en="J. Ejemplo named Liga Ficticia player of the month",
+              summary_en="Liga Ficticia named J. Ejemplo its player of October. It is his second award of the season.")
+    items = [item(51, key, "Liga Ficticia (oficial)", "https://liga.ejemplo.invalid/premios/octubre", seen=AT - timedelta(hours=7),
+                  published=AT - timedelta(hours=7, minutes=5))]
+    return bundle(s, items, [ent(51, "player", J_EJEMPLO, "J. Ejemplo", method="alias", confidence="0.97"),
+                             ent(51, "team", NORTE, "Club Ejemplo Norte", role="mencionado")])
+
+
+def general() -> NewsPrivate:
+    """C-06 1.1: the stories of a player outside any match - the search by ``player`` - with the English text."""
+    f = c06.Filters(player=J_EJEMPLO)
+    body = c06.search_of([convocatoria(), premio(), rumor()], None, f, None)
+    return NewsPrivate(freshness=Freshness(generated_at=AT, stale=False), view="busqueda", search=body, story_status=c06.NO_DATA)
+
+
+def partido_sin_busqueda() -> NewsPrivate:
+    """C-06 1.1: a match the web was never searched for: «buscamos y no hubo nada» is not said - sin_datos and 0 pages."""
+    searched_at, sources_checked = c06.search_fields(NewsSearch(searched="no", searches=0, sources_read=0))
+    body = MatchStoriesPrivate(fixture_id=FIXTURE, kickoff_at=KICKOFF, window_from=AT - timedelta(days=6),
+                               stories=ItemList(items=[], missing_reason="sin_resultados"), analyses=c06.analysis_links([]),
+                               searched_at=searched_at, sources_checked=sources_checked)
     return NewsPrivate(freshness=Freshness(generated_at=AT, stale=False), view="partido", match=body, story_status=c06.NO_DATA)
 
 
 def c06_cases() -> dict[str, NewsPrivate]:
     return {"portada": front(followed=c06.Followed(frozenset({NORTE}), frozenset())), "portada_vacia": front_empty(),
-            "noticia": noticia(), "noticia_retirada": noticia_retirada(), "busqueda": busqueda(), "partido": partido()}
+            "noticia": noticia(), "noticia_retirada": noticia_retirada(), "busqueda": busqueda(), "partido": partido(),
+            "general": general(), "partido_sin_busqueda": partido_sin_busqueda()}
 
 
 # ── C-07 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────

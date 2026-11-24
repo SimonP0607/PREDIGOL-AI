@@ -228,58 +228,6 @@ class Parlay(Contract):
                     "preview). Absent otherwise - it never travels as null.")
 
 
-class BestPrice(Contract):
-    selection: str
-    best_odds: Decimal
-    bookmaker: str | None
-    p_fair: Decimal
-    fair_odds: Decimal
-    price_edge: Decimal = Field(description="best_odds * p_fair - 1: how far the best price sits above fair.")
-    outlier: bool = Field(default=False, description="More than 25% above fair: very likely one book's stale or "
-                                                     "mistaken quote. Shown, flagged, never highlighted.")
-    n_bookmakers: int
-    as_of: datetime
-
-
-class BestMarket(Contract):
-    market_key: str
-    line: Decimal = Field(description=(
-        "The line of the market's prices. An Asian handicap's is the HOME side's handicap h: its two prices are one bet, "
-        "Home at h and Away at -h (each side is quoted at its own line)."))
-    selections: list[BestPrice]
-
-
-class BestOddsFixture(Contract):
-    fixture_id: int
-    kickoff_at: datetime
-    competition: CompetitionBadge
-    home: TeamBadge
-    away: TeamBadge
-    markets: list[BestMarket]
-    as_of: datetime
-
-
-class BestHighlight(Contract):
-    fixture_id: int
-    kickoff_at: datetime
-    competition: CompetitionBadge
-    home: TeamBadge
-    away: TeamBadge
-    market_key: str
-    line: Decimal = Field(description=(
-        "The highlighted selection's own line: an Asian handicap's away side at -h, the opposite of its market's line."))
-    price: BestPrice
-
-
-class BestOddsBoard(Contract):
-    window_hours: int
-    markets: list[str]
-    fixtures: list[BestOddsFixture]
-    highlights: list[BestHighlight] = Field(description="Best prices furthest above the market's fair price.")
-    value: list[PickCard] = Field(description="Picks with value now (qualified only, unless a shadow preview).")
-    source: Source
-
-
 class DataFreshness(Contract):
     live_at: datetime | None
 

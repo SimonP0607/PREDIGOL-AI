@@ -7,6 +7,7 @@ type of claim makes it «Oficial». Every story gets the four fields (the closur
 from __future__ import annotations
 
 import random
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -132,3 +133,30 @@ def test_every_story_gets_category_level_language_and_country(seed: int) -> None
         assert got.category in vocab.CATEGORIES and got.level in vocab.LEVELS and got.lang and got.country
         if any(grouping.claim_type_of_title(i.title) == "rumores" for i in items) and grouping.story_kind(items) == "rumores":
             assert got.level == "rumor"
+
+
+# ── classify-v2 (C-06 1.1): the general categories ─────────────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize(("title", "expected"), [
+    ("J. Ejemplo gana el Balón de Oro", "premios"), ("Ejemplo named player of the month", "premios"),
+    ("La gala de los premios de la Liga Ficticia", "premios"),
+    ("Así será la ceremonia de inauguración", "ceremonias"), ("Sorteo de la Copa Ficticia: los cruces", "ceremonias"),
+    ("Polémica por el arbitraje del clásico", "polemicas"), ("El club denuncia insultos racistas", "polemicas"),
+    ("Club Ejemplo, multado por la federación", "polemicas"),
+    ("Galatasaray empata en casa", None), ("Club Ejemplo entrena a puerta cerrada", None),
+])
+def test_the_words_of_the_title_give_a_general_category(title: str, expected: str | None) -> None:
+    assert classify.general_category([title]) == expected
+
+
+def test_a_story_that_names_no_team_or_player_is_actualidad_and_a_topic_still_wins() -> None:
+    plain = grouping.ItemSignal(item_id=1, url_sha256="a", content_sha256="b", domain="x.invalid", seen_at=AT,
+                                title="El fútbol mundial ante el nuevo calendario")
+    assert classify.category("contexto", [plain], {}, "Internacional") == "actualidad"
+    named = replace(plain, teams=frozenset({7}))
+    assert classify.category("contexto", [named], {7: classify.TeamFacts("Colombia", False)}, "Colombia") == "colombia"
+    award = replace(plain, title="Balón de Oro: los candidatos", teams=frozenset({7}))
+    assert classify.category("contexto", [award], {7: classify.TeamFacts("Colombia", True)}, "Colombia") == "premios"
+    transfer = replace(plain, title="Balón de Oro ficha por el club")
+    assert classify.category("fichajes", [transfer], {}, "Colombia") == "fichajes"
+    assert classify.VERSION == "classify-v2"

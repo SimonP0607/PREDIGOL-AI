@@ -14,7 +14,8 @@ own. Nothing is decided here that a module does not already decide: every state 
  4    ``prob_computed``         a forecast of the model is stored for the match and market (``models.predictions``,
                                 ``models.match_forecasts``)
  5    ``prob_authorised``       the catalogue holds the market ``evaluable`` (a validated calibrator) and readers may see the forecast
-                                (``FBI_FORECAST_USERS``): what C-14 shows a reader. With ``FBI_PROB_BY_COMPETITION`` (PM-12-06, off by
+                                (``FBI_FORECAST_USERS``) and, when the caller says which versions are the readers' (``published_versions``;
+                                BE-110), the published store holds a figure of the market: what C-14 shows a reader. With ``FBI_PROB_BY_COMPETITION`` (PM-12-06, off by
                                 default) also the competition's own sample: the newest weekly report of ``fbi.coverage.model_segments``
                                 calls the market ``apta`` there (``analytics.evaluation_segments``); a competition with no verdict -
                                 every new one - is not authorised
@@ -56,8 +57,6 @@ from fbi.market.settle_coverage import SCORE_FAMILIES, SeasonCoverage
 from fbi.odds.quote_current import CurrentQuote
 from fbi.odds.quote_taxonomy import BetSpec
 
-CRASH: Final = "error_interno"
-"""What Mi parlay does today with a leg its rules take but no house prices (see ``_catalogue_leg``): the request fails."""
 COVERED: Final = ("A", "B")
 OWN_SAMPLE_OK: Final = "apta"
 """The verdict of ``fbi.coverage.model_segments`` that authorises a market in a competition (state 5, PM-12-06)."""
@@ -136,6 +135,10 @@ class MatchInputs:
     rules: ParlayRules
     phase: str = PHASE_ALL
     """The phase whose cells are in ``cells`` (PM-02-07): a cup match's own phase when it was measured and asked for, else ``todas``."""
+    published: frozenset[str] | None = None
+    """BE-110: the markets with a figure in the store readers are shown (``models.match_forecasts``, the versions the API names), None
+    when the caller did not ask: state 5 is then as it was. A forecast that lives only in ``models.predictions`` (the shadow models:
+    Asian handicap today) is computed (state 4) but no reader can see it, so it is not «authorised»."""
     own_sample: Mapping[str, str] | None = None
     """PM-12-06, only with ``FBI_PROB_BY_COMPETITION``: the verdict of the competition's own sample by market (``apta``,
     ``sin_habilidad``, ``insuficiente``); None while the switch is off (state 5 as before)."""
@@ -253,9 +256,10 @@ def _catalogue_leg(inputs: MatchInputs, market_key: str, selection: str, line: D
         return ("invalid_selection" if v.reason in ("interruptor_apagado", "sin_regla", "no_ofrecer", "sin_cobertura")
                 else "quarter_line" if v.reason == "linea_de_cuarto" else "market_not_priced"), None
     if not mine:
-        # ``verdict`` takes a core market read through its catalogue key (``match_winner.FT.match``) without counting houses, and
-        # ``validate_parlay`` then fails on ``max()`` of no price (a 500, measured on 20-nov-2026): said as it is, never as a refusal.
-        return CRASH, None
+        # ``verdict`` takes a core market read through its catalogue key (``result_1x2.FT.match``) without counting houses; with no
+        # house pricing the selection ``validate_parlay`` refuses it as an unpriced market (BE-110; before, ``max()`` of nothing: a 500,
+        # measured on 20-nov-2026, which this module said as ``error_interno``).
+        return "market_not_priced", None
     top = max(mine, key=lambda q: (q.odds, -q.bookmaker_id))
     fair = implied(quotes).get((selection, line))
     return None, {"best_odds": top.odds, "p_fair": None if fair is None else Decimal(str(round(fair[0], 6)))}
@@ -333,6 +337,11 @@ def _market(inputs: MatchInputs, key: str, quotes: Sequence[CurrentQuote], selec
     settleable = rule is not None and _covered(inputs, rule)
     computed = key in inputs.forecasts or (spec is not None and spec.market_key is not None and spec.market_key in inputs.forecasts)
     authorised = computed and state == "evaluable" and inputs.forecast_users
+    if inputs.published is not None:
+        # C-14 shows a reader a figure only of a market in regular time over the match (``published_key``) that the published store holds
+        shown = key in inputs.published or (spec is not None and spec.market_key is not None and spec.period == "FT"
+                                            and spec.subject == "match" and spec.market_key in inputs.published)
+        authorised = authorised and shown
     if inputs.own_sample is not None:
         base = spec.market_key if spec is not None and spec.market_key else key
         authorised = authorised and inputs.own_sample.get(base) == OWN_SAMPLE_OK
@@ -404,6 +413,11 @@ SELECT e.market_key, bool_or(e.verdict = 'apta') AS apta, max(e.verdict) AS verd
  GROUP BY 1
 """
 """The competition's own verdicts in the newest weekly report (PM-12-06): ``apta`` when one of its models is."""
+PUBLISHED_SQL: Final = """
+SELECT DISTINCT market_key FROM models.match_forecasts
+ WHERE fixture_id = %(fixture)s AND version = ANY(%(versions)s) AND known_at <= %(at)s
+"""
+"""The figures readers can be shown (BE-110): the published store of the versions the API reads (``fbi.api.services.forecast``)."""
 FORECASTS_SQL: Final = """
 SELECT DISTINCT market_key FROM models.predictions
  WHERE fixture_id = %(fixture)s AND backtest_session_id IS NULL AND data_cutoff_ts <= %(at)s
@@ -414,10 +428,13 @@ SELECT DISTINCT market_key FROM models.match_forecasts WHERE fixture_id = %(fixt
 
 def load(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, rules: ParlayRules, parlay_on: bool = False,
          state_of: Callable[[int], str] | None = None, forecast_users: bool = False, by_phase: bool = False,
-         by_competition: bool = False) -> MatchInputs | None:
+         by_competition: bool = False, published_versions: Sequence[str] | None = None) -> MatchInputs | None:
     """Everything the states of a match rest on, one read of each table. None for a match that does not exist.
 
     ``by_competition`` (``FBI_PROB_BY_COMPETITION``, PM-12-06): state 5 also needs the competition's own verdict (``OWN_SAMPLE_SQL``).
+
+    ``published_versions`` (BE-110): the versions of ``models.match_forecasts`` readers are shown; state 5 then also needs a figure there
+    (``PUBLISHED_SQL``). None: as before.
 
     ``by_phase`` (``FBI_AVAILABILITY_PHASES``, PM-02-07): a cup match's blocks are graded by the cells of its own phase
     (``fbi.coverage.job.cup_phases``), each datum falling back to ``todas`` where the phase has no cell."""
@@ -457,6 +474,10 @@ def load(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, rules:
                                     r["bookmaker"], r["n_bookmakers"]) for r in cur.fetchall())
         cur.execute(FORECASTS_SQL, {"fixture": fixture_id, "at": at})
         forecasts = frozenset(str(r["market_key"]) for r in cur.fetchall() if r["market_key"] is not None)
+        published: frozenset[str] | None = None
+        if published_versions is not None:
+            cur.execute(PUBLISHED_SQL, {"fixture": fixture_id, "at": at, "versions": list(published_versions)})
+            published = frozenset(str(r["market_key"]) for r in cur.fetchall() if r["market_key"] is not None)
         own_sample: dict[str, str] | None = None
         if by_competition:
             own_sample = {}
@@ -470,13 +491,14 @@ def load(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, rules:
         fixture_id=fixture_id, kickoff_at=f["kickoff_at"], status_group=f["status_group"], competition_season_id=cs, at=at,
         cells=cells, markets=markets, present=None if facts is None else frozenset(facts["present"] or ()), quotes=quotes,
         consensus=consensus, forecasts=forecasts, covered=season.covered, state_of=state_of,
-        parlay_on=parlay_on, forecast_users=forecast_users, rules=rules, phase=phase, own_sample=own_sample)
+        parlay_on=parlay_on, forecast_users=forecast_users, rules=rules, phase=phase, own_sample=own_sample, published=published)
 
 
 def availability(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime, rules: ParlayRules, parlay_on: bool = False,
                  state_of: Callable[[int], str] | None = None, forecast_users: bool = False,
-                 by_phase: bool = False, by_competition: bool = False) -> Availability | None:
+                 by_phase: bool = False, by_competition: bool = False,
+                 published_versions: Sequence[str] | None = None) -> Availability | None:
     inputs = load(conn, fixture_id, at=at, rules=rules, parlay_on=parlay_on, state_of=state_of, forecast_users=forecast_users,
-                  by_phase=by_phase, by_competition=by_competition)
+                  by_phase=by_phase, by_competition=by_competition, published_versions=published_versions)
     return None if inputs is None else resolve(inputs)
 

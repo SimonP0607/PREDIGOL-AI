@@ -26,7 +26,7 @@ bookmakers quote it and, where it means something, the fair price. This module b
 * BEST PRICE: the highest odds among ALL the bookmakers in force for the selection (one definition, plan E12), the lowest
   provider bookmaker id on a tie.
 * THE MAIN LINE (``summary.main``, layout 2): the line the explorer shows first - 2.5 for the match's goals when quoted (as
-  ``/odds/best``), otherwise the line most bookmakers quote, then the two-way one, the most balanced, the nearest to 0.
+  the retired ``/odds/best`` did), otherwise the line most bookmakers quote, then the two-way one, the most balanced, the nearest to 0.
 
 A cache, never a source: idempotent (a second build writes nothing; a row is rewritten only when what it says changed) and
 deterministic (the same rows from the same database and RAW). The worker's job (``run_book_job``, ``odds_book_build``) runs only
@@ -97,7 +97,7 @@ SUMMARY_LAYOUT = 2
 """1: lines, selections, books. 2 (BE-011): and ``main``, the line shown first."""
 MAIN_TOTAL_KEY = "goals.total.ft"
 MAIN_TOTAL_LINE = 2.5
-"""The match's goals over/under shows 2.5 first when it is quoted, as ``/odds/best`` does (``api.services.product.main_line``)."""
+"""The match's goals over/under shows 2.5 first when it is quoted, as the retired ``/odds/best`` did."""
 JOB = "odds_book_build"
 LOCK_KEY = "fbi.odds_book_build"
 PURGE_AFTER = timedelta(hours=6)
@@ -335,7 +335,7 @@ def summarize(spec: BookSpec, prices: Sequence[tuple[int, Read, Decimal]]) -> di
 
 def main_line(spec: BookSpec, groups: Sequence[Mapping[str, Any]]) -> float | None:
     """The line the explorer shows first (None for a type without lines): 2.5 for the match's goals when quoted, as the board
-    of ``/odds/best``; otherwise the line most bookmakers quote, then a two-way one before a three-way one at the same number,
+    of the retired ``/odds/best`` did; otherwise the line most bookmakers quote, then a two-way one before a three-way one at the same number,
     then the most balanced (the closest best prices), then the nearest to 0 and the lowest. Deterministic."""
     lined = [g for g in groups if g["line"] is not None]
     if not lined:

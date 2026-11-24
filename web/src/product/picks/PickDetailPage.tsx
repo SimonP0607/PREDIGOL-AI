@@ -4,6 +4,7 @@
  * and nothing else: every figure is the card's, every line a template of `explanation.ts` over that answer, and a block
  * whose data is missing is not drawn. It asks no new endpoint and computes nothing of the business.
  */
+import { MatrixNotes } from "@/product/shared/matrixModules";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -115,6 +116,14 @@ function Detail({ e, pickId }: { e: PickExplanation; pickId: number }) {
           {reasonText(e.status_reason)}
         </p>
       </article>
+
+      {/* PM-14-04 (FBI_MATRIX_PICKS, show or on): what C-16 says of this pick's market; the pick itself is never withdrawn. */}
+      <MatrixNotes
+        module="picks"
+        fixtureId={e.match.fixture_id}
+        only={(m) => m.key === e.market_key || m.matrix_market === e.market_key}
+        subjectOf={() => marketName(e.market_key)}
+      />
 
       <Block id="phrase" title={t("picks.detail.phrase")}>
         <p className="text-[0.9375rem] font-medium leading-relaxed">{conclusionText(e)}</p>

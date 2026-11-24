@@ -1,0 +1,71 @@
+{
+  "contract": "C-06",
+  "contract_version": "1.1.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T19:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "view": "busqueda",
+  "search": {
+    "query": "",
+    "normalized": "",
+    "sort": "reciente",
+    "filters_applied": [
+      {
+        "name": "player",
+        "value": "880009"
+      }
+    ],
+    "facets": {
+      "category": [
+        {
+          "code": "fichajes",
+          "n": 1
+        },
+        {
+          "code": "premios",
+          "n": 1
+        },
+        {
+          "code": "selecciones",
+          "n": 1
+        }
+      ],
+      "level": [
+        {
+          "code": "oficial",
+          "n": 2
+        },
+        {
+          "code": "rumor",
+          "n": 1
+        }
+      ]
+    },
+    "results": {
+      "items": [
+        {
+          "story_id": "st-ej-convocatoria-norte",
+          "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
+          "level": "oficial",
+          "category": "selecciones",
+          "sources_count": 3,
+          "latest_at": "2026-11-21T18:46:00Z",
+          "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards"
+        },
+        {
+          "story_id": "st-ej-premio-j-ejemplo",
+          "headline_es": "J. Ejemplo, elegido mejor jugador del mes de la Liga Ficticia",
+          "level": "oficial",
+          "category": "premios",
+          "sources_count": 1,
+          "latest_at": "2026-11-21T11:55:00Z",
+          "headline_en": "J. Ejemplo named Liga Ficticia player of the month"
+        }
+      ]
+    },
+    "total": 2
+  }
+}

@@ -27,7 +27,11 @@
     "selecciones": "National teams",
     "colombia": "Colombian football",
     "internacional": "International",
-    "competiciones": "Competitions"
+    "competiciones": "Competitions",
+    "premios": "Awards",
+    "ceremonias": "Ceremonies",
+    "polemicas": "Controversies",
+    "actualidad": "Current affairs"
   },
   "untitled": "A story without a headline yet",
   "noSummary": "PrediGol cannot summarise this story yet: the source only allows the link.",

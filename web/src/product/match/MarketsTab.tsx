@@ -85,6 +85,7 @@ import { followableMarket, followedFirst } from "@/product/favorites/model";
 import { orderBoards, orderSentence } from "./marketOrder";
 import { useMarketTarget } from "./useMarketTarget";
 import { prefersReducedMotion } from "@/product/shared/motion";
+import { MatrixNotes, useMatrixReading } from "@/product/shared/matrixModules";
 
 type Sides = { home: string; away: string };
 
@@ -600,9 +601,15 @@ export function CategoryPanel({
     ...queries.matchMarketProbs(ctx.fixtureId, switches.owner),
     enabled: choose !== undefined && switches.probs && switches.parlayMarkets,
   });
+  // PM-14-04 (FBI_MATRIX_PARLAY): off or show, C-14 decides as always; on, C-16's verdict of the whole market is asked too.
+  const matrix = useMatrixReading("parlay", ctx.fixtureId);
+  const { mode: matrixMode, availability: matrixAvailability } = matrix;
   const cp = useMemo(
-    () => (switches.parlayMarkets ? catalogParlayOf(marks.data?.data) : NO_CATALOG_PARLAY),
-    [marks.data, switches.parlayMarkets],
+    () =>
+      switches.parlayMarkets
+        ? catalogParlayOf(marks.data?.data, { mode: matrixMode, availability: matrixAvailability })
+        : NO_CATALOG_PARLAY,
+    [marks.data, switches.parlayMarkets, matrixMode, matrixAvailability],
   );
   if (q.isPending) {
     return (
@@ -856,6 +863,7 @@ export function MarketsTab({ ctx }: { ctx: MatchCtx }) {
   return (
     <div className="space-y-8">
       {note}
+      <MatrixNotes module="parlay" fixtureId={ctx.fixtureId} />
       {ctx.phase === "live" ? (
         <LiveGroup ctx={ctx} sides={sides} first={first} onConsult={consult} />
       ) : null}

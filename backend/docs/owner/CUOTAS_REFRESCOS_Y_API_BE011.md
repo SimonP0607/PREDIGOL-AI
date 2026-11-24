@@ -72,25 +72,29 @@ La huella de modelos: `python3 scripts/model_code_guard.py fingerprint dir=.` �
 2. Quitar las tablas: `alembic downgrade 0128`, con el respaldo habitual. Borra `market.book_asks`,
    `raw.provider_reported_quota` y la columna `book_current.books`; el crudo y todo lo demás quedan intactos.
 
-## Retirada de `/odds/best` y de la página antigua (BE-033)
+## Retirada de `/odds/best` y de la página antigua (BE-033, UX-232)
 
-`/odds/best` y la página antigua de Cuotas (`OddsPage`, la que se ve con `FBI_ODDS_EXPLORER` apagado) siguen mientras el explorador
-se asienta. Desde BE-033 cada llamada se cuenta por día UTC, tipo de cliente y rol en `audit.deprecated_api_use` (migración
-**0133**; sin usuario, sesión ni dirección), y la respuesta lleva `Deprecation: true` y `Link: </api/v1/odds/board>;
-rel="successor-version"`. El tipo de cliente sale del User-Agent: `browser` (la página de un lector), `e2e` (Playwright),
-`testclient` (la instantánea de línea base de cada despliegue), `script` (curl, httpx, la prueba de carga) y `other`.
+**Retiradas el 24-nov-2026 (UX-232, Plan Maestro PM-13-07).** `GET /api/v1/odds/best`, la página antigua de Cuotas (`OddsPage`) y
+lo que solo ellas usaban dejaron de existir: la ruta responde **404** (como cualquier ruta desconocida) y `/odds` enseña siempre el
+explorador, con sus dos vistas. `FBI_ODDS_EXPLORER` sigue saliendo en `/auth/me` (`odds_explorer`) pero ya no decide nada.
+Evidencia, leída en producción en solo lectura: `audit.deprecated_api_use` tiene **una sola fila en toda su historia** (10-nov,
+`testclient`, `SUPER_ADMIN`, 1 llamada) y ninguna fila `browser`; siete días seguidos sin uso de navegador (17 a 23-nov). La ruta
+queda en el registro de retiradas (`fbi.api.services.deprecated.RETIRED`, con su sucesora `/api/v1/odds/board`), la prueba
+`test_a_retired_route_is_not_mounted_and_its_successor_is` comprueba que no se monta de nuevo, y la instantánea de forma
+(`client_api_shapes.json`) guarda cinco rutas (con su motivo en `changes`). La tabla `audit.deprecated_api_use` y la migración
+**0133** se quedan: es solo un recuento y no se borra nada. **Vuelta atrás**: `git revert` del PR de UX-232 (devuelve la ruta, la
+página y la instantánea); no hay datos que restaurar. Pasada una semana (1-dic-2026) se comprueba que no hay 404 nuevos en
+`/odds/best` (la consulta de abajo ya no cuenta, porque la ruta no la registra: se mira el registro de Caddy).
 
-**Comprobarlo** (con `predigolctl psql`, solo lectura):
+### Cómo se contaba mientras existió (BE-033)
+
+Cada llamada se contaba por día UTC, tipo de cliente y rol en `audit.deprecated_api_use` (migración **0133**; sin usuario,
+sesión ni dirección), y la respuesta llevaba `Deprecation: true` y `Link: </api/v1/odds/board>; rel="successor-version"`. El tipo de
+cliente sale del User-Agent: `browser` (la página de un lector), `e2e` (Playwright), `testclient` (la instantánea de línea base de cada
+despliegue), `script` (curl, httpx, la prueba de carga) y `other`. El mecanismo (`count_use`, `record_use`, `SUCCESSORS`) se queda para la
+próxima ruta que haya que retirar.
 
 ```sql
 SELECT day, caller, role, calls, last_at FROM audit.deprecated_api_use
  WHERE endpoint = '/odds/best' AND day >= current_date - 7 ORDER BY day DESC, caller;
 ```
-
-**Se retira cuando**: (1) hay **7 días seguidos sin filas `browser`**; (2) el dueño ha comprobado el explorador con su cuenta;
-(3) en la misma PR (backend y web a la vez) se quitan el endpoint, `OddsPage`, `bestOdds` del cliente y su consulta, su entrada de
-`PRODUCT_PREVIEW` (`fbi/ops/baseline.py`) y de `scripts/api_shapes.py` (instantánea regenerada con `--reason`), los usos en las
-E2E (`journey`, `personal`, `rbac`, `responsive`, `user`) y en las pruebas de integración (`test_product_endpoints`,
-`test_auth_rbac`, `test_pick_states`, `test_personalization`), y `FBI_ODDS_EXPLORER` deja de decidir (el explorador para todos).
-La prueba de carga (`deploy/vps/bin/loadtest.py`) ya pide el explorador. **Vuelta atrás**: revertir esa PR. La tabla se queda
-(es solo un recuento); `alembic downgrade 0132` la quita si se quiere.

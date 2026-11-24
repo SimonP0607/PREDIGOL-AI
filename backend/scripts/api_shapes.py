@@ -1,7 +1,7 @@
 """The shape of what the client routes answer today, kept in a file so that a change of the user layer cannot change it unseen.
 
 Plan UX, A0 ("instantáneas de forma"): the user layer consumes PrediGol Intelligence and must not alter what the API already answers.
-For each of the six routes a client reads every day, the snapshot holds the route's parameters and the JSON Schema of its 200
+For each of the routes a client reads every day, the snapshot holds the route's parameters and the JSON Schema of its 200
 answer with every schema it refers to, resolved from the application's own OpenAPI document (``create_app().openapi()``: the
 models FastAPI validates every answer against, so the schema IS the shape of the data). ``tests/unit/test_client_api_shapes.py``
 compares it on every run; a difference fails the test and prints what changed.
@@ -29,11 +29,11 @@ ROUTES: tuple[tuple[str, str], ...] = (
     ("get", "/api/v1/home"),
     ("get", "/api/v1/picks"),
     ("get", "/api/v1/daily"),
-    ("get", "/api/v1/odds/best"),
     ("get", "/api/v1/me/history"),
     ("get", "/api/v1/matches/{fixture_id}/center"),
 )
-"""The six client routes the plan names (section 4, "Instantáneas de forma"), as the API mounts them."""
+"""The client routes the plan names (section 4, "Instantáneas de forma"), as the API mounts them: six until PM-13-07 retired
+``/odds/best`` (UX-232), five now."""
 
 REF = "#/components/schemas/"
 

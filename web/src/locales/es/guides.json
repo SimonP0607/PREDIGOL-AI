@@ -152,10 +152,6 @@
     "fair": {
       "title": "¿Qué es la cuota justa?",
       "body": "Es la cuota sin el margen de la casa. Sirve para ver si la mejor cuota paga más de lo que vale."
-    },
-    "above": {
-      "title": "Solo por encima de la justa",
-      "body": "Filtra lo que paga más que la cuota justa. Toca una cuota para agregarla a tu parlay."
     }
   },
   "my_picks": {

@@ -1,4 +1,4 @@
-"""Home, picks, parlays and best prices - what a signed-in user sees.
+"""Home, picks and parlays - what a signed-in user sees.
 
 Every pick of a match not yet started is re-priced at the best price available now and put
 through the same value gate the parlay engine uses (``fbi.parlays.engine``). Once its match
@@ -28,11 +28,6 @@ from fbi.api.contracts.builder import (
     BuiltParlay,
 )
 from fbi.api.contracts.product import (
-    BestHighlight,
-    BestMarket,
-    BestOddsBoard,
-    BestOddsFixture,
-    BestPrice,
     CompetitionBadge,
     DataFreshness,
     Freshness,
@@ -55,7 +50,6 @@ from fbi.api.services.records import ai_items
 from fbi.core import match_state
 from fbi.core.clock import now as clock_now
 from fbi.core.config.picks import PicksSourceSettings
-from fbi.market.consensus import OPPOSITE_LINE
 from fbi.parlays import builder, engine
 from fbi.parlays import correlation as corr
 from fbi.parlays.engine import Candidate, GateConfig, Leg, Reject
@@ -75,8 +69,6 @@ CONSENSUS_LOOKBACK = timedelta(hours=36)
 PRICE_FRESH = timedelta(hours=1)
 TOP_WINDOW = timedelta(hours=24)
 TOP_SIZE = 5
-HIGHLIGHT_MIN_BOOKS = 3
-HIGHLIGHT_MAX_AGE = timedelta(hours=6)
 OUTLIER_EDGE = GateConfig().max_price_edge
 
 
@@ -453,116 +445,6 @@ def built_parlay(conn: Conn, filters: builder.Filters, *, include_shadow: bool,
         competitions=competitions, markets=markets,
         prices_as_of=min((leg.price_at for leg in legs), default=None), generated_at=moment)
     return ok(body, count=len(legs), data_as_of=body.prices_as_of)
-
-
-# ── best prices ──────────────────────────────────────────────────────────────────
-
-def _price(r: Row) -> BestPrice:
-    p_fair = Decimal(r["p_fair"])
-    odds = Decimal(r["best_odds"])
-    edge = (odds * p_fair - Decimal(1)).quantize(Q4, ROUND_HALF_UP)
-    return BestPrice(selection=r["selection"], best_odds=odds, bookmaker=r.get("bookmaker"), p_fair=p_fair,
-                     fair_odds=(Decimal(1) / p_fair).quantize(Q3, ROUND_HALF_UP) if p_fair > 0 else Decimal(0),
-                     price_edge=edge, outlier=edge > OUTLIER_EDGE,
-                     n_bookmakers=int(r["n_bookmakers"]), as_of=r["as_of"])
-
-
-HANDICAP_HOME, HANDICAP_AWAY = OPPOSITE_LINE["AH"]
-"""An Asian handicap's two sides (``fbi.market.consensus``): one bet is (Home, h) with (Away, -h), and the consensus stores each
-side at the line it is quoted at."""
-
-
-def pair_line(market_key: str, selection: str, line: Decimal) -> Decimal:
-    """The line a board groups a price under: its own, except an Asian handicap's away side, quoted at -h for the bet whose home
-    side is at h - it goes under h, beside its true counterpart. Grouped by the stored line, Home -0.25 at 1.67 sat beside
-    Away -0.25 at 3.48 (fixture 7819, plan Cuotas E1): the away side of the other bet, two prices that make no book together."""
-    if market_key == "AH" and selection == HANDICAP_AWAY and line:
-        return -line
-    return line
-
-
-def main_line(market_key: str, lines: dict[Decimal, list[Row]]) -> Decimal:
-    """The line a board shows for a market with several: Over/Under 2.5 when it is quoted; otherwise
-    the most widely quoted line, and among those the most balanced (prices closest to even).
-
-    ``lines`` holds the rows by ``pair_line``, so an Asian handicap's line is a pair - Home at h and Away at -h, the two
-    sides of one bet, their fair probabilities summing to 1 - and its balance is the balance of that bet."""
-    if market_key == "OU" and Decimal("2.5") in lines:
-        return Decimal("2.5")
-
-    def key(item: tuple[Decimal, list[Row]]) -> tuple[int, Decimal, Decimal]:
-        line, rows = item
-        books = max(int(r["n_bookmakers"]) for r in rows)
-        imbalance = max(abs(Decimal(r["p_fair"]) - Decimal("0.5")) for r in rows)
-        return (-books, imbalance, abs(line))
-
-    return min(lines.items(), key=key)[0]
-
-
-def best_odds(rows: list[Row], *, moment: datetime) -> tuple[list[BestOddsFixture], list[BestHighlight]]:
-    by_fixture: dict[int, list[Row]] = defaultdict(list)
-    for r in rows:
-        by_fixture[int(r["fixture_id"])].append(r)
-    fixtures: list[BestOddsFixture] = []
-    highlights: list[BestHighlight] = []
-    for fid, frows in by_fixture.items():
-        first = frows[0]
-        markets: list[BestMarket] = []
-        for market_key in repo.POPULAR_MARKETS:
-            mrows = [r for r in frows if r["market_key"] == market_key]
-            if not mrows:
-                continue
-            # An Asian handicap's row is a pair, under its home line: Home at h beside Away at -h (pair_line).
-            lines: dict[Decimal, list[Row]] = defaultdict(list)
-            for r in mrows:
-                lines[pair_line(market_key, r["selection"], Decimal(r["line"]))].append(r)
-            line = main_line(market_key, lines)
-            shown = lines[line]
-            prices = [_price(r) for r in shown]
-            markets.append(BestMarket(market_key=market_key, line=line, selections=prices))
-            for r, p in zip(shown, prices, strict=True):
-                if (p.n_bookmakers >= HIGHLIGHT_MIN_BOOKS and p.price_edge > 0 and not p.outlier
-                        and moment - p.as_of <= HIGHLIGHT_MAX_AGE):
-                    # The highlight names one selection: at its own line (an Asian handicap's away side at -h).
-                    highlights.append(BestHighlight(
-                        fixture_id=fid, kickoff_at=first["kickoff_at"], competition=_competition(first),
-                        home=_home(first), away=_away(first), market_key=market_key, line=Decimal(r["line"]),
-                        price=p))
-        if markets:
-            fixtures.append(BestOddsFixture(
-                fixture_id=fid, kickoff_at=first["kickoff_at"], competition=_competition(first), home=_home(first),
-                away=_away(first), markets=markets, as_of=max(r["as_of"] for r in frows)))
-    fixtures.sort(key=lambda f: (f.kickoff_at, f.fixture_id))
-    # One highlight per fixture: its best price furthest above fair.
-    best_per_fixture: dict[int, BestHighlight] = {}
-    for h in sorted(highlights, key=lambda h: -h.price.price_edge):
-        best_per_fixture.setdefault(h.fixture_id, h)
-    return fixtures, sorted(best_per_fixture.values(), key=lambda h: -h.price.price_edge)
-
-
-@shared(30)
-def best_odds_board(conn: Conn, *, hours: int, market: str | None, include_shadow: bool,
-                    at: datetime | None = None, with_picks: bool = True) -> Envelope[BestOddsBoard]:
-    """``with_picks=False``: the prices alone - no picks are read (the Cuotas page, REVIEW point 17)."""
-    moment = at or clock_now()
-    markets = (market,) if market else repo.POPULAR_MARKETS
-    rows = repo.best_prices(conn, now=moment, until=moment + timedelta(hours=hours),
-                            since=moment - CONSENSUS_LOOKBACK, markets=markets)
-    fixtures, highlights = best_odds(rows, moment=moment)
-    value: list[PickCard] = []
-    if with_picks:
-        pick_rows = repo.pick_candidates(conn, now=moment, until=moment + timedelta(hours=hours),
-                                         since=moment - CONSENSUS_LOOKBACK, include_shadow=include_shadow)
-        applied = pick_status.applied_now(conn, (int(r["fixture_id"]) for r in pick_rows), at=moment)
-        pick_rows, _ = _read_intelligence(conn, pick_rows, moment)
-        value = [p for p in listed(cards(pick_rows, moment, GateConfig(allow_unqualified=include_shadow), applied=applied),
-                                   include_shadow=include_shadow) if p.value_now]
-        if market:
-            value = [p for p in value if p.market_key == market]
-    board = BestOddsBoard(window_hours=hours, markets=list(markets), fixtures=fixtures, highlights=highlights[:12],
-                          value=value, source=_source(include_shadow))
-    newest = max((f.as_of for f in fixtures), default=None)
-    return ok(board, count=len(fixtures), data_as_of=newest)
 
 
 # ── home ─────────────────────────────────────────────────────────────────────────

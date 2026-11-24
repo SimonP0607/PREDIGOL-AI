@@ -14,6 +14,11 @@ export type PermissionKey = "app" | "admin" | "admin.users" | "admin.shadow_prev
  */
 export type Stage = "mfa" | "enroll" | "password" | "full";
 
+/** What a module does with C-16 (plan PM, PM-14-04). */
+export type MatrixMode = "off" | "show" | "on";
+export type MatrixModule = "odds" | "picks" | "news" | "parlay";
+export type MatrixModules = Record<MatrixModule, MatrixMode>;
+
 export interface Me {
   id: number;
   email: string;
@@ -59,7 +64,7 @@ export interface Me {
   support?: boolean;
   /** «Explícame» answers the frequent questions of a match, a pick and the parlay (plan UX, B9; FBI_EXPLAIN): its buttons only then. */
   explain?: boolean;
-  /** The new Cuotas explorer (plan Cuotas, BE-011/UX-068; FBI_ODDS_EXPLORER, off until verified): shown only then. */
+  /** Legacy: the API still sends it (FBI_ODDS_EXPLORER), but the explorer is the only Cuotas page since PM-13-07 (UX-232) and nothing reads it. */
   odds_explorer?: boolean;
   /** «Estado de los precios» is open to readers (FBI_ODDS_STATUS, off by default): the page links to it only then. */
   odds_status?: boolean;
@@ -124,6 +129,9 @@ export interface Me {
   match_coverage?: boolean;
   /** The result forecast also in 100 icons, with «Mito o dato» (plan PM, PM-10-07, lámina I09; FBI_PROB_ICONS, off by default). */
   prob_icons?: boolean;
+  /** What Cuotas, Picks, Noticias and Mi parlay do with C-16 (plan PM, PM-14-04; FBI_MATRIX_ODDS, _PICKS, _NEWS, _PARLAY): off (as they
+   * always did), show (they read the matrix and only say what it says) or on (it replaces their own check). Absent: all off. */
+  matrix_modules?: MatrixModules;
   /** The reader's settings of presentation (decision 8); absent from an API older than BE-039: today's defaults. */
   display?: Display;
 }
