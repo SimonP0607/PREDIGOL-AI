@@ -76,6 +76,14 @@ def clear() -> None:
     _STORE.clear()
 
 
+def recompute[T](fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    """Computes a `shared` function's answer now and keeps it (see `shared`). Without the cache on, it only computes."""
+    again = getattr(fn, "recompute", None)
+    if again is None or not enabled():
+        return fn(*args, **kwargs)
+    return again(*args, **kwargs)  # type: ignore[no-any-return]
+
+
 def shared(seconds: float) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """For a service function whose FIRST argument is the database connection: the answer is kept `seconds`,
     keyed by the other arguments (their repr - dates, decimals and frozen dataclasses included)."""
@@ -99,6 +107,16 @@ def shared(seconds: float) -> Callable[[Callable[P, R]], Callable[P, R]]:
                 _STORE.put(key, value, seconds)
                 return value
 
+        def recompute(*args: P.args, **kwargs: P.kwargs) -> R:
+            """Computes the answer now, keeps it `seconds` and returns it, whatever was kept before: what the
+            keeper (``fbi.api.warm``) calls so a reader never pays for a heavy answer that was about to expire."""
+            key = (name, repr((args[1:], sorted(kwargs.items()))))
+            with _STORE.key_lock(key):
+                value = fn(*args, **kwargs)
+                _STORE.put(key, value, seconds)
+                return value
+
+        inner.recompute = recompute  # type: ignore[attr-defined]
         return inner
 
     return wrap
