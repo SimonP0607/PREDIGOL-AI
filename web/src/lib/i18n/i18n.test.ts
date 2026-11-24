@@ -14,6 +14,7 @@ import "@/components/analytics/evidenceText";
 import "@/components/analytics/stats/readText";
 import "@/admin/userText";
 import "@/admin/usageText";
+import "@/live/researchReasonText";
 import "@/admin/emailText";
 import "@/product/news/storyText";
 import "@/product/match/marketsV3Text";

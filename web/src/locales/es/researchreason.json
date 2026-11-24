@@ -1,0 +1,11 @@
+{
+  "title": "Por qué tiene ese rol",
+  "campeon_mercado": "La referencia más difícil de batir: la línea base del mercado, sin su margen, con el menor log loss.",
+  "variante_mercado": "Una variante de la línea base del mercado.",
+  "mejor_que_mercado": "Supera a la referencia del mercado con evidencia suficiente.",
+  "aporta_informacion": "Aporta información que el mercado no tiene.",
+  "rechazado_peor_que_mercado": "Es peor que la referencia y no le añade nada: descartado.",
+  "evidencia_insuficiente": "La evidencia todavía no permite distinguirlo de la referencia.",
+  "sin_partidos_comunes": "No comparte ningún partido con la referencia, así que no se puede comparar.",
+  "muestra_insuficiente": "Hay muy pocos partidos con pronóstico y precio de cierre para juzgarlo."
+}

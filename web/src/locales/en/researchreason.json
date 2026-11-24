@@ -1,0 +1,11 @@
+{
+  "title": "Why it has that role",
+  "campeon_mercado": "The hardest reference to beat: the market baseline, without its margin, with the lowest log loss.",
+  "variante_mercado": "A variant of the market baseline.",
+  "mejor_que_mercado": "Beats the market reference with enough evidence.",
+  "aporta_informacion": "Adds information the market lacks.",
+  "rechazado_peor_que_mercado": "Worse than the reference and adds nothing to it: rejected.",
+  "evidencia_insuficiente": "The evidence cannot yet tell it apart from the reference.",
+  "sin_partidos_comunes": "It shares no match with the reference, so it cannot be compared.",
+  "muestra_insuficiente": "Too few matches with a forecast and a closing price to judge it."
+}
