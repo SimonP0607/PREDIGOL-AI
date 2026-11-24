@@ -12,7 +12,7 @@ familia son F11.
 
 ## 2. Qué se construyó
 
-* **Reglas de liquidación** (`market.settlement_rules`, 20 reglas, de las que 18 pueden liquidar). Una regla es *una medida de
+* **Reglas de liquidación** (`market.settlement_rules`, 22 reglas, de las que 20 pueden liquidar). Una regla es *una medida de
   un partido terminado* —los goles de la primera parte, los córners del partido, las tarjetas contadas como líneas— en una
   convención y una versión. La regla no liquida (eso es F11): dice **con qué número se compara la línea** y si ese número
   existe. **Una regla nunca se edita ni se borra** (lo impide la base de datos); una convención nueva es una versión nueva
@@ -76,6 +76,7 @@ guarda sus precios), `player_level` (se liquida con datos de un jugador), `out_o
 | `goals_halves@v1` | las dos partes a la vez (HT/FT, mitad con más goles) |
 | `corners_ft@v1` | córners del partido |
 | `corners_1h@v1`, `corners_2h@v1` | **no liquidables** (`no_period_data`): escritas para que se sepa que no existe el dato |
+| `corners_1h@v2`, `corners_2h@v2` | córners de cada parte, de las estadísticas por mitad del proveedor (PM-05-03): solo se conocen cuando llegaron las cuatro cifras y las dos partes suman el total del partido (la segunda parte, tampoco tras prórroga). Versión nueva: la `@v1` no se edita y sigue en vigor mientras `FBI_CORNERS_BY_HALF` está apagado (lo normal) |
 | `cards_lines_ft@v1`, `cards_lines_1h@v1`, `cards_lines_2h@v1` | cada tarjeta mostrada cuenta una (la roja tras segunda amarilla cuenta como la roja que es) |
 | `yellow_ft@v1`, `yellow_1h@v1`, `yellow_2h@v1` | solo amarillas |
 | `red_ft@v1` | expulsiones (directas y por doble amarilla) |
