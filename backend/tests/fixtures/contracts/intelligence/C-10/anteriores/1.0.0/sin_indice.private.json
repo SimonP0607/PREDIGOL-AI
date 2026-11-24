@@ -1,0 +1,75 @@
+{
+  "contract": "C-10",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": true,
+    "stale_reason": "indice_sin_construir"
+  },
+  "query": "Atlético",
+  "normalized": "",
+  "per_group": 8,
+  "groups": {
+    "teams": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-I01"
+    },
+    "national_teams": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-I01"
+    },
+    "players": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-I01"
+    },
+    "competitions": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-I01"
+    },
+    "coaches": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-I01"
+    },
+    "referees": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-I01"
+    },
+    "venues": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-I01"
+    },
+    "fixtures": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-I01"
+    },
+    "news": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-G01"
+    }
+  },
+  "did_you_mean": {
+    "items": [],
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-I01"
+  },
+  "index": {
+    "built": false,
+    "indexed_at": {
+      "missing_reason": "sin_datos"
+    },
+    "rows_estimate": -1,
+    "trigram_threshold": 0.6,
+    "popularity_weight": 0.35,
+    "elapsed_ms": 1
+  }
+}

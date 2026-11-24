@@ -32,6 +32,7 @@ from fbi.api.repositories import Conn
 from fbi.api.repositories import explorer as repo
 from fbi.features.engine import FEATURE_VERSION
 
+CACHE_SECONDS = 6 * 3600  # the history behind these two answers changes once a day at most; fbi.api.warm renews them
 MARKET_BASELINE = ("pinnacle", "closing", "shin")
 CALIBRATION_BINS = 10
 
@@ -46,11 +47,11 @@ def _f(x: Any) -> float | None:
 def _slow(conn: Conn) -> None:
     """This page reads nine data flags for every stored fixture (246k on 11 Oct 2026): about 4 s warm and over the
     API's ten-second default cold - Admin > Analytics > Competitions answered 500 twice on 9-10 Oct (QueryCanceled).
-    Only this request may take longer, and its answer is kept 15 minutes: it changes once a day at most."""
+    Only this request may take longer, and its answer is kept six hours and renewed in the background (fbi.api.warm): it changes once a day at most."""
     conn.execute("SET LOCAL statement_timeout = '60s'")
 
 
-@shared(900)
+@shared(CACHE_SECONDS)
 def competitions(conn: Conn) -> Envelope[list[CompetitionProfile]]:
     _slow(conn)
     rows = repo.competition_profiles(conn, FEATURE_VERSION)
@@ -69,7 +70,7 @@ def competitions(conn: Conn) -> Envelope[list[CompetitionProfile]]:
     return listing(items, empty_reason="No fixtures have been ingested yet.")
 
 
-@shared(900)
+@shared(CACHE_SECONDS)
 def coverage(conn: Conn) -> Envelope[list[CoverageCell]]:
     _slow(conn)
     items = [CoverageCell(**r) for r in repo.coverage(conn, FEATURE_VERSION)]

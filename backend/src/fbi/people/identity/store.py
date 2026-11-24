@@ -23,8 +23,8 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.people.identity import localized, rules
 from fbi.people.identity import names as nm
-from fbi.people.identity import rules
 from fbi.people.identity.reep import LICENSE, ReepData
 from fbi.people.identity.rules import AliasRow, IdRow, Ours, QueueItem
 
@@ -284,6 +284,32 @@ def own_aliases(conn: psycopg.Connection[Any]) -> Iterator[AliasRow]:
             r = row("referee", int(referee_id), str(display), "alternative", "core.referee_aliases", str(scope))
             if r is not None:
                 yield r
+    yield from localized_aliases(conn)
+
+
+def localized_aliases(conn: psycopg.Connection[Any]) -> Iterator[AliasRow]:
+    """The Spanish and English names of our national teams and competitions (C-10 1.1, :mod:`localized`), as ``localized``
+    aliases with their language. A name equal to the entity's own (same key) is left out: the search finds it already."""
+
+    def rows(etype: str, eid: int, own: str, names: Iterable[localized.LocalizedName]) -> Iterator[AliasRow]:
+        seen = {nm.alias_key(own)}
+        for n in names:
+            key = nm.alias_key(n.text)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            yield AliasRow(etype, eid, n.text, key, "localized", (n.language,), nm.script_of(n.text), localized.SOURCE,
+                           localized.SOURCE_DETAIL, None, None)
+
+    with conn.cursor(row_factory=tuple_row) as cur:
+        cur.execute("SELECT id, name FROM core.teams WHERE is_national IS TRUE AND name IS NOT NULL ORDER BY id")
+        teams = cur.fetchall()
+        cur.execute("SELECT id, name, coalesce(country, '') FROM core.competitions WHERE name IS NOT NULL ORDER BY id")
+        competitions = cur.fetchall()
+    for team_id, name in teams:
+        yield from rows("team", int(team_id), str(name), localized.team_names(str(name)))
+    for competition_id, name, country in competitions:
+        yield from rows("competition", int(competition_id), str(name), localized.competition_names(str(name), str(country)))
 
 
 def sync_core(conn: psycopg.Connection[Any], *, actor: str, at: datetime | None = None) -> LoadReport:

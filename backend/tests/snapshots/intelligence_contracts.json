@@ -22737,7 +22737,7 @@
    ]
   },
   "C-10": {
-   "version": "1.0.0",
+   "version": "1.1.0",
    "public": [
     "$ :: object",
     "$.contract",
@@ -56534,6 +56534,10 @@
   {
    "date": "2026-11-20",
    "reason": "UX-179 (PM-09-05): C-16 adds each competition's editorial priority, P0 to P4 (1.2.0)"
+  },
+  {
+   "date": "2026-11-24",
+   "reason": "IA-161: C-10 1.1.0 - nombres en español e inglés de selecciones y competiciones en el índice (alias localized) y la selección absoluta primero; sin campos nuevos"
   }
  ]
 }
