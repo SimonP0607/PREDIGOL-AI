@@ -206,3 +206,13 @@ def test_a_family_is_stored_apart_from_the_markets_table_and_read_back_as_a_mark
     assert got.markets == ("OU", "CORNERS", "CARDS"), "in the order the reader chose them"
     assert got.catalog == ("goals_over_under.FT.match",), "a family never counts against the ten catalogue markets"
     assert got.players == (7,)
+
+
+def test_a_followed_team_with_no_match_we_follow_is_named_in_the_order_given() -> None:
+    """AP-B06: following such a team is allowed (any team with a profile); Home says why it does not appear."""
+    assert favorites.teams_without_matches(conn([(7,), (9,)]), [9, 8, 7]) == [8]
+    assert favorites.teams_without_matches(conn(), []) == []
+    rows = Rows()
+    assert favorites.teams_without_matches(cast("psycopg.Connection[Any]", rows), []) == [] and rows.queries == []
+    kept = favorites.validate(conn([(2,), (1,)], [(5,), (4,)]), [2, 1], [5, 4])
+    assert kept.teams == (5, 4), "any team of the base: the window of matches no longer decides"

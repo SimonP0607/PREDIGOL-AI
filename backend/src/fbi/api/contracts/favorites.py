@@ -35,6 +35,8 @@ class FavoritesView(Contract):
                                        "chosen (CUOTAS, BE-025). Apart from ``markets``, the five classic ones.")
     muted_teams: list[int] = Field(default_factory=list, description="The followed teams whose bell is off (decision 8): "
                                    "no line-up notice and out of the day's summary.")
+    idle_teams: list[int] = Field(default_factory=list, description="The followed teams with no match of a league PrediGol "
+                                  "follows in the window (AP-B06): followed all the same; Home says why they do not appear.")
     suggested: bool = Field(description="True while the reader has chosen none: these are the ones suggested for Colombia, "
                                         "labelled as suggested.")
     max_leagues: int
@@ -62,8 +64,11 @@ class FavoritesIn(BaseModel):
 
 class FavoriteOptions(Contract):
     leagues: list[CompetitionBadge] = Field(description="Every league PrediGol follows, by country and name.")
-    teams: list[TeamBadge] = Field(description="Teams of those leagues whose name matches the search (two letters or more; "
-                                               "without accents or case), at most 20.")
+    teams: list[TeamBadge] = Field(description="Teams whose name matches the search (two letters or more; without accents "
+                                               "or case), at most 20: the ones with matches of a league PrediGol follows "
+                                               "first, then the rest (AP-B06).")
+    idle_teams: list[int] = Field(default_factory=list, description="Among ``teams``, the ones with no match of a league "
+                                  "PrediGol follows in the window: the page says «Todavía sin partidos que sigamos».")
     players: list[PlayerBadge] = Field(default_factory=list, description="Players who appeared in a line-up of those "
                                        "leagues whose name matches the search (three letters or more; without accents or "
                                        "case), at most 20.")

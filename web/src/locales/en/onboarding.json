@@ -32,6 +32,7 @@
     "searchLabel": "Find a league, a team or a player",
     "searchPlaceholder": "At least two letters (three for a player)",
     "searching": "Searching…",
+    "idleTeam": "No matches we follow yet",
     "found_one": "{count} team found",
     "found_other": "{count} teams found",
     "leagues": "Leagues",
