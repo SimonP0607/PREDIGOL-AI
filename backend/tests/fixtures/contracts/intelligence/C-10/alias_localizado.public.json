@@ -1,0 +1,100 @@
+{
+  "contract": "C-10",
+  "contract_version": "1.1.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "query": "Ejemplandia",
+  "normalized": "ejemplandia",
+  "per_group": 8,
+  "groups": {
+    "teams": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "national_teams": {
+      "items": [
+        {
+          "kind": "national_team",
+          "id": 201,
+          "label": "Exampleland",
+          "sublabel": "Exampleland",
+          "matched": "Ejemplandia",
+          "alias_type": "localized",
+          "match": "prefijo"
+        },
+        {
+          "kind": "national_team",
+          "id": 202,
+          "label": "Exampleland U21",
+          "sublabel": "Exampleland",
+          "matched": "Ejemplandia Sub-21",
+          "alias_type": "localized",
+          "match": "prefijo"
+        },
+        {
+          "kind": "national_team",
+          "id": 203,
+          "label": "Exampleland W",
+          "sublabel": "Exampleland",
+          "matched": "Ejemplandia Femenina",
+          "alias_type": "localized",
+          "match": "prefijo"
+        }
+      ]
+    },
+    "players": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "competitions": {
+      "items": [
+        {
+          "kind": "competition",
+          "id": 401,
+          "label": "Exampleland Cup",
+          "sublabel": "Exampleland",
+          "matched": "Copa de Ejemplandia",
+          "alias_type": "localized",
+          "match": "palabras"
+        }
+      ]
+    },
+    "coaches": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "referees": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "venues": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "fixtures": {
+      "items": [
+        {
+          "id": 902,
+          "label": "Exampleland v Sampleland",
+          "sublabel": "Friendlies",
+          "kickoff_at": "2026-11-25T19:45:00Z",
+          "home_team_id": 201,
+          "away_team_id": 204
+        }
+      ]
+    },
+    "news": {
+      "items": [],
+      "missing_reason": "no_entregado",
+      "expected_piece": "AD-G01"
+    }
+  },
+  "did_you_mean": {
+    "items": [],
+    "missing_reason": "sin_resultados"
+  }
+}

@@ -8,6 +8,12 @@ The groups are those of the UX contract, in its order: Equipos, Selecciones, Jug
 Árbitros, Estadios, Partidos, Noticias; up to 8 hits each. A group without hits says why (``sin_resultados``); every group
 says ``no_entregado`` (``AD-I01``) while the index has not been built, and Noticias says ``no_entregado`` (``AD-G01``) until
 its own items exist. Nothing here is private to a reader except what the private projection adds.
+
+1.1.0 (C-10 1.1; AP-B02, AP-B07, AP-E02) - the same shape, more names and one order: the index also holds the Spanish and
+English names of the national teams and of the main competitions (``alias_type`` ``localized``: «España» finds Spain,
+«Inglaterra» England, «Alemania Sub-21» Germany U21, «Mundial» the World Cup; ``fbi.people.identity.localized``), and in
+``national_teams`` the senior team comes before its age-group and women's teams unless the query asks for one. No field is
+added, renamed or removed: an answer of 1.0.0 reads the same.
 """
 
 from __future__ import annotations
@@ -134,7 +140,7 @@ class SearchV2(IntelligenceContract):
     """C-10, public projection."""
 
     CONTRACT_ID: ClassVar[str] = "C-10"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     query: str = Field(min_length=2, max_length=60, description="The query as it was read (spaces collapsed).")
     normalized: str = Field(description="The query's key: lower case, no accents, no punctuation "

@@ -12,7 +12,9 @@ The three passes, over the name key (``core.search_key``: lower case, no accents
 
 Each entity keeps its best pass; within a group the order is ``rank`` (``POPULARITY_WEIGHT``: the pass and its closeness,
 the kind of name - official < full/short < code/nickname < transliteration/localized < other - and the popularity), then
-the shorter label.
+the shorter label. In ``national_teams`` the senior team comes first (C-10 1.1, AP-B07): an age-group or women's team
+(« U21», « W» in the provider's name) goes after every senior hit unless the query itself asks for one (``sub 21``, ``u21``,
+``femenina``, ``women``…).
 Everything is parametrised; the query is normalised in SQL by the same function the index was built with, so the two can
 never disagree.
 """
@@ -48,7 +50,8 @@ SELECT c.relispopulated AS populated, c.reltuples::bigint AS rows_estimate
 KEY_SQL = "SELECT core.search_key(%(q)s) AS key"
 
 ENTITIES_SQL = """
-WITH q AS (SELECT %(key)s::text AS key),
+WITH q AS (SELECT %(key)s::text AS key,
+                  %(key)s::text ~ '(^| )(u ?[0-9][0-9]|sub ?[0-9][0-9]|w|women|womens|femenina|femenino|femenil)( |$)' AS asks_junior),
 words AS (
     SELECT to_tsquery('simple', string_agg(quote_literal(w) || ':*', ' & ')) AS tq
       FROM q, regexp_split_to_table(q.key, ' ') AS w
@@ -85,9 +88,12 @@ best AS (
      ORDER BY kind, entity_id, quality DESC, matched_name
 ),
 ranked AS (
-    SELECT best.*, row_number() OVER (PARTITION BY kind ORDER BY rank DESC, length(label), label, entity_id) AS rn
-      FROM (SELECT b.*, b.quality + %(pop_weight)s * least(1.0, ln(1 + b.popularity) / ln(101.0)) AS rank
-              FROM best b) best
+    SELECT best.*,
+           row_number() OVER (PARTITION BY kind ORDER BY junior, rank DESC, length(label), label, entity_id) AS rn
+      FROM (SELECT b.*, b.quality + %(pop_weight)s * least(1.0, ln(1 + b.popularity) / ln(101.0)) AS rank,
+                   CASE WHEN b.kind = 'national_team' AND NOT q.asks_junior AND b.label ~ ' (W|U[0-9][0-9])( |$)'
+                        THEN 1 ELSE 0 END AS junior
+              FROM best b, q) best
 )
 SELECT kind, entity_id, label, sublabel, popularity, matched_name, alias_type, pass, score, rank
   FROM ranked

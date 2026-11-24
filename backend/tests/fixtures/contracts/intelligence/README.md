@@ -34,6 +34,7 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | C-10 (búsqueda v2) | `encontrado` | «atletico» encuentra por prefijo dos equipos (uno por su alias), un jugador y un estadio por palabras, y el partido de sus equipos; Noticias dice `no_entregado` (`AD-G01`). La privada añade `score`, `popularity`, `rank` y `index` |
 | C-10 | `sin_resultados` | Ningún grupo con resultados: cada uno `sin_resultados` y «¿Quisiste decir…?» (`did_you_mean`) con un nombre cercano |
 | C-10 | `sin_indice` | El índice aún no se ha construido: cada grupo `no_entregado` (`AD-I01`) y `freshness.stale` con `indice_sin_construir` |
+| C-10 1.1.0 | `alias_localizado` | «Ejemplandia» encuentra la selección «Exampleland» por su nombre en español (`alias_type` `localized`) y, detrás, su sub-21 y su femenina; la competición por «Copa de Ejemplandia». Los ejemplos de 1.0.0 siguen, sin cambiar, en `C-10/anteriores/1.0.0/` y se leen con la versión actual (`test_intelligence_contract_earlier_examples.py`) |
 | C-09 (perfiles) | `club` | Club con plantilla: entrenador de la última alineación, forma, cifras de temporada con su muestra (xG en 3 de 6 partidos), un sancionado del parte del proveedor (solo estado, base, fuente y fecha), palmarés calculado (liga 2025) y, en la privada, una selección en sombra (`detectado`) |
 | C-09 | `club_sin_plantilla` | Club sin plantilla ni estadísticas y fuera de la cobertura del parte: `squad` `sin_datos`, `availability` `sin_cobertura`, cifras `sin_datos` con `matches_with_data: 0` |
 | C-09 | `seleccion` | Selección: lista del proveedor (`convocados_ultimo_partido`, nivel `proveedor`) con `official_state: ninguna_fuente_oficial_autorizada` y 0 fuentes oficiales permitidas; líderes de partidos y goles |
@@ -46,7 +47,7 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | C-18 Tendencias (sin ruta) | `armador` | Tres candidatas (córners, tarjetas, goles de la primera parte) con «7 de los últimos 10», frecuencia e intervalo; un boleto de 2 patas a 3,61 bajo el tope; la privada, dos mercados descartados (sin regla, sin dato en la liga) |
 | C-18 | `sin_candidatas` | Ninguna candidata ni boleto: `sin_datos` |
 
-Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su línea en la coordinación entre sesiones.
+Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su línea en la coordinación entre sesiones. Al subir la versión menor de uno: copia antes sus ejemplos, sin tocarlos, a `<contrato>/anteriores/<versión anterior>/`; la prueba comprueba que se siguen leyendo.
 | C-02 Selección | `publicada` | Una selección que el dueño autorizó: 57 % `calibrada`, precio vigente con su regla y umbrales, por qué, versiones y fuentes; la privada añade el ciclo, la cifra `sin_calibrar` (78,5 %), la validación `INSUFICIENTE` (0 de 300) y la dependencia de alineación `no_entregado` (`AD-D03`) |
 | C-02 | `liquidada` | La misma, evaluada: en la privada, la evaluación posterior (`MERECIDO`, CLV +4,3 %, «Un acierto no valida el mercado») |
 | C-02 (solo privada, `privada/`) | `en_evaluacion`, `retirada` | Selecciones sin estado público: no tienen proyección pública y el servidor no las sirve al lector |

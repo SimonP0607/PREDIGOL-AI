@@ -175,14 +175,15 @@ def picks(conn: Conn, *, limit: int, offset: int, public: bool = False) -> Envel
 
 
 PERFORMANCE_TIMEOUT = "60s"
+PERFORMANCE_CACHE_SECONDS = 30 * 60  # picks settle through the day; fbi.api.warm renews the answer before it expires
 """The console reads every shadow bet ever made, twice (the totals and the slices). It answered 500 on 7 Nov 2026
 (plan PICKS, R1) and its tests had only ever run the small-sample branch; the likeliest cause is the API's ten seconds,
 as for Admin > Analytics > Competitions on 9-10 Oct: 176,000 synthetic picks took 2.7 s warm on a fast machine with
 the old slices. The slices now group once instead of copying the bets five times (2.2 s -> 1.0 s there), only this
-request may take longer, and its answer is kept five minutes."""
+request may take longer, and its answer is kept half an hour and renewed in the background (fbi.api.warm)."""
 
 
-@shared(300)
+@shared(PERFORMANCE_CACHE_SECONDS)
 def performance(conn: Conn) -> Envelope[PerformanceSummary]:
     conn.execute(f"SET LOCAL statement_timeout = '{PERFORMANCE_TIMEOUT}'")
     s = repo.settled_summary(conn)

@@ -175,6 +175,8 @@ services:
       # Read connections per API process (a bounded pool) and the shared boards kept 15-300 s (fbi/api/cache.py).
       FBI_API_DB_POOL_MAX: ${PREDIGOL_API_DB_POOL_MAX:-8}
       FBI_API_CACHE: "1"
+      # With the cache on, one thread per API process keeps the heavy console reads computed (fbi/api/warm.py); FBI_API_WARM=0 turns it off.
+      FBI_API_WARM: ${PREDIGOL_API_WARM:-1}
       # The Admin Console's System page lists the backups it can see.
       FBI_BACKUP_DIRS: /backups
       # The Admin Console's «Almacenamiento» page reads what bin/storage-report.sh measured on the host (sizes only).

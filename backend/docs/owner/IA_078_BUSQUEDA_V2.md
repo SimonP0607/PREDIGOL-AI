@@ -127,3 +127,31 @@ Los planes de consulta usan los tres índices y nunca recorren la vista entera (
 - Contexto del lector (sus favoritos) en el orden: no está; el plan lo pide para más adelante.
 - El selector de favoritos y la paleta de la consola pasando a este servicio («un solo buscador en el código»).
 - Que el dueño fije el umbral preregistrado del banco (propuesta en el punto 3).
+
+## 8. C-10 1.1 (IA-161, 24-nov-2026): nombres en español e inglés y la selección absoluta primero
+
+Lo pidió el plan de correcciones UX/UI (AP-B02, AP-B07, AP-E02; `claude/INTEGRACION_CONTRATOS_INTELLIGENCE_1_1_20261123.md`).
+**Mismo contrato, sin campos nuevos**: sube a 1.1.0 porque cambia lo que encuentra y el orden, no la forma.
+
+- **Los nombres.** `fbi/people/identity/localized.py`: el nombre en español e inglés de cada selección que el proveedor
+  nombra (213 países y naciones, 227 nombres del proveedor; los de CLDR 48, revisados para el fútbol: «Costa de Marfil», «Palestina», «China Taipéi»…;
+  las cuatro naciones del Reino Unido a mano) con su sub-17…sub-23 («Alemania Sub-21») y su femenina («México Femenina
+  Sub-17»), y 69 competiciones («Mundial», «Copa del Mundo», «Liga de Campeones», «Eurocopa», «Copa de Alemania»,
+  «Supercopa de España»…). Una selección se reconoce por su nombre del proveedor y `is_national`; una competición por su
+  nombre y país. Lo que la tabla no conoce no recibe nada: no se adivina.
+- **Por dónde entran.** Como alias `localized` con su idioma (`{es}` o `{en}`) y fuente `localized` (migración 0173: solo
+  añade ese valor a la lista permitida), dentro de la carga de nuestros nombres (`sync-core`), y de ahí al índice.
+- **El orden.** En Selecciones, una sub-NN o femenina va detrás de toda absoluta encontrada, salvo que la consulta la pida
+  («sub 21», «u21», «femenina», «women»).
+
+Para que se vea en producción, tras desplegar (fuera de 03:50–05:00 UTC y de `fixtures_sync`):
+
+```
+docker compose run --rm ops python -m scripts.entity_identity sync-core            # simulacro: cuenta lo que añadiría
+docker compose run --rm ops python -m scripts.entity_identity sync-core --apply
+docker compose run --rm ops python -m scripts.search_index refresh --apply
+```
+
+Vuelta atrás: `python -m scripts.entity_identity retire <load> --note "..." --apply` oculta la carga y trae la anterior
+(después, `search_index refresh --apply`). Preguntas para el dueño: los **países** no son entidades del índice (no hay página
+de país): «España» lleva a la selección, no a «el fútbol de España»; si se quiere un grupo de países, es un contrato nuevo.
