@@ -1,0 +1,23 @@
+{
+  "family": {
+    "featured": "Populares",
+    "goals": "Goles",
+    "goals_half": "Mitades",
+    "corners": "Córners",
+    "cards": "Tarjetas",
+    "shots": "Tiros",
+    "result": "Más"
+  },
+  "familiesLabel": "Familias de mercados",
+  "model": "PrediGol {pct} %",
+  "houses": "Casas {pct} %",
+  "history_one": "Últimos {n}: {count} vez",
+  "history_other": "Últimos {n}: {count} veces",
+  "preliminary": "Estimación preliminar",
+  "compare": "Comparar casas",
+  "hideBooks": "Ocultar casas",
+  "personalize": "Personalizar mercados",
+  "help": "Cada cuota es la mejor entre las casas que leemos, con su hora de lectura. «Estimación preliminar»: la cifra de PrediGol de ese mercado todavía no está comprobada.",
+  "lookup": "Solo consulta",
+  "lookupDefault": "Este mercado no entra en Mi parlay."
+}

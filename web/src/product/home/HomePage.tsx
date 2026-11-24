@@ -58,6 +58,7 @@ import { holdsLayers, LAYERS_HOLD_MS, layersOf, shownLayers, type HomeView } fro
 import { wantsYesterday } from "./yesterday";
 import { mineByRank } from "./related";
 import { EditFavorites } from "./EditFavorites";
+import { IdleTeamsNote } from "./IdleTeams";
 import { ChoosePrompt, ForYouPart, Layer, LayersHold } from "./ParaTi";
 import { useGuideScreen } from "@/product/guides/context";
 
@@ -331,6 +332,7 @@ export function HomePage() {
           {layers.mine ? <ContextBlock {...common} /> : null}
           <ForYouPart part="picks" query={me} board={board} teams={teams} now={now} />
           <ForYouPart part="notices" query={me} board={board} teams={teams} now={now} />
+          <IdleTeamsNote reader={reader} />
         </Layer>
       ) : null}
       {shown.predigol ? (

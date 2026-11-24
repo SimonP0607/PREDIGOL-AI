@@ -60,7 +60,8 @@ TEAMS = {"nacional": (7713011, "Atlético Nacional", False), "millonarios": (771
          "santafe": (7713013, "Santa Fe", False), "lejano": (7713014, "Club Lejano", False),
          "lejano2": (7713015, "Otro Lejano", False), "viejo": (7713016, "Equipo Viejo", False),
          "junior": (7713017, "Junior", False), "medellin": (7713018, "Medellín", False),
-         "pereira": (7713019, "Pereira", False), "colombia": (7713020, "Colombia", True)}
+         "pereira": (7713019, "Pereira", False), "colombia": (7713020, "Colombia", True),
+         "sinpartidos": (7713021, "Nacional Sin Partidos", False)}
 
 
 def wipe_accounts(dsn: str) -> None:
@@ -264,9 +265,8 @@ def test_the_limits_and_what_cannot_be_followed_are_refused_never_trimmed(fresh:
     for expected, body in refused.items():
         r = reader.put("/api/v1/me/favorites", json=body)
         assert (r.status_code, code(r)) == (422, expected), r.text
-    for team in ("lejano", "viejo"):  # only in a league PrediGol does not follow; last played there 500 days ago
-        r = reader.put("/api/v1/me/favorites", json={"leagues": [], "teams": [f[team]]})
-        assert (r.status_code, code(r)) == (422, "unknown_team"), team
+    r = reader.put("/api/v1/me/favorites", json={"leagues": [], "teams": [987654321]})
+    assert (r.status_code, code(r)) == (422, "unknown_team"), "a team PrediGol has no profile for"
     assert reader.put("/api/v1/me/favorites", json={"leagues": [], "teams": [], "amount": 5}).status_code == 422, (
         "only leagues and teams: never an amount, a bankroll or an appetite for risk")
     assert reader.put("/api/v1/me/favorites", json={"leagues": list(range(1, 52))}).status_code == 422
@@ -332,14 +332,32 @@ def test_the_options_every_followed_league_and_the_teams_by_name_without_accents
     options = reader.get("/api/v1/me/favorites/options").json()
     assert {"Liga Uno", "Copa Dos", "Liga BetPlay"} <= set(names(options["leagues"]))
     assert "Liga Lejana" not in names(options["leagues"]) and options["teams"] == []
-    for q in ("atletico", "ATLÉTICO nac", "Nacional"):
+    for q in ("atletico", "ATLÉTICO nac"):
         assert names(reader.get("/api/v1/me/favorites/options", params={"q": q}).json()["teams"]) == [
             "Atlético Nacional"], q
     assert reader.get("/api/v1/me/favorites/options", params={"q": "a"}).json()["teams"] == [], "two letters or more"
-    for q in ("lejano", "viejo", "%%", "__"):  # not followed, out of the window, no wildcard of a search
+    for q in ("%%", "__"):  # no wildcard of a search
         assert reader.get("/api/v1/me/favorites/options", params={"q": q}).json()["teams"] == [], q
     medellin = reader.get("/api/v1/me/favorites/options", params={"q": "medellin"}).json()["teams"]
     assert names(medellin) == ["Medellín"], "a team that plays later in a followed league is found too"
+
+
+def test_a_team_without_matches_we_follow_is_found_after_the_rest_and_can_be_followed(fresh: Football) -> None:
+    """AP-B06: every team with a profile is found; the ones with matches of a followed league come first, the others carry
+    the note and are named in ``idle_teams``; following one is allowed and Home's favourites say why it does not appear."""
+    f, reader = fresh.ids, client(READER)
+    got = reader.get("/api/v1/me/favorites/options", params={"q": "nacional"}).json()
+    assert names(got["teams"]) == ["Atlético Nacional", "Nacional Sin Partidos"], (
+        "the one with matches first, even though the other starts with the search")
+    assert got["idle_teams"] == [f["sinpartidos"]], "only the one without matches carries the note"
+    lejano = reader.get("/api/v1/me/favorites/options", params={"q": "lejano"}).json()
+    assert names(lejano["teams"]) == ["Club Lejano", "Otro Lejano"] and set(lejano["idle_teams"]) == {
+        f["lejano"], f["lejano2"]}, "a team of a league PrediGol does not follow is found, with the note"
+    for key in ("lejano", "viejo", "sinpartidos"):  # a league PrediGol does not follow; 500 days ago; never played
+        body = {"leagues": [f["uno"]], "teams": [f[key], f["nacional"]]}
+        assert reader.put("/api/v1/me/favorites", json=body).status_code == 200, key
+    mine = reader.get("/api/v1/me/favorites").json()
+    assert mine["idle_teams"] == [f["sinpartidos"]], "the one chosen last, with no match we follow, is named"
 
 
 # ── players and markets (closing plan 3.1) ────────────────────────────────────────────────────────────────────────────
@@ -460,7 +478,7 @@ def test_the_options_find_players_by_name_from_three_letters_without_accents(
         assert found[q] == [], q
     assert reader.get("/api/v1/me/favorites/options").json()["players"] == [], "no search, no players"
     teams = reader.get("/api/v1/me/favorites/options", params={"q": "nacional"}).json()
-    assert names(teams["teams"]) == ["Atlético Nacional"] and teams["players"] == []
+    assert names(teams["teams"]) == ["Atlético Nacional", "Nacional Sin Partidos"] and teams["players"] == []
 
 
 # ── the welcome and the hints ─────────────────────────────────────────────────────────────────────────────────────────

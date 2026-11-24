@@ -477,6 +477,7 @@
       "user_password_change_required": "Cambio de contraseña exigido",
       "session_revoked": "Sesiones cerradas",
       "admin_write": "Acción en la consola de administración",
+      "admin_message_test": "Prueba de correo enviada a su propia cuenta",
       "user_invited": "Invitación enviada",
       "user_invitation_resent": "Invitación reenviada",
       "user_invitation_renewed": "Invitación renovada desde su enlace",

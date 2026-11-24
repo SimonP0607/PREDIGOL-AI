@@ -18,7 +18,6 @@ import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyPicksRouteImport } from './routes/my-picks'
-import { Route as NewsRouteImport } from './routes/news'
 import { Route as ParlaysRouteImport } from './routes/parlays'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -68,6 +67,8 @@ import { Route as LegalDocRouteImport } from './routes/legal.$doc'
 import { Route as MatchesIndexRouteImport } from './routes/matches.index'
 import { Route as MatchesFixtureIdRouteImport } from './routes/matches.$fixtureId'
 import { Route as NationsTeamIdRouteImport } from './routes/nations.$teamId'
+import { Route as NewsIndexRouteImport } from './routes/news.index'
+import { Route as NewsKeyRouteImport } from './routes/news.$key'
 import { Route as OddsIndexRouteImport } from './routes/odds.index'
 import { Route as OddsStatusRouteImport } from './routes/odds.status'
 import { Route as PicksIndexRouteImport } from './routes/picks.index'
@@ -132,11 +133,6 @@ const LoginRoute = LoginRouteImport.update({
 const MyPicksRoute = MyPicksRouteImport.update({
   id: '/my-picks',
   path: '/my-picks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NewsRoute = NewsRouteImport.update({
-  id: '/news',
-  path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ParlaysRoute = ParlaysRouteImport.update({
@@ -385,6 +381,16 @@ const NationsTeamIdRoute = NationsTeamIdRouteImport.update({
   path: '/nations/$teamId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsIndexRoute = NewsIndexRouteImport.update({
+  id: '/news/',
+  path: '/news/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsKeyRoute = NewsKeyRouteImport.update({
+  id: '/news/$key',
+  path: '/news/$key',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OddsIndexRoute = OddsIndexRouteImport.update({
   id: '/odds/',
   path: '/odds/',
@@ -496,7 +502,6 @@ export interface FileRoutesByFullPath {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
-  '/news': typeof NewsRoute
   '/parlays': typeof ParlaysRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -542,6 +547,7 @@ export interface FileRoutesByFullPath {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/nations/$teamId': typeof NationsTeamIdRoute
+  '/news/$key': typeof NewsKeyRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
@@ -552,6 +558,7 @@ export interface FileRoutesByFullPath {
   '/competitions/': typeof CompetitionsIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
+  '/news/': typeof NewsIndexRoute
   '/odds/': typeof OddsIndexRoute
   '/picks/': typeof PicksIndexRoute
   '/profile/': typeof ProfileIndexRoute
@@ -576,7 +583,6 @@ export interface FileRoutesByTo {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
-  '/news': typeof NewsRoute
   '/parlays': typeof ParlaysRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -622,6 +628,7 @@ export interface FileRoutesByTo {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/nations/$teamId': typeof NationsTeamIdRoute
+  '/news/$key': typeof NewsKeyRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
@@ -632,6 +639,7 @@ export interface FileRoutesByTo {
   '/competitions': typeof CompetitionsIndexRoute
   '/help': typeof HelpIndexRoute
   '/matches': typeof MatchesIndexRoute
+  '/news': typeof NewsIndexRoute
   '/odds': typeof OddsIndexRoute
   '/picks': typeof PicksIndexRoute
   '/profile': typeof ProfileIndexRoute
@@ -658,7 +666,6 @@ export interface FileRoutesById {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/my-picks': typeof MyPicksRoute
-  '/news': typeof NewsRoute
   '/parlays': typeof ParlaysRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -704,6 +711,7 @@ export interface FileRoutesById {
   '/legal/$doc': typeof LegalDocRoute
   '/matches/$fixtureId': typeof MatchesFixtureIdRoute
   '/nations/$teamId': typeof NationsTeamIdRoute
+  '/news/$key': typeof NewsKeyRoute
   '/odds/status': typeof OddsStatusRoute
   '/picks/$pickId': typeof PicksPickIdRoute
   '/players/$playerId': typeof PlayersPlayerIdRoute
@@ -714,6 +722,7 @@ export interface FileRoutesById {
   '/competitions/': typeof CompetitionsIndexRoute
   '/help/': typeof HelpIndexRoute
   '/matches/': typeof MatchesIndexRoute
+  '/news/': typeof NewsIndexRoute
   '/odds/': typeof OddsIndexRoute
   '/picks/': typeof PicksIndexRoute
   '/profile/': typeof ProfileIndexRoute
@@ -741,7 +750,6 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
-    | '/news'
     | '/parlays'
     | '/register'
     | '/reset-password'
@@ -787,6 +795,7 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/nations/$teamId'
+    | '/news/$key'
     | '/odds/status'
     | '/picks/$pickId'
     | '/players/$playerId'
@@ -797,6 +806,7 @@ export interface FileRouteTypes {
     | '/competitions/'
     | '/help/'
     | '/matches/'
+    | '/news/'
     | '/odds/'
     | '/picks/'
     | '/profile/'
@@ -821,7 +831,6 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
-    | '/news'
     | '/parlays'
     | '/register'
     | '/reset-password'
@@ -867,6 +876,7 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/nations/$teamId'
+    | '/news/$key'
     | '/odds/status'
     | '/picks/$pickId'
     | '/players/$playerId'
@@ -877,6 +887,7 @@ export interface FileRouteTypes {
     | '/competitions'
     | '/help'
     | '/matches'
+    | '/news'
     | '/odds'
     | '/picks'
     | '/profile'
@@ -902,7 +913,6 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/my-picks'
-    | '/news'
     | '/parlays'
     | '/register'
     | '/reset-password'
@@ -948,6 +958,7 @@ export interface FileRouteTypes {
     | '/legal/$doc'
     | '/matches/$fixtureId'
     | '/nations/$teamId'
+    | '/news/$key'
     | '/odds/status'
     | '/picks/$pickId'
     | '/players/$playerId'
@@ -958,6 +969,7 @@ export interface FileRouteTypes {
     | '/competitions/'
     | '/help/'
     | '/matches/'
+    | '/news/'
     | '/odds/'
     | '/picks/'
     | '/profile/'
@@ -984,7 +996,6 @@ export interface RootRouteChildren {
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
   MyPicksRoute: typeof MyPicksRoute
-  NewsRoute: typeof NewsRoute
   ParlaysRoute: typeof ParlaysRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -1001,6 +1012,7 @@ export interface RootRouteChildren {
   LegalDocRoute: typeof LegalDocRoute
   MatchesFixtureIdRoute: typeof MatchesFixtureIdRoute
   NationsTeamIdRoute: typeof NationsTeamIdRoute
+  NewsKeyRoute: typeof NewsKeyRoute
   OddsStatusRoute: typeof OddsStatusRoute
   PicksPickIdRoute: typeof PicksPickIdRoute
   PlayersPlayerIdRoute: typeof PlayersPlayerIdRoute
@@ -1010,6 +1022,7 @@ export interface RootRouteChildren {
   CompetitionsIndexRoute: typeof CompetitionsIndexRoute
   HelpIndexRoute: typeof HelpIndexRoute
   MatchesIndexRoute: typeof MatchesIndexRoute
+  NewsIndexRoute: typeof NewsIndexRoute
   OddsIndexRoute: typeof OddsIndexRoute
   PicksIndexRoute: typeof PicksIndexRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
@@ -1081,13 +1094,6 @@ declare module '@tanstack/react-router' {
       path: '/my-picks'
       fullPath: '/my-picks'
       preLoaderRoute: typeof MyPicksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/news': {
-      id: '/news'
-      path: '/news'
-      fullPath: '/news'
-      preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/parlays': {
@@ -1433,6 +1439,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NationsTeamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/': {
+      id: '/news/'
+      path: '/news'
+      fullPath: '/news/'
+      preLoaderRoute: typeof NewsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news/$key': {
+      id: '/news/$key'
+      path: '/news/$key'
+      fullPath: '/news/$key'
+      preLoaderRoute: typeof NewsKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/odds/': {
       id: '/odds/'
       path: '/odds'
@@ -1670,7 +1690,6 @@ const rootRouteChildren: RootRouteChildren = {
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,
   MyPicksRoute: MyPicksRoute,
-  NewsRoute: NewsRoute,
   ParlaysRoute: ParlaysRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -1687,6 +1706,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalDocRoute: LegalDocRoute,
   MatchesFixtureIdRoute: MatchesFixtureIdRoute,
   NationsTeamIdRoute: NationsTeamIdRoute,
+  NewsKeyRoute: NewsKeyRoute,
   OddsStatusRoute: OddsStatusRoute,
   PicksPickIdRoute: PicksPickIdRoute,
   PlayersPlayerIdRoute: PlayersPlayerIdRoute,
@@ -1696,6 +1716,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompetitionsIndexRoute: CompetitionsIndexRoute,
   HelpIndexRoute: HelpIndexRoute,
   MatchesIndexRoute: MatchesIndexRoute,
+  NewsIndexRoute: NewsIndexRoute,
   OddsIndexRoute: OddsIndexRoute,
   PicksIndexRoute: PicksIndexRoute,
   ProfileIndexRoute: ProfileIndexRoute,

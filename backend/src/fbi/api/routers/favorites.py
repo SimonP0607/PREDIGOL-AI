@@ -2,10 +2,11 @@
 
 * ``GET /me/favorites`` - the leagues and teams the reader follows, or the suggested ones for Colombia (labelled) while they
   have chosen none; and the players and markets they follow.
-* ``PUT /me/favorites`` - they become exactly these: up to 10 leagues PrediGol follows, 20 teams that play in them, 20 players
+* ``PUT /me/favorites`` - they become exactly these: up to 10 leagues PrediGol follows, 20 teams PrediGol has a profile for, 20 players
   of their line-ups, 7 of the markets (the five PrediGol reads and Córners and Tarjetas) and 10 of a match's catalogue (422 beyond, never trimmed). Players and
   markets left out of the body stay as they were.
-* ``GET /me/favorites/options`` - every league PrediGol follows, and the teams and players whose name matches a search.
+* ``GET /me/favorites/options`` - every league PrediGol follows, and the teams and players whose name matches a search (a
+  team with no match of those leagues comes after the rest and is named in ``idle_teams``, AP-B06).
 * ``GET /me/onboarding`` / ``POST /me/onboarding`` - whether the welcome is owed and its steps; done (or skipped), once.
 * ``POST /me/hints`` - a first-visit hint dismissed: it never comes back.
 
@@ -55,14 +56,15 @@ SELECT id, name, country, logo_url, flag_url FROM core.competitions
 TEAMS_SQL = "SELECT id, name, logo_url FROM core.teams WHERE id = ANY(%s)"
 
 SEARCH_SQL = """
-SELECT t.id, t.name, t.logo_url FROM core.teams t
+SELECT t.id, t.name, t.logo_url, played.has_matches FROM core.teams t
+ CROSS JOIN LATERAL (SELECT EXISTS (SELECT 1 FROM core.fixtures f
+                                      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+                                      JOIN core.competitions c ON c.id = cs.competition_id
+                                     WHERE c.is_tracked AND (f.home_team_id = t.id OR f.away_team_id = t.id)
+                                       AND f.kickoff_at > now() - make_interval(days => %(days)s)) AS has_matches) played
  WHERE translate(lower(t.name), %(src)s, %(dst)s) LIKE %(pattern)s
-   AND EXISTS (SELECT 1 FROM core.fixtures f
-                 JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-                 JOIN core.competitions c ON c.id = cs.competition_id
-                WHERE c.is_tracked AND (f.home_team_id = t.id OR f.away_team_id = t.id)
-                  AND f.kickoff_at > now() - make_interval(days => %(days)s))
- ORDER BY translate(lower(t.name), %(src)s, %(dst)s) LIKE %(prefix)s DESC, t.is_national DESC, t.name
+ ORDER BY played.has_matches DESC, translate(lower(t.name), %(src)s, %(dst)s) LIKE %(prefix)s DESC,
+          t.is_national DESC, t.name
  LIMIT %(limit)s
 """
 
@@ -137,6 +139,7 @@ def favorites_view(conn: psycopg.Connection[Any], user_id: int) -> FavoritesView
                          players=_players(conn, more.players), markets=list(more.markets),  # type: ignore[arg-type]
                          catalog_markets=list(more.catalog),
                          muted_teams=list(favorites.muted_teams(conn, user_id)) if mine is not None else [],
+                         idle_teams=favorites.teams_without_matches(conn, shown.teams) if mine is not None else [],
                          suggested=mine is None, max_leagues=favorites.MAX_LEAGUES, max_teams=favorites.MAX_TEAMS,
                          max_players=favorites.MAX_PLAYERS, max_markets=favorites.MAX_MARKETS,
                          max_catalog_markets=favorites.MAX_CATALOG,
@@ -193,6 +196,7 @@ def favorite_options(conn: Db, _: App, q: Search = None) -> FavoriteOptions:
     or more) and the players of their line-ups (three or more)."""
     folded = favorites.fold((q or "").strip())
     teams: list[TeamBadge] = []
+    idle: list[int] = []
     players: list[PlayerBadge] = []
     if len(folded) >= 2:
         escaped = folded.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -200,10 +204,11 @@ def favorite_options(conn: Db, _: App, q: Search = None) -> FavoriteOptions:
                   "prefix": f"{escaped}%", "days": favorites.TEAM_WINDOW_DAYS, "limit": favorites.SEARCH_LIMIT}
         rows = conn.execute(SEARCH_SQL, search).fetchall()
         teams = [TeamBadge(id=int(r[0]), name=r[1], logo_url=r[2]) for r in rows]
+        idle = [int(r[0]) for r in rows if not r[3]]
         if len(folded) >= favorites.PLAYER_SEARCH_MIN:
             players = [PlayerBadge(id=int(r[0]), name=r[1], position=r[2], team=r[3])
                        for r in conn.execute(PLAYER_SEARCH_SQL, search).fetchall()]
-    return FavoriteOptions(leagues=_leagues(conn, None), teams=teams, players=players)
+    return FavoriteOptions(leagues=_leagues(conn, None), teams=teams, idle_teams=idle, players=players)
 
 
 @router.get("/onboarding", response_model=OnboardingState)

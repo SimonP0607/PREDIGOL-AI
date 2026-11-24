@@ -59,6 +59,28 @@ export function catalogParlayOf(data: MarketProbs | null | undefined): CatalogPa
   return { allowed, settles, reasons };
 }
 
+/**
+ * Why a catalogue market is only for consulting (AP-P09): the reason the server gives for most of its selections, as a code
+ * of `stats.parlay.*`; null when it gives none (the page then says it is only for consulting, without a motive).
+ */
+export function lookupReasonOf(view: MarketView, cp: CatalogParlay): string | null {
+  if (!view.key || !cp.reasons) return null;
+  const count = new Map<string, number>();
+  for (const [id, reason] of cp.reasons) {
+    if (id.startsWith(`${view.key}|`) && reason !== "ok")
+      count.set(reason, (count.get(reason) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let n = 0;
+  for (const [reason, c] of count) {
+    if (c > n) {
+      best = reason;
+      n = c;
+    }
+  }
+  return best;
+}
+
 /** The views of a category, a catalogue market the server takes marked so (the five keep theirs). */
 export function withCatalogParlay(views: MarketView[], cp: CatalogParlay): MarketView[] {
   if (cp.allowed.size === 0) return views;

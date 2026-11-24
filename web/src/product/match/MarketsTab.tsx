@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronRight, LineChart } from "lucide-react";
+import { ChevronRight, LineChart, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { fmtLine } from "@/lib/i18n/format";
@@ -21,11 +21,17 @@ import { live as queries } from "@/lib/api/v1/queries";
 import type { MarketOrder } from "@/lib/api/v1/types_personal";
 import type { CatalogCategory } from "@/lib/api/v1/types_market_catalog";
 import { ProbabilitiesPanel } from "./stats/ProbabilitiesPanel";
-import { useAuth, useMatchVizSwitches, useStatsSwitches } from "@/lib/auth/AuthProvider";
+import {
+  useAuth,
+  useMatchVizSwitches,
+  useStatsSwitches,
+  useUxFixSwitches,
+} from "@/lib/auth/AuthProvider";
 import { present } from "@/lib/api/v1/types_intelligence";
 import { PartialCoverage } from "@/product/shared/Unavailable";
 import { useMatchAvailability } from "./stats/coverage";
 import { t as tv } from "./stats/matchvizText";
+import { t as t3 } from "./marketsV3Text";
 import { hintProps } from "@/components/system/tapHint";
 import { track } from "@/lib/track";
 import { formatDateTime } from "@/lib/time";
@@ -61,9 +67,13 @@ import {
   type MarketView,
 } from "./marketCatalog";
 import { MarketFold } from "./MarketFold";
+import { MarketFoldV3 } from "./MarketFoldV3";
+import { familyViews } from "./marketFamilies";
 import {
   catalogChooser,
   catalogParlayOf,
+  type CatalogParlay,
+  lookupReasonOf,
   NO_CATALOG_PARLAY,
   withCatalogParlay,
 } from "./catalogParlay";
@@ -500,6 +510,7 @@ function FoldList({
   follow,
   testId,
   target,
+  v3,
 }: {
   views: MarketView[];
   choose?: Choose | undefined;
@@ -510,6 +521,8 @@ function FoldList({
   testId: string;
   /** The catalogue key a link from Cuotas names: that market is open and in view; the first one only without it. */
   target?: string | undefined;
+  /** FBI_MARKETS_V3: the markets as a bookmaker lays them out (no «Seguir» on the row); the match's id reads PrediGol's line. */
+  v3?: { fixtureId: string; cp?: CatalogParlay } | undefined;
 }) {
   const named = target !== undefined && views.some((v) => v.key === target);
   return (
@@ -533,12 +546,22 @@ function FoldList({
               : undefined
           }
         >
-          <MarketFold
-            view={v}
-            choose={chooseOf ? chooseOf(v, choose) : choose}
-            defaultOpen={named ? v.key === target : i === 0}
-            follow={v.parlay ? follow(v.parlay) : v.key ? follow(v.key, "catalog") : null}
-          />
+          {v3 ? (
+            <MarketFoldV3
+              view={v}
+              fixtureId={v3.fixtureId}
+              lookupReason={v3.cp ? lookupReasonOf(v, v3.cp) : null}
+              choose={chooseOf ? chooseOf(v, choose) : choose}
+              defaultOpen={named ? v.key === target : i === 0}
+            />
+          ) : (
+            <MarketFold
+              view={v}
+              choose={chooseOf ? chooseOf(v, choose) : choose}
+              defaultOpen={named ? v.key === target : i === 0}
+              follow={v.parlay ? follow(v.parlay) : v.key ? follow(v.key, "catalog") : null}
+            />
+          )}
           {named && v.key === target ? <ScrollIntoView /> : null}
         </div>
       ))}
@@ -556,6 +579,7 @@ export function CategoryPanel({
   follow,
   target,
   followed = [],
+  v3 = false,
 }: {
   ctx: MatchCtx;
   category: CatalogCategory;
@@ -567,6 +591,8 @@ export function CategoryPanel({
   target?: string | undefined;
   /** The catalogue markets the reader follows, in their order: they go first (only the order changes). */
   followed?: readonly string[];
+  /** FBI_MARKETS_V3 (AP-P08). */
+  v3?: boolean;
 }) {
   const q = useQuery(queries.matchMarketCatalog(ctx.fixtureId, category));
   const switches = useStatsSwitches();
@@ -620,6 +646,7 @@ export function CategoryPanel({
         follow={follow}
         testId="markets-category"
         target={target}
+        v3={v3 ? { fixtureId: ctx.fixtureId, cp } : undefined}
       />
     </>
   );
@@ -651,6 +678,7 @@ export function PrematchMarkets({
 }) {
   const { markets, phase, match: m } = ctx;
   const { probs } = useStatsSwitches();
+  const { marketsV3: v3 } = useUxFixSwitches();
   const sides = { home: m.home.name, away: m.away.name };
   const quotes = markets.status === "ok" ? markets.data : [];
   const before = phase === "scheduled";
@@ -675,13 +703,12 @@ export function PrematchMarkets({
   ).size;
   const books = headerBooks(matchBooks, categories);
   const updated = later(latestCapture(quotes, "prematch"), catalogQ.data?.data?.checked_at);
-  const views: MarketsView[] = familiesFirst(
-    [
-      ...(featured.length > 0 ? (["featured"] as const) : []),
-      ...(categories ?? []).map((c) => c.key),
-    ],
-    families,
-  );
+  const available: MarketsView[] = [
+    ...(featured.length > 0 ? (["featured"] as const) : []),
+    ...(categories ?? []).map((c) => c.key),
+  ];
+  // V3 lists the families in a fixed order (Populares first); the usual page puts the families the reader follows first.
+  const views: MarketsView[] = v3 ? familyViews(available) : familiesFirst(available, families);
   // A link from Cuotas names a market: its category opens first, unless the reader picks another chip.
   const linked = useMarketTarget();
   const [picked, setPicked] = useState<MarketsView | null>(null);
@@ -714,22 +741,31 @@ export function PrematchMarkets({
       {views.length > 0 ? (
         <>
           <p className="-mt-1.5 mb-3 text-xs text-muted-foreground">
-            {t("match.markets.bestHelp")} <GlossaryLink term="bestOdds" />{" "}
-            {before ? t("match.markets.chooseHelp") : null}
+            {v3 ? (
+              t3("marketsv3.help")
+            ) : (
+              <>
+                {t("match.markets.bestHelp")} <GlossaryLink term="bestOdds" />{" "}
+                {before ? t("match.markets.chooseHelp") : null}
+              </>
+            )}
           </p>
           <ChipGroup<MarketsView>
-            label={t("match.catalog.categories")}
+            label={v3 ? t3("marketsv3.familiesLabel") : t("match.catalog.categories")}
             value={view}
             onChange={setPicked}
             testId="markets-categories"
             className="mb-4"
             options={views.map((v) => ({
               value: v,
-              label:
-                v === "featured" ? t("match.catalog.featured") : t(`match.catalog.category.${v}`),
+              label: v3
+                ? t3(`marketsv3.family.${v}`)
+                : v === "featured"
+                  ? t("match.catalog.featured")
+                  : t(`match.catalog.category.${v}`),
             }))}
           />
-          {before && probs ? (
+          {before && probs && !v3 ? (
             <ProbabilitiesPanel fixtureId={ctx.fixtureId} category={view} sides={sides} />
           ) : null}
           {view === "featured" ? (
@@ -758,6 +794,7 @@ export function PrematchMarkets({
                 onConsult={consult}
                 follow={follow}
                 testId="markets-grid"
+                v3={v3 ? { fixtureId: ctx.fixtureId } : undefined}
               />
             </>
           ) : (
@@ -770,9 +807,21 @@ export function PrematchMarkets({
               onConsult={consult}
               follow={follow}
               followed={followed}
+              v3={v3}
               target={picked === null && linked?.category === view ? linked.key : undefined}
             />
           )}
+          {v3 ? (
+            <Link
+              to="/profile/$section"
+              params={{ section: "football" }}
+              data-testid="markets-personalize"
+              className="tap-y relative mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <SlidersHorizontal aria-hidden className="h-4 w-4" />
+              {t3("marketsv3.personalize")}
+            </Link>
+          ) : null}
         </>
       ) : catalogQ.isPending ? (
         <SkeletonBlock className="h-24" />

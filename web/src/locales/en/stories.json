@@ -1,0 +1,136 @@
+{
+  "level": {
+    "oficial": "Official",
+    "dos_origenes": "Two origins",
+    "declaracion": "Statement",
+    "un_medio": "One outlet",
+    "rumor": "Rumour",
+    "none": "No level yet"
+  },
+  "levelHelp": {
+    "oficial": "An official source announced it: the club, the league or the federation.",
+    "dos_origenes": "Two sources that do not depend on each other report it.",
+    "declaracion": "It is a statement attributed to whoever said it.",
+    "un_medio": "Only one outlet reports it; nobody else confirms it yet.",
+    "rumor": "It is a rumour: no source confirms it.",
+    "none": "The story has not been classified yet."
+  },
+  "warning": {
+    "contradiccion": "The sources contradict each other",
+    "desactualizada": "It may be out of date"
+  },
+  "category": {
+    "fichajes": "Transfers",
+    "bajas_y_sanciones": "Absences and sanctions",
+    "declaraciones": "Statements",
+    "resultados_y_proximos": "Results and upcoming",
+    "selecciones": "National teams",
+    "colombia": "Colombian football",
+    "internacional": "International",
+    "competiciones": "Competitions"
+  },
+  "untitled": "A story without a headline yet",
+  "noSummary": "PrediGol cannot summarise this story yet: the source only allows the link.",
+  "sources_one": "{count} source",
+  "sources_other": "{count} sources",
+  "by": "According to {names}",
+  "latest": "Latest source: {when}",
+  "inSpanish": "(in Spanish)",
+  "readSource": "Read at the source",
+  "readSourceNamed": "Read at the source: {name}",
+  "monogram": "Letter crest of the story",
+  "story": {
+    "back": "Back to News",
+    "essentials": "The essentials",
+    "level": "How confirmed it is",
+    "about": "Who it is about",
+    "protagonist": "Main subject",
+    "mentioned": "Mentioned",
+    "impact": "How it bears on the match",
+    "impactBody": "{aspect}",
+    "impactOpen": "See the match",
+    "impactPending": "The match's analysis is not published yet.",
+    "timeline": "How it came to be known",
+    "timelineLine": "{when} · {source}",
+    "timelineLevel": "level: {level}",
+    "sources": "Sources",
+    "sourceTime": "Published {when}",
+    "sourceDay": "Published on {date}",
+    "sourceSeen": "Seen by PrediGol {when}",
+    "related": "Related stories",
+    "rights": "Summary written by PrediGol; the full article is at the source.",
+    "withdrawn": "This story was withdrawn at its source's request.",
+    "moderation": "This story is under review and cannot be shown yet.",
+    "notFound": "We could not find this story. It may no longer be available.",
+    "closed": "News is not open yet.",
+    "noSources": "No sources to show."
+  },
+  "title": "News",
+  "subtitle": "The stories of football, how confirmed each is and where it comes from.",
+  "search": {
+    "label": "Search the news",
+    "placeholder": "Search a team, a player or a topic",
+    "submit": "Search",
+    "clear": "Clear the search",
+    "did": "We searched: {normalized}"
+  },
+  "front": {
+    "lead": "Top story",
+    "breaking": "Breaking",
+    "mine": "Your teams",
+    "mineEmpty": "Follow teams and players to see their stories here.",
+    "featured": "Featured",
+    "topics": "By topic",
+    "window": "Stories of the last {hours} hours",
+    "empty": "There are no stories in the last {hours} hours yet.",
+    "emptyBody": "When a source publishes something about a match or a team, it shows up here."
+  },
+  "filters": {
+    "label": "Filters",
+    "level": "How confirmed",
+    "category": "Topic",
+    "all": "All",
+    "mine": "Only what I follow",
+    "sort": "Order",
+    "since": "From",
+    "until": "To",
+    "clear": "Clear the filters",
+    "remove": "Remove the {name} filter",
+    "applied": "Filters applied",
+    "names": {
+      "q": "Text",
+      "team": "Team",
+      "player": "Player",
+      "competition": "Competition",
+      "country": "Country",
+      "from": "From",
+      "to": "To",
+      "category": "Topic",
+      "level": "Level",
+      "mine": "What I follow"
+    }
+  },
+  "sort": {
+    "reciente": "Most recent",
+    "relevante": "Most relevant"
+  },
+  "results": {
+    "total_one": "{count} story",
+    "total_other": "{count} stories",
+    "none": "We found no stories with these filters.",
+    "noneBody": "Try fewer filters or another name.",
+    "more": "Show more stories"
+  },
+  "card": {
+    "open": "Open the story"
+  },
+  "match": {
+    "title": "Match stories",
+    "note": "What the sources say about this match, since each team's previous match. PrediGol summarises in its own words; the full story is at the source.",
+    "since": "Since {date}",
+    "team": "More stories about {team}",
+    "all": "See all stories",
+    "count_one": "{count} story",
+    "count_other": "{count} stories"
+  }
+}

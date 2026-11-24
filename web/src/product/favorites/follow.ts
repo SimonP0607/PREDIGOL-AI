@@ -42,6 +42,13 @@ export function familiesFirst<T extends string>(
   return [lead as T, ...promoted, ...rest.filter((x) => !promoted.includes(x))];
 }
 
+/** The names of the followed teams the API says have no match we follow, in the reader's order. */
+export function idleTeamNames(view: FavoritesView | null | undefined): string[] {
+  if (!view || !view.personalization || view.suggested) return [];
+  const idle = new Set(view.idle_teams ?? []);
+  return view.teams.filter((tm) => idle.has(tm.id)).map((tm) => tm.name);
+}
+
 export interface FollowSet {
   /** A followed league and its place in the reader's order (the order they chose them). */
   leagues: ReadonlyMap<number, number>;

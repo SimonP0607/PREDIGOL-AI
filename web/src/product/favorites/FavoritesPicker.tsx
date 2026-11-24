@@ -72,18 +72,21 @@ function Toggle({
   disabled,
   onClick,
   testId,
+  describedBy,
   children,
 }: {
   on: boolean;
   disabled: boolean;
   onClick: () => void;
   testId: string;
+  describedBy?: string | undefined;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
       aria-pressed={on}
+      aria-describedby={describedBy}
       disabled={disabled}
       onClick={onClick}
       data-testid={testId}
@@ -394,6 +397,11 @@ function useFavoriteSearch(leagues: readonly CompetitionBadge[], q: string, sett
       )
     : [];
   const players = ready ? (found.data?.players ?? []) : [];
+  // AP-B06: a team with no match of a league we follow is found all the same, after the rest, with its note
+  const idle = new Set<number>([
+    ...(found.data?.idle_teams ?? []),
+    ...aliased.flatMap((a) => a.data?.idle_teams ?? []),
+  ]);
   const pending = !ready || found.isFetching || aliased.some((a) => a.isFetching);
   let status = "";
   if (!searchable(q)) status = "";
@@ -410,14 +418,14 @@ function useFavoriteSearch(leagues: readonly CompetitionBadge[], q: string, sett
         ? [t("onboarding.picker.foundPlayers", { count: players.length })]
         : []),
     ].join(" · ");
-  return { ready, found, matching, teams, players, pending, status };
+  return { ready, found, matching, teams, players, idle, pending, status };
 }
 
 type Search = ReturnType<typeof useFavoriteSearch>;
 
 /** What a search found: the leagues (here, by name or country) and the teams (the API's), right under the field. */
 function Results({ search, choice, limits, onChange }: Props & { search: Search }) {
-  const { ready, found, matching, teams, players } = search;
+  const { ready, found, matching, teams, players, idle } = search;
   const at = full(choice, limits);
   return (
     <div className="space-y-4" data-testid="fav-results">
@@ -436,6 +444,8 @@ function Results({ search, choice, limits, onChange }: Props & { search: Search 
           <ul className="flex flex-wrap gap-2">
             {teams.map((tm) => {
               const on = hasTeam(choice, tm.id);
+              const noteId = `fav-team-note-${tm.id}`;
+              const quiet = idle.has(tm.id);
               return (
                 <li key={tm.id} className="max-w-full">
                   <Toggle
@@ -443,9 +453,19 @@ function Results({ search, choice, limits, onChange }: Props & { search: Search 
                     disabled={!on && at.teams}
                     onClick={() => onChange(toggleTeam(choice, tm, limits))}
                     testId="fav-team"
+                    describedBy={quiet ? noteId : undefined}
                   >
                     <TeamName team={tm} />
                   </Toggle>
+                  {quiet ? (
+                    <p
+                      id={noteId}
+                      className="mt-0.5 px-3 text-caption text-muted-foreground"
+                      data-testid="fav-team-idle"
+                    >
+                      {t("onboarding.picker.idleTeam")}
+                    </p>
+                  ) : null}
                 </li>
               );
             })}
