@@ -242,6 +242,9 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     # when the account is anonymised; the worker of PrediGol Intelligence never reads it
     *(("predigol_api", "customer.calendar_feeds", privilege, True) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
     *(("predigol_worker", "customer.calendar_feeds", privilege, False) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
+    # PM-14-07 (0176): a reader's «solo fútbol» mode and pause - the API reads and writes it, the worker never sees it
+    *(("predigol_api", "customer.wellbeing", privilege, True) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
+    *(("predigol_worker", "customer.wellbeing", privilege, False) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
     # what readers think of PrediGol (plan UX, B6): the API records the survey and «¿Te sirvió?» (a vote changes: UPDATE),
     # deletes them when the account is anonymised and, as the messenger, past their 24 months; the worker of PrediGol
     # Intelligence never reads them (the opinion never enters the models)
