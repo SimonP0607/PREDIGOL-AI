@@ -256,7 +256,12 @@ def test_the_shadow_comparison_avoids_the_pass_the_copies_and_the_fixtures_sync(
     syncs = [h * 60 + 58 for h in (4, 10, 16, 22)]                                # fixtures_sync, about :58 every six hours
     assert all(not (f - 20 <= h * 60 + m <= f + 10) for h, m in starts for f in syncs)
     assert (7, 20) not in starts
-    assert shadow.PROCESS_TIMEOUT < 20 * 60                                       # under the run watchdog of availability_shadow
+    from fbi.ops.run_watchdog import timeout_for
+
+    assert job.SHADOW_SECONDS < shadow.PROCESS_TIMEOUT < timeout_for(shadow.JOB).total_seconds()  # under the run watchdog
+    first, retry = shadow.HOUR * 3600 + shadow.MINUTE * 60, shadow.RETRY_TIMES[0][0] * 3600 + shadow.RETRY_TIMES[0][1] * 60
+    assert first + shadow.PROCESS_TIMEOUT < retry                                 # an attempt never overlaps the one before
+    assert job.SHADOW_SECONDS > shadow.SAMPLE * 2.8                               # 2.8 s a match, measured on 24-nov-2026
 
 
 def test_the_peak_is_this_process_not_the_worker_it_was_forked_from(tmp_path: Path) -> None:

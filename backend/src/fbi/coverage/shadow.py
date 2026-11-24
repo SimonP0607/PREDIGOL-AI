@@ -34,9 +34,9 @@ MINUTE: Final = 30
 (03:50-05:00), the statistics pass (07:20) and the ``fixtures_sync`` (about :58 every six hours)."""
 RETRY_TIMES: Final[tuple[tuple[int, int], ...]] = ((9, 10), (11, 50))
 """Further attempts the same day while no comparison of the day completed (no room, or a process that died)."""
-PROCESS_TIMEOUT: Final = 17 * 60
-"""How long the scheduler waits for the process: the comparison's 12 minutes (``fbi.coverage.job.SHADOW_SECONDS``) and 5 to start
-and write; under the run watchdog's 20 minutes for ``availability_shadow``."""
+PROCESS_TIMEOUT: Final = 30 * 60
+"""How long the scheduler waits for the process: the comparison's 25 minutes (``fbi.coverage.job.SHADOW_SECONDS``) and 5 to start
+and write; under the run watchdog's 35 minutes for ``availability_shadow``, and over before the next attempt (09:10 after 08:30)."""
 MAX_ROWS_PER_DAY: Final = 20_000
 """A bound on what one day may append (500 matches x some 40 markets): a module gone wrong must not fill the table."""
 

@@ -51,8 +51,8 @@ JOB_TIMEOUTS: dict[str, timedelta] = {
     "stats_documents": timedelta(minutes=45),
     # the recalculation of the availability matrix (PM-02-03): its own process, 15 minutes of budget, opened by that process.
     "availability_refresh": timedelta(minutes=25),
-    # its shadow comparison (PM-02-06): the same process, after it; 500 matches read with C-14's own function, 12 minutes of budget.
-    "availability_shadow": timedelta(minutes=20),
+    # its shadow comparison (PM-02-06): a process of its own (BE-093); 500 matches read with C-14's own function, 25 minutes of budget.
+    "availability_shadow": timedelta(minutes=35),
     # the market's margin and dispersion by competition and day (PM-05-07): the same process, last; 4 minutes of budget, opened by it.
     "market_league_stats": timedelta(minutes=10),
     # the single chronicle in shadow (IA-103/IA-104): at most ten calls of the small model a pass, or a batch sent.
