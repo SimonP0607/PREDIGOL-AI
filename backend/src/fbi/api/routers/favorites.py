@@ -86,21 +86,78 @@ SELECT p.id, p.name, p.position, latest.team
 """The reader's players, each with the team of its latest line-up (a player already followed shows even when it aged out)."""
 
 PLAYER_SEARCH_SQL = """
-SELECT p.id, p.name, p.position, latest.team
-  FROM core.players p
-  JOIN LATERAL (
-        SELECT t.name AS team, f.kickoff_at
+WITH cand AS MATERIALIZED (
+    SELECT p.id, p.provider_player_id, p.name, p.position,
+           translate(lower(p.name), %(src)s, %(dst)s) LIKE %(prefix)s AS is_prefix
+      FROM core.players p
+     WHERE translate(lower(p.name), %(src)s, %(dst)s) LIKE %(pattern)s
+     ORDER BY is_prefix DESC, p.name
+)
+SELECT c.id, c.name, c.position, latest.team
+  FROM cand c
+  CROSS JOIN LATERAL (
+        SELECT t.name AS team
           FROM core.fixture_lineup_players lp
           JOIN core.fixtures f ON f.id = lp.fixture_id
           JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-          JOIN core.competitions c ON c.id = cs.competition_id
+          JOIN core.competitions co ON co.id = cs.competition_id
           JOIN core.teams t ON t.id = CASE lp.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
-         WHERE lp.provider_player_id = p.provider_player_id AND c.is_tracked
+         WHERE lp.provider_player_id = c.provider_player_id AND co.is_tracked
            AND f.kickoff_at > now() - make_interval(days => %(days)s)
-         ORDER BY f.kickoff_at DESC LIMIT 1) latest ON true
- WHERE translate(lower(p.name), %(src)s, %(dst)s) LIKE %(pattern)s
- ORDER BY translate(lower(p.name), %(src)s, %(dst)s) LIKE %(prefix)s DESC, latest.kickoff_at DESC, p.name
+         ORDER BY f.kickoff_at DESC LIMIT 1) latest
  LIMIT %(limit)s
+"""
+"""The fallback (the search index not loaded yet): the candidates by name are ordered first - prefix, then name - and the line-up
+lookup runs only until the page is full (BE-090). It used to look up the line-ups of every player whose name matched before the
+LIMIT: ``mar`` -> 6,000 players -> 10 s -> 500 in production."""
+
+PLAYER_INDEX_SQL = """
+WITH q AS (SELECT core.search_key(%(raw)s) AS k),
+hit AS (
+    SELECT e.entity_id, e.popularity, e.name_key LIKE q.k || '%%' AS is_prefix
+      FROM core.search_entries e, q
+     WHERE e.kind = 'player' AND q.k IS NOT NULL AND e.name_key LIKE '%%' || q.k || '%%'
+),
+best AS MATERIALIZED (
+    SELECT DISTINCT ON (entity_id) entity_id, popularity, is_prefix FROM hit ORDER BY entity_id, is_prefix DESC, popularity DESC
+),
+ranked AS MATERIALIZED (
+    SELECT p.id, p.provider_player_id, p.name, p.position, b.is_prefix, b.popularity
+      FROM best b JOIN core.players p ON p.id = b.entity_id
+     ORDER BY b.is_prefix DESC, b.popularity DESC, p.name
+),
+valid AS (
+    SELECT r.* FROM ranked r
+     WHERE EXISTS (SELECT 1 FROM core.fixture_lineup_players lp
+                     JOIN core.fixtures f ON f.id = lp.fixture_id
+                     JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+                     JOIN core.competitions co ON co.id = cs.competition_id
+                    WHERE lp.provider_player_id = r.provider_player_id AND co.is_tracked
+                      AND f.kickoff_at > now() - make_interval(days => %(days)s))
+     LIMIT %(limit)s
+)
+SELECT v.id, v.name, v.position, latest.team
+  FROM valid v
+  CROSS JOIN LATERAL (
+        SELECT t.name AS team
+          FROM core.fixture_lineup_players lp
+          JOIN core.fixtures f ON f.id = lp.fixture_id
+          JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+          JOIN core.competitions co ON co.id = cs.competition_id
+          JOIN core.teams t ON t.id = CASE lp.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
+         WHERE lp.provider_player_id = v.provider_player_id AND co.is_tracked
+           AND f.kickoff_at > now() - make_interval(days => %(days)s)
+         ORDER BY f.kickoff_at DESC LIMIT 1) latest
+ ORDER BY v.is_prefix DESC, v.popularity DESC, v.name
+"""
+"""The players by the search index (AD-I01) when it is loaded: the names by prefix and then popularity, only the ones that appeared
+in a line-up of a league PrediGol follows (the same rule that lets a reader keep them: ``FOLLOWABLE_PLAYERS_SQL``), with the team
+of their latest line-up. The line-up check stops at the first match and runs only until the page is full: 80-330 ms in production
+where it took 10 s for ``mar`` (BE-090). A player who debuted since the last refresh of the index shows once it is refreshed."""
+
+INDEX_READY_SQL = """
+SELECT c.relispopulated FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'core' AND c.relname = 'search_entries' AND c.relkind = 'm'
 """
 
 
@@ -190,6 +247,15 @@ def put_team_notify(body: TeamNotifyIn, conn: Db, principal: App) -> FavoritesVi
     return favorites_view(conn, principal.user_id)
 
 
+def _player_rows(conn: psycopg.Connection[Any], raw: str, search: dict[str, Any]) -> Sequence[Sequence[Any]]:
+    """The search index when it is loaded, the bounded line-up lookup when it is not."""
+    ready = conn.execute(INDEX_READY_SQL).fetchone()
+    if ready is not None and ready[0]:
+        return conn.execute(PLAYER_INDEX_SQL, {"raw": raw.strip(), "limit": search["limit"],
+                                               "days": search["days"]}).fetchall()
+    return conn.execute(PLAYER_SEARCH_SQL, search).fetchall()
+
+
 @router.get("/favorites/options", response_model=FavoriteOptions)
 def favorite_options(conn: Db, _: App, q: Search = None) -> FavoriteOptions:
     """What can be followed: every league PrediGol follows, the teams of those leagues whose name matches ``q`` (two letters
@@ -207,7 +273,7 @@ def favorite_options(conn: Db, _: App, q: Search = None) -> FavoriteOptions:
         idle = [int(r[0]) for r in rows if not r[3]]
         if len(folded) >= favorites.PLAYER_SEARCH_MIN:
             players = [PlayerBadge(id=int(r[0]), name=r[1], position=r[2], team=r[3])
-                       for r in conn.execute(PLAYER_SEARCH_SQL, search).fetchall()]
+                       for r in _player_rows(conn, q or "", search)]
     return FavoriteOptions(leagues=_leagues(conn, None), teams=teams, idle_teams=idle, players=players)
 
 

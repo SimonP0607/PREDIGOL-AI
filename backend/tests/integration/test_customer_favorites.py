@@ -481,6 +481,24 @@ def test_the_options_find_players_by_name_from_three_letters_without_accents(
     assert names(teams["teams"]) == ["Atlético Nacional", "Nacional Sin Partidos"] and teams["players"] == []
 
 
+def test_the_options_read_the_players_from_the_search_index_once_it_is_loaded(
+        fresh: Football, players: dict[str, int], database: str) -> None:
+    """BE-090: with ``core.search_entries`` loaded the players come from it (13-90 ms in production, where the line-up
+    lookup of every name that matched took 10 s for ``mar``); the answer is the same one the fallback gives."""
+    reader = client(READER)
+    asked = ("james", "RODRIGUEZ", "radamel", "ja", "viejo", "lejano", "sin ali", "%%%", "___", "jam")
+    before = {q: reader.get("/api/v1/me/favorites/options", params={"q": q}).json()["players"] for q in asked}
+    with psycopg.connect(database, autocommit=True) as conn:
+        assert conn.execute("SELECT relispopulated FROM pg_class WHERE relname = 'search_entries'").fetchone() == (False,)
+        conn.execute("REFRESH MATERIALIZED VIEW core.search_entries")
+    after = {q: reader.get("/api/v1/me/favorites/options", params={"q": q}).json()["players"] for q in asked}
+    assert [(p["id"], p["name"], p["team"]) for p in after["james"]] == [
+        (players["james"], "James Rodríguez", "Millonarios")]
+    for q in asked:
+        assert [(p["id"], p["team"]) for p in after[q]] == [(p["id"], p["team"]) for p in before[q]], q
+    assert after["ja"] == [] and after["%%%"] == [] and after["___"] == []
+
+
 # ── the welcome and the hints ─────────────────────────────────────────────────────────────────────────────────────────
 
 
