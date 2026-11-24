@@ -36,6 +36,24 @@ def test_a_match_the_provider_left_interrupted_for_days_is_not_in_play() -> None
     )
 
 
+def test_a_match_whose_kick_off_is_still_to_come_is_not_in_play() -> None:
+    """Regression (OPS-017, 24 Nov 2026): the provider left a Premier League match of 22 May 2027 at HT (core.fixtures 173871, updated
+    20 Nov). The window had no end, so a future kick-off counted: "1 matches in play, last in-play capture 4566s ago" - 'problem' -
+    from 03:25 UTC, when the night's last real match ended and the capture, which only follows kick-offs at or before now
+    (fbi.odds.live_cadence.possibly_live_count), rightly went idle. The query itself runs on PostgreSQL in
+    tests/integration/test_healthcheck_in_play_query.py."""
+    where = in_play_query()
+    assert "kickoff_at <= now()" in where, "a kick-off still to come is not being played, whatever its stored code"
+
+
+def in_play_query() -> str:
+    """The in-play count of healthcheck.sh, as the script runs it."""
+    text = SCRIPT.read_text(encoding="utf-8")
+    query = re.search(r'playing="\$\(psql_q "(SELECT count\(\*\) FROM core\.fixtures WHERE [^"]*)"', text)
+    assert query is not None, "the in-play count is a query on core.fixtures"
+    return query.group(1)
+
+
 # ---- the copies off the server -----------------------------------------------------------------------------------------
 # The block of healthcheck.sh that reads state/*.json and the manifests runs for real (its own text, not a copy of it) with
 # say/problem/warning replaced by lines a test can read.
