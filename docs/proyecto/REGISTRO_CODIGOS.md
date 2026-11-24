@@ -538,7 +538,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-022 · SEG-003 · UX-232 · BE-092 · FE-010 · OPS-017 · DOC-014
+CI-023 · SEG-003 · UX-232 · BE-092 · FE-010 · OPS-017 · DOC-014
 
 IA-161
 
