@@ -212,3 +212,16 @@ Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y
 
 Esperado: ≈ 80 peticiones al día de media y ≈ 720 el día de más carga; Superliga y Recopa quedan en «muestra insuficiente» (una
 eliminatoria al año). Vuelta atrás: `--batch 5 --untrack --apply` (no borra nada).
+
+## 9. Lote 6 escrito (OPS-018, PM-03-03, 2026-11-24)
+
+El lote 5 está seguido y medido (medido por ventana de horas, §7 de IA-077). Con eso, `config/expansion.yaml` lleva el **lote 6** (nivel de migración 10): segundas, copas y supercopas de América (Argentina, Brasil, Chile, Uruguay, México, Estados Unidos y Panamá) — 16 competiciones (129, 130, 517, 810, 1178, 632, 266, 267, 527, 263, 857, 304, 257, 269, 842, 930), decidido con la sonda `pm-03-01` y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+
+Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
+
+1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 6`. Debe listar las 16 con `known` y `tracked False`; si dice `REFUSED`, se para.
+2. Seguimiento: la misma orden con `--apply`.
+3. Medir la ventana (o el día UTC completo) siguiente con el criterio de IA-077 (≤ 1.000 peticiones añadidas), antes del lote siguiente.
+
+Esperado: ≈ 320 peticiones al día de media y ≈ 2.000 el día de más carga (2,2 GB al año, sobre todo cuotas). Nivel esperado: 263 Liga de Expansión MX alcanza B* (estadísticas, xG, jugadores y árbitro declarados); 129, 130, 266, 267 y 257 quedan en C*; 304, 269 y 930 en D; los siete partidos únicos (517, 810, 1178, 632, 527, 857, 842) en «muestra insuficiente». Vuelta atrás: `--batch 6 --untrack --apply` (no borra nada).
+
