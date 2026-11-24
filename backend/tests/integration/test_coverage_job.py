@@ -203,3 +203,58 @@ def test_the_switch_and_the_full_day() -> None:
     assert job.mode({job.SWITCH: "0"}) == "off"
     assert job.mode({job.SWITCH: "off"}) == "off"
     assert job.is_full_day(NOW) and not job.is_full_day(NOW + timedelta(days=1))
+
+
+def test_a_short_season_does_not_inherit_the_providers_no_of_the_season_before(conn: psycopg.Connection) -> None:
+    """Regression (BE-092, 23-nov-2026): the Sudamericana 2026 - 5 matches in the odds window, all priced, its odds flag «yes» - came out
+    ``D`` («heredado») in the nine markets, where it is short of sample. The season before had no match in PrediGol's odds window and its
+    flag said «no», so rule 5 made it ``D`` («no_entregado») - a level the provider declared, not one measured - and rule 2 handed it on.
+    Rule 2 inherits only what the season before measured: the short season is ``MI``. The same holds for a datum."""
+    c = conn
+    sync_definitions(c)
+    h = payload(c)
+    comp = competition(c, 990011, "continental")
+    old, new = season(c, comp, 2025), season(c, comp, 2026)
+    for i in range(30):                           # 2025: played before the odds window, no corners sent
+        match(c, old, datetime(2025, 4, 1, tzinfo=UTC) + timedelta(days=i), corners=(None, None), h=h)
+    for i in range(5):                            # 2026: 5 matches in the window, priced by 6 houses, corners for both teams
+        match(c, new, datetime(2026, 10, 20, tzinfo=UTC) + timedelta(days=i), books=6, h=h)
+    for year, odds, stats in ((2025, False, False), (2026, True, True)):
+        c.execute("INSERT INTO raw.league_coverage (provider_league_id, season, events, lineups, statistics_fixtures, "
+                  "statistics_players, odds, payload_hash, observed_at) VALUES (990011, %s, true, true, %s, false, %s, %s, now())",
+                  (year, stats, odds, h))
+    c.commit()
+
+    job.run_pass(c, now=NOW)
+    # the season before: no window and the provider's «no» -> D, from the flag (unchanged)
+    assert market(c, old, "1X2")[0] == "D" and market(c, old, "1X2")[5] == "no_entregado"
+    # this season: short of sample, nothing measured to inherit -> MI, not the D of 2025
+    assert market(c, new, "1X2")[:3] == ("MI", 5, 5) and market(c, new, "1X2")[5] == "muestra_insuficiente"
+    for key in ("OU", "BTTS", "AH", "goals_half", "corners", "cards", "shots", "players"):   # the nine, as in production
+        assert market(c, new, key)[0] == "MI", key
+    # what production holds (the D inherited before this fix) comes down by rule 4: kept on the first recalculation, MI on the second
+    c.execute("UPDATE analytics.market_availability SET level = 'D', measured_level = 'D', provisional = true, reason = 'heredado', "
+              "missed = false WHERE competition_season_id = %s AND market_key = '1X2'", (new,))
+    c.commit()
+    job.run_pass(c, now=NOW + timedelta(minutes=1), full=True)
+    assert market(c, new, "1X2")[0] == "D"
+    job.run_pass(c, now=NOW + timedelta(minutes=2), full=True)
+    assert market(c, new, "1X2")[0] == "MI"
+    # a datum the season before MEASURED as D (30 matches, no corners) is still inherited, provisional (rule 2 unchanged)
+    assert cell(c, old, "corners")[:5] == ("D", "D", False, False, None)
+    assert cell(c, new, "corners")[:5] == ("D", "D", False, True, "heredado")
+    # a datum whose level the season before took from the flag (4 matches, none sent, «no») is not inherited
+    comp2 = competition(c, 990012, "continental")
+    old2, new2 = season(c, comp2, 2025), season(c, comp2, 2026)
+    for i in range(4):                            # 2025: 4 matches, no corners, flag «no» -> D no_entregado
+        match(c, old2, datetime(2025, 4, 1, tzinfo=UTC) + timedelta(days=i), corners=(None, None), h=h)
+    for i in range(5):                            # 2026: 5 matches with corners, flag «yes» -> short of sample
+        match(c, new2, datetime(2026, 10, 20, tzinfo=UTC) + timedelta(days=i), h=h)
+    for year, stats in ((2025, False), (2026, True)):
+        c.execute("INSERT INTO raw.league_coverage (provider_league_id, season, events, lineups, statistics_fixtures, "
+                  "statistics_players, odds, payload_hash, observed_at) VALUES (990012, %s, true, true, %s, false, true, %s, now())",
+                  (year, stats, h))
+    c.commit()
+    job.run_pass(c, now=NOW + timedelta(minutes=5), full=True)
+    assert cell(c, old2, "corners")[:5] == ("D", "D", False, False, "no_entregado")
+    assert cell(c, new2, "corners")[:5] == ("MI", "MI", False, False, "muestra_insuficiente")
