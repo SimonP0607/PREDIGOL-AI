@@ -161,6 +161,7 @@ def test_the_worker_starts_the_process_with_its_cap_and_never_computes(worker: A
     def run(args: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
         calls.append(args)
         assert kw["cwd"] == worker.APP_DIR and kw["timeout"] > job.MAX_SECONDS
+        assert kw["env"]["OPENBLAS_NUM_THREADS"] == "1" and kw["env"]["MALLOC_ARENA_MAX"] == "2"   # BE-094: lean address space
         return subprocess.CompletedProcess(args, 0, "{'status': 'completed'}\n", "")
 
     monkeypatch.setattr(worker.subprocess, "run", run)
@@ -169,7 +170,7 @@ def test_the_worker_starts_the_process_with_its_cap_and_never_computes(worker: A
     monkeypatch.setattr(job, "run_pass", lambda *a, **k: pytest.fail("the worker must not compute the matrix itself"))
     worker._availability_refresh_now()
     assert len(calls) == 1
-    assert calls[0][1:] == ["-m", "scripts.availability_refresh", "--scheduled", "--max-memory-mib", "512"]
+    assert calls[0][1:] == ["-m", "scripts.availability_refresh", "--scheduled", "--no-shadow", "--max-memory-mib", "512"]
 
 
 def test_without_room_it_records_a_skip_and_starts_nothing(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -186,3 +187,88 @@ def test_switched_off_it_does_nothing(worker: Any, monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(worker.subprocess, "run", lambda *a, **k: pytest.fail("switched off"))
     worker._availability_refresh_now()
     assert _Ledger.opened == []
+
+
+# ── BE-094: the shadow comparison in a process of its own ────────────────────────────────────────────────────────────
+
+
+def test_the_shadow_comparison_starts_alone_with_its_cap_and_a_lean_environment(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression (21 and 23-nov-2026): run in the pass's process, after it, the comparison died twice («process gone», no row). It now
+    starts in a process of its own, from a clean address space, with one thread for the numerical libraries and two malloc arenas."""
+    from fbi.coverage import shadow
+
+    calls: list[tuple[list[str], dict[str, Any]]] = []
+
+    def run(args: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
+        calls.append((args, kw))
+        return subprocess.CompletedProcess(args, 0, "{'status': 'completed'}\n", "")
+
+    monkeypatch.setattr(worker.subprocess, "run", run)
+    monkeypatch.setattr(job, "headroom_mib", lambda: 900.0)
+    monkeypatch.delenv(job.SWITCH, raising=False)
+    monkeypatch.delenv(shadow.SWITCH, raising=False)
+    worker._availability_shadow_now()
+    assert len(calls) == 1
+    args, kw = calls[0]
+    assert args[1:] == ["-m", "scripts.availability_refresh", "--scheduled", "--shadow-only", "--max-memory-mib", "512"]
+    assert kw["cwd"] == worker.APP_DIR and job.SHADOW_SECONDS < kw["timeout"] == shadow.PROCESS_TIMEOUT
+    assert {k: kw["env"][k] for k in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "MALLOC_ARENA_MAX")} == {
+        "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "MALLOC_ARENA_MAX": "2"}
+
+
+def test_the_shadow_comparison_without_room_records_a_skip_and_off_does_nothing(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.coverage import shadow
+
+    monkeypatch.setattr(worker.subprocess, "run", lambda *a, **k: pytest.fail("no room: nothing may start"))
+    monkeypatch.setattr(job, "headroom_mib", lambda: 200.0)
+    monkeypatch.delenv(job.SWITCH, raising=False)
+    monkeypatch.delenv(shadow.SWITCH, raising=False)
+    worker._availability_shadow_now(retry=True)
+    assert _Ledger.opened == [{"job": "availability_shadow", "skipped": "sin_margen_de_memoria", "headroom_mib": 200.0,
+                               "needed_mib": job.HEADROOM_MIB, "retry": True, "status": "aborted"}]
+    _Ledger.opened = []
+    monkeypatch.setenv(shadow.SWITCH, "0")
+    worker._availability_shadow_now()
+    assert _Ledger.opened == []
+
+
+def test_the_shadow_comparison_does_nothing_once_the_day_has_one(worker: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.coverage import shadow
+
+    class Done(_Conn):
+        def fetchone(self) -> tuple[int]:  # type: ignore[override]
+            return (1,)
+
+    monkeypatch.setattr(worker, "_connect", lambda: Done())
+    monkeypatch.setattr(worker.subprocess, "run", lambda *a, **k: pytest.fail("done today: nothing may start"))
+    monkeypatch.delenv(job.SWITCH, raising=False)
+    monkeypatch.delenv(shadow.SWITCH, raising=False)
+    worker._availability_shadow_now(retry=True)
+    worker._availability_refresh_now(retry=True)
+
+
+def test_the_shadow_comparison_avoids_the_pass_the_copies_and_the_fixtures_sync() -> None:
+    from fbi.coverage import shadow
+
+    starts = [(shadow.HOUR, shadow.MINUTE), *shadow.RETRY_TIMES]
+    assert all((h, m) > (job.HOUR, job.MINUTE + 15) for h, m in starts)          # after the pass (15 minutes of budget)
+    assert all(not (3 * 60 + 30 <= h * 60 + m <= 5 * 60) for h, m in starts)      # never in the copies
+    syncs = [h * 60 + 58 for h in (4, 10, 16, 22)]                                # fixtures_sync, about :58 every six hours
+    assert all(not (f - 20 <= h * 60 + m <= f + 10) for h, m in starts for f in syncs)
+    assert (7, 20) not in starts
+    from fbi.ops.run_watchdog import timeout_for
+
+    assert job.SHADOW_SECONDS < shadow.PROCESS_TIMEOUT < timeout_for(shadow.JOB).total_seconds()  # under the run watchdog
+    first, retry = shadow.HOUR * 3600 + shadow.MINUTE * 60, shadow.RETRY_TIMES[0][0] * 3600 + shadow.RETRY_TIMES[0][1] * 60
+    assert first + shadow.PROCESS_TIMEOUT < retry                                 # an attempt never overlaps the one before
+    assert job.SHADOW_SECONDS > shadow.SAMPLE * 2.8                               # 2.8 s a match, measured on 24-nov-2026
+
+
+def test_the_peak_is_this_process_not_the_worker_it_was_forked_from(tmp_path: Path) -> None:
+    """Regression: ``ru_maxrss`` keeps the peak of the parent across exec, so the pass's row read 3.065,4 MiB - the worker's."""
+    from scripts.availability_refresh import peak_mib
+
+    status = tmp_path / "status"
+    status.write_text("Name:\tpython\nVmPeak:\t  300000 kB\nVmHWM:\t   92160 kB\nVmRSS:\t   80000 kB\n", encoding="ascii")
+    assert peak_mib(str(status)) == 90.0
+    assert peak_mib(str(tmp_path / "none")) > 0                                    # no /proc: ru_maxrss
