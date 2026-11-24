@@ -48,6 +48,7 @@ export const STAGE_JOBS: Readonly<Record<Stage, readonly string[]>> = {
     "referee_identity",
     "competition_structure",
     "availability_refresh",
+    "availability_shadow",
     "lineup_watch",
     "context_refresh",
     "context_due",

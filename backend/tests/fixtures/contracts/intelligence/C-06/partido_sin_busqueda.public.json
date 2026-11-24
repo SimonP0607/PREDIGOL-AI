@@ -1,0 +1,24 @@
+{
+  "contract": "C-06",
+  "contract_version": "1.1.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T19:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "view": "partido",
+  "match": {
+    "fixture_id": 990001,
+    "kickoff_at": "2026-11-22T15:00:00Z",
+    "window_from": "2026-11-15T19:00:00Z",
+    "stories": {
+      "items": [],
+      "missing_reason": "sin_resultados"
+    },
+    "searched_at": {
+      "missing_reason": "sin_datos"
+    },
+    "sources_checked": 0
+  }
+}

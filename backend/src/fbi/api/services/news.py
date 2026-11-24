@@ -502,6 +502,11 @@ def _search(conn: Conn, fixture_id: int, at: datetime) -> NewsSearch:
         return NewsSearch(searched="unknown")
 
 
+def match_search(conn: Conn, fixture_id: int, at: datetime) -> NewsSearch:
+    """The match's search state for another reader of it (C-06 1.1, ``news_v2``): the same answer as ``/matches/{id}/news``."""
+    return _search(conn, fixture_id, at)
+
+
 def empty_reason(search: NewsSearch) -> str:
     """What an empty answer says (pure): not searched yet is not the same as nothing found."""
     if search.searched == "no":

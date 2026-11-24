@@ -1,0 +1,210 @@
+{
+  "contract": "C-06",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T19:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "view": "partido",
+  "match": {
+    "fixture_id": 990001,
+    "kickoff_at": "2026-11-22T15:00:00Z",
+    "window_from": "2026-11-15T19:00:00Z",
+    "stories": {
+      "items": [
+        {
+          "id": "st-ej-convocatoria-norte",
+          "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
+          "summary_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
+          "category": "selecciones",
+          "level": "oficial",
+          "warnings": [],
+          "sources_count": 3,
+          "latest_at": "2026-11-21T18:46:00Z",
+          "sources": [
+            {
+              "name": "Club Ejemplo Norte (oficial)",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T18:20:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:26:00Z",
+              "url": "https://oficial.ejemplo.invalid/noticias/convocatoria",
+              "publish_level": "summary",
+              "source_state": "verificada_autorizada",
+              "author_seen": {
+                "missing_reason": "sin_datos"
+              },
+              "item_id": 11
+            },
+            {
+              "name": "Radio Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T18:35:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:40:00Z",
+              "url": "https://radio.ejemplo.invalid/deportes/club-norte-atacantes",
+              "publish_level": "link",
+              "source_state": "verificada_pendiente_derechos",
+              "author_seen": "R. Ejemplo",
+              "item_id": 12
+            },
+            {
+              "name": "Diario Reservado Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": {
+                "missing_reason": "sin_datos"
+              },
+              "published_day_only": false,
+              "known_at": "2026-11-21T18:46:00Z",
+              "url": "https://reservado.ejemplo.invalid/futbol/convocatoria-club-norte",
+              "publish_level": "link",
+              "source_state": "solo_referencia",
+              "author_seen": {
+                "missing_reason": "sin_datos"
+              },
+              "item_id": 13
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770001,
+              "name": "Club Ejemplo Norte",
+              "role": "protagonista",
+              "method": "proveedor",
+              "confidence": 1.0
+            },
+            {
+              "type": "player",
+              "id": 880009,
+              "name": "J. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.98
+            },
+            {
+              "type": "player",
+              "id": 880010,
+              "name": "A. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.95
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          },
+          "status": "activa",
+          "status_reason": {
+            "missing_reason": "sin_datos"
+          },
+          "story_version": 3,
+          "claim_type": "convocatorias",
+          "lang": "es",
+          "country": "Colombia",
+          "own_text": {
+            "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
+            "summary_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
+            "text_version": "news-text-v1"
+          },
+          "withheld_sources": []
+        },
+        {
+          "id": "st-ej-sancion-sur",
+          "headline_es": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_es": {
+            "missing_reason": "sin_datos"
+          },
+          "category": "bajas_y_sanciones",
+          "level": "un_medio",
+          "warnings": [],
+          "sources_count": 1,
+          "latest_at": "2026-11-21T13:50:00Z",
+          "sources": [
+            {
+              "name": "Radio Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T13:50:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T14:00:00Z",
+              "url": "https://radio.ejemplo.invalid/deportes/lateral-sur",
+              "publish_level": "link",
+              "source_state": "verificada_pendiente_derechos",
+              "author_seen": {
+                "missing_reason": "sin_datos"
+              },
+              "item_id": 21
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770002,
+              "name": "Club Ejemplo Sur",
+              "role": "protagonista",
+              "method": "proveedor",
+              "confidence": 1.0
+            },
+            {
+              "type": "player",
+              "id": 880020,
+              "name": "L. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.92
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          },
+          "status": "activa",
+          "status_reason": {
+            "missing_reason": "sin_datos"
+          },
+          "story_version": 3,
+          "claim_type": "convocatorias",
+          "lang": "es",
+          "country": "Colombia",
+          "own_text": {
+            "headline_es": {
+              "missing_reason": "sin_datos"
+            },
+            "summary_es": {
+              "missing_reason": "sin_datos"
+            },
+            "text_version": {
+              "missing_reason": "sin_datos"
+            }
+          },
+          "withheld_sources": []
+        }
+      ]
+    },
+    "analyses": {
+      "items": [
+        {
+          "fixture_id": 990001,
+          "evaluation": "E2",
+          "evaluation_version": 1,
+          "known_at": "2026-11-21T18:48:00Z",
+          "relation": "contexto"
+        }
+      ]
+    }
+  },
+  "story_status": {
+    "missing_reason": "sin_datos"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "contract": "C-06",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T19:00:00Z",
@@ -97,6 +97,8 @@
       "image": {
         "kind": "monograma"
       },
+      "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+      "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences.",
       "status": "activa",
       "status_reason": {
         "missing_reason": "sin_datos"
@@ -108,7 +110,9 @@
       "own_text": {
         "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
         "summary_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
-        "text_version": "news-text-v1"
+        "text_version": "news-text-v1",
+        "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+        "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences."
       },
       "withheld_sources": []
     },
@@ -202,6 +206,8 @@
           "image": {
             "kind": "monograma"
           },
+          "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+          "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences.",
           "status": "activa",
           "status_reason": {
             "missing_reason": "sin_datos"
@@ -213,7 +219,9 @@
           "own_text": {
             "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
             "summary_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
-            "text_version": "news-text-v1"
+            "text_version": "news-text-v1",
+            "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+            "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences."
           },
           "withheld_sources": []
         },
@@ -261,6 +269,12 @@
           "image": {
             "kind": "monograma"
           },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
+          },
           "status": "activa",
           "status_reason": {
             "missing_reason": "sin_datos"
@@ -277,6 +291,12 @@
               "missing_reason": "sin_datos"
             },
             "text_version": {
+              "missing_reason": "sin_datos"
+            },
+            "headline_en": {
+              "missing_reason": "sin_datos"
+            },
+            "summary_en": {
               "missing_reason": "sin_datos"
             }
           },
@@ -374,6 +394,8 @@
           "image": {
             "kind": "monograma"
           },
+          "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+          "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences.",
           "status": "activa",
           "status_reason": {
             "missing_reason": "sin_datos"
@@ -385,7 +407,9 @@
           "own_text": {
             "headline_es": "Club Ejemplo Norte cita a sus dos atacantes titulares",
             "summary_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
-            "text_version": "news-text-v1"
+            "text_version": "news-text-v1",
+            "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+            "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences."
           },
           "withheld_sources": []
         }
@@ -445,6 +469,12 @@
           "image": {
             "kind": "monograma"
           },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
+          },
           "status": "activa",
           "status_reason": {
             "missing_reason": "sin_datos"
@@ -461,6 +491,12 @@
               "missing_reason": "sin_datos"
             },
             "text_version": {
+              "missing_reason": "sin_datos"
+            },
+            "headline_en": {
+              "missing_reason": "sin_datos"
+            },
+            "summary_en": {
               "missing_reason": "sin_datos"
             }
           },
@@ -510,6 +546,12 @@
           "image": {
             "kind": "monograma"
           },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
+          },
           "status": "activa",
           "status_reason": {
             "missing_reason": "sin_datos"
@@ -526,6 +568,12 @@
               "missing_reason": "sin_datos"
             },
             "text_version": {
+              "missing_reason": "sin_datos"
+            },
+            "headline_en": {
+              "missing_reason": "sin_datos"
+            },
+            "summary_en": {
               "missing_reason": "sin_datos"
             }
           },
@@ -591,6 +639,12 @@
           "image": {
             "kind": "monograma"
           },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
+          },
           "status": "en_moderacion",
           "status_reason": "texto propio de una lesión: revisar que diga solo el estado, la fuente y la fecha",
           "story_version": 3,
@@ -600,7 +654,13 @@
           "own_text": {
             "headline_es": "Club Ejemplo Norte espera a su portero",
             "summary_es": "El club informó que su portero está en duda para el sábado.",
-            "text_version": "news-text-v1"
+            "text_version": "news-text-v1",
+            "headline_en": {
+              "missing_reason": "sin_datos"
+            },
+            "summary_en": {
+              "missing_reason": "sin_datos"
+            }
           },
           "withheld_sources": []
         }

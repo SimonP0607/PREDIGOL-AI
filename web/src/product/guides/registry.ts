@@ -130,7 +130,6 @@ export const GUIDES: Readonly<Record<GuideKey, GuideDef>> = {
   odds: built("odds", "/odds", "odds", [
     ["tabs", "odds-tabs"],
     ["fair", "odds-fair"],
-    ["above", "odds-above"],
   ]),
   my_picks: built("my_picks", "/my-picks", "myPicks", [
     ["results", "mine-results"],

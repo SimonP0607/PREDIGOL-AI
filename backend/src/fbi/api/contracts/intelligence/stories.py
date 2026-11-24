@@ -21,6 +21,13 @@ What NEVER travels in the public projection: an article's text, title or picture
 sources allows a summary (``pendiente_derechos``), a story in moderation or withdrawn, and any link to a selection. Of an absence, only its
 state: nothing medical. The private projection adds the moderation state, the withheld sources, the own text whatever the rights, the
 author as seen and the links of the evaluations that used the story (AD-G08).
+
+1.1.0 (C-06 1.1, plan de correcciones UX/UI, AP-N01 to AP-N06, AP-P11) - additive, every new field optional and absent from an answer
+of 1.0.0: four more categories (``premios``, ``ceremonias``, ``polemicas``, ``actualidad``; with ``fichajes`` and ``selecciones`` the
+general news the plan asks for); PrediGol's own text in English next to the Spanish (``headline_en``, ``summary_en``, ``essentials_en``:
+the writer ``news-text-v1`` already writes both, under the same rights); and per match whether and when the web was searched for it
+(``searched_at``) and how many pages were read (``sources_checked``; IA-016's record). A story with no match, linked to a club, a national
+team or a player, is already a story of the front page and of the search by ``team`` / ``player``: nothing new is needed for it.
 """
 
 from __future__ import annotations
@@ -36,6 +43,7 @@ from fbi.api.contracts.intelligence.base import (
     ItemList,
     Missing,
     UtcDatetime,
+    _absent,
     private,
 )
 from fbi.api.contracts.intelligence.vocab import (
@@ -48,8 +56,8 @@ from fbi.api.contracts.intelligence.vocab import (
 STORY_KEY: Final = r"^st-[a-z0-9][a-z0-9-]{3,62}$"
 NewsView = Literal["portada", "noticia", "busqueda", "partido"]
 Category = Literal["fichajes", "bajas_y_sanciones", "declaraciones", "resultados_y_proximos", "selecciones", "colombia",
-                   "internacional", "competiciones"]
-"""The front page's categories (AD-G03, ``fbi.news.vocab.CATEGORIES``; a test holds the two equal)."""
+                   "internacional", "competiciones", "premios", "ceremonias", "polemicas", "actualidad"]
+"""The front page's categories (AD-G03, ``fbi.news.vocab.CATEGORIES``; a test holds the two equal). 1.1.0 adds the last four."""
 EntityType = Literal["team", "player", "coach", "referee", "competition", "fixture", "venue"]
 Role = Literal["protagonista", "mencionado"]
 LinkMethod = Literal["plantilla", "alias", "proveedor", "manual"]
@@ -106,6 +114,8 @@ class OwnText(IntelligenceModel):
     headline_es: str | Missing
     summary_es: str | Missing
     text_version: str | Missing
+    headline_en: str | Missing | None = Field(default=None, exclude_if=_absent, description="1.1.0: the English headline.")
+    summary_en: str | Missing | None = Field(default=None, exclude_if=_absent, description="1.1.0: the English summary.")
 
 
 class StoryCard(IntelligenceModel):
@@ -122,6 +132,8 @@ class StoryCard(IntelligenceModel):
     sources: list[StorySource] = Field(description="Newest first.")
     entities: list[EntityLink] = Field(description="One per entity: protagonista first, then the most confident.")
     image: Image
+    headline_en: str | Missing | None = Field(default=None, exclude_if=_absent, description="1.1.0: PrediGol's own headline in English, under the same rights as headline_es.")
+    summary_en: str | Missing | None = Field(default=None, exclude_if=_absent, description="1.1.0: PrediGol's own summary in English, under the same rights as summary_es.")
 
 
 class StoryCardPrivate(StoryCard):
@@ -187,6 +199,7 @@ class RelatedStory(IntelligenceModel):
     id: str = Field(pattern=STORY_KEY)
     headline_es: str | Missing
     level: ConfirmationLevel | Missing
+    headline_en: str | Missing | None = Field(default=None, exclude_if=_absent, description="1.1.0: the English headline.")
 
 
 class AnalysisLink(IntelligenceModel):
@@ -206,6 +219,7 @@ class StoryDetail(StoryCard):
     timeline: list[TimelineEntry]
     related: ItemList[RelatedStory]
     rights_notice_es: str = RIGHTS_NOTICE_ES
+    essentials_en: str | Missing | None = Field(default=None, exclude_if=_absent, description="1.1.0: the essentials in English.")
 
 
 class StoryDetailPrivate(StoryDetail, StoryCardPrivate):
@@ -234,6 +248,7 @@ class SearchHit(IntelligenceModel):
     category: Category | Missing
     sources_count: int = Field(ge=1)
     latest_at: UtcDatetime
+    headline_en: str | Missing | None = Field(default=None, exclude_if=_absent, description="1.1.0: the English headline.")
 
 
 class Search(IntelligenceModel):
@@ -253,6 +268,14 @@ class MatchStories(IntelligenceModel):
     kickoff_at: UtcDatetime
     window_from: UtcDatetime = Field(description="The previous match of either team (or 14 days before): older news is not this match's.")
     stories: ItemList[StoryCard]
+    searched_at: UtcDatetime | Missing | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.1.0 (AP-P11): the newest search of the web for this match (IA-016); sin_datos when it was never searched; "
+                    "left out when the record could not be read this time.")
+    sources_checked: int | Missing | None = Field(
+        default=None, ge=0, exclude_if=_absent,
+        description="1.1.0 (AP-P11): pages read for this match across the passes (0 when never searched); sin_datos when a pass "
+                    "did not count them; left out when the record could not be read.")
 
 
 class MatchStoriesPrivate(MatchStories):
@@ -260,15 +283,11 @@ class MatchStoriesPrivate(MatchStories):
     analyses: ItemList[AnalysisLink] = private(description="The evaluations of this match that used a fact of these stories.")
 
 
-def _absent(value: object) -> bool:
-    return value is None
-
-
 class News(IntelligenceContract):
     """C-06, public projection: one of ``front``, ``story``, ``search`` or ``match``, as ``view`` says."""
 
     CONTRACT_ID: ClassVar[str] = "C-06"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     view: NewsView
     front: Front | None = Field(default=None, exclude_if=_absent)

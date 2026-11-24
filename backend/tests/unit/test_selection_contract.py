@@ -33,8 +33,10 @@ from fbi.api.contracts.intelligence.selection import (
     Dependency,
     EvaluationSummary,
     ExpectedValue,
+    Highlight,
     MarketStatusRef,
     PriceView,
+    ReaderText,
     Reason,
     SelectionIntelligence,
     SelectionIntelligencePrivate,
@@ -63,6 +65,11 @@ EXAMPLES = Path(__file__).resolve().parents[1] / "fixtures" / "contracts" / "int
 AT = datetime(2026, 11, 21, 16, 42, tzinfo=UTC)
 KO = datetime(2026, 11, 21, 20, 0, tzinfo=UTC)
 NOT_YET = Missing(missing_reason="no_entregado", expected_piece="AD-D06")
+
+
+DECISION: dict[str, Any] = {"p_cal": 0.57, "p_model": 0.785, "p_market": 0.52, "ev_cal": 0.089, "odds": 1.91, "n_bookmakers": 5,
+                            "price_at": AT - timedelta(minutes=12), "known_at": AT}
+"""The stored figures of the example's decision, as ``intel.decisions`` keeps them."""
 
 
 def probability(p: float, *, calibrated: bool = True) -> Probability:
@@ -97,7 +104,9 @@ def selection(state: str, public: str | None, **kw: Any) -> SelectionIntelligenc
         "decision_id": 770001, "layer": "decision-v1", "decision_state": "APROBADO", "lifecycle_state": state, "lifecycle_reason": "cumple_todo",
         "raw_probability": probability(0.785, calibrated=False), "lineup_dependency": Missing(missing_reason="no_entregado", expected_piece="AD-D03"),
         "validation": MarketValidation(verdict="INSUFICIENTE", sample=0, needed=300), "validation_cell": "decision-v1|core|OU",
-        "evaluation": Missing(missing_reason="sin_datos")}
+        "evaluation": Missing(missing_reason="sin_datos"),
+        # C-02 1.1 (AP-K05, AP-K06): written by the service's own templates from the decision's stored figures
+        "reader_reason": svc._reader_reason(DECISION), "highlight": svc._highlight(DECISION, 0.57)}
     base.update(kw)
     return SelectionIntelligencePrivate(**base)
 
@@ -267,3 +276,52 @@ def test_c03_counts_carry_the_ten_states_and_a_family_s_verdict_follows_its_samp
                       clv_pct=Missing(missing_reason="sin_datos"))
     with pytest.raises(ValidationError):
         Tracking.model_validate(dumped(t) | {"counts_by_state": {"detectado": 1}})
+
+
+# ── C-02 1.1: the reason and the highlight for readers (AP-K05, AP-K06) ──────────────────────────────────────────────
+
+def test_the_reader_reason_is_in_both_languages_with_whole_percentages() -> None:
+    r = svc._reader_reason(DECISION)
+    assert not isinstance(r, Missing)
+    assert "57 %" in r.text_es and "52 %" in r.text_es and "57%" in r.text_en and "52%" in r.text_en
+    assert "1,91" in r.text_es and "1.91" in r.text_en
+    for text in (r.text_es, r.text_en):
+        assert "0.57" not in text and "0,57" not in text and "decision-v1" not in text
+
+
+@pytest.mark.parametrize("changes", [{"p_market": None}, {"p_cal": 0.50}, {"p_cal": 0.522}])
+def test_no_reader_reason_without_a_figure_above_the_market(changes: dict[str, Any]) -> None:
+    assert svc._reader_reason(DECISION | changes) == Missing(missing_reason="sin_datos")
+
+
+def test_the_highlight_is_the_price_against_the_fair_odds_with_its_source_and_time() -> None:
+    h = svc._highlight(DECISION, 0.57)
+    assert not isinstance(h, Missing)
+    assert h.as_of == DECISION["price_at"] and h.source.name == "Cuotas de 5 casas de apuestas"
+    assert "1,75" in h.text_es and "1.75" in h.text_en
+    assert svc._highlight(DECISION | {"odds": 1.70}, 0.57) == Missing(missing_reason="sin_datos")
+    assert svc._highlight(DECISION | {"odds": None}, 0.57) == Missing(missing_reason="sin_datos")
+    assert svc._highlight(DECISION | {"price_at": None}, 0.57).as_of == AT  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize("text", ["Probabilidad de 0.473 según el modelo.", "Nuestra cifra es 0,47.", "Lo dice decision-v1.",
+                                  "El modelo Dixon-Coles lo ve claro.", "Se rumorea una baja.", "Rumor: el 9 no juega.",
+                                  "Calibrated by Shin."])
+def test_a_text_with_a_raw_probability_a_model_or_a_rumour_does_not_validate(text: str) -> None:
+    with pytest.raises(ValidationError):
+        ReaderText(text_es=text, text_en="Fine.")
+    with pytest.raises(ValidationError):
+        Highlight(text_es="Bien.", text_en=text, source=Source(name="x", url=Missing(missing_reason="sin_datos")), as_of=AT)
+
+
+@pytest.mark.parametrize("text", ["PrediGol estima un 57 %.", "A la cuota 2,10.", "Valor esperado de +0,5 %.", "Hándicap de 1,25."])
+def test_ordinary_reader_texts_validate(text: str) -> None:
+    assert ReaderText(text_es=text, text_en="Fine.").text_es == text
+
+
+def test_an_answer_of_1_0_0_has_neither_field_and_still_reads() -> None:
+    old = json.loads((EXAMPLES / "C-02" / "anteriores" / "1.0.0" / "publicada.public.json").read_text(encoding="utf-8"))
+    assert "reader_reason" not in old and "highlight" not in old
+    read = SelectionIntelligence.model_validate({k: v for k, v in old.items() if k != "contract_version"})
+    assert read.reader_reason is None and read.highlight is None
+    assert "reader_reason" not in dumped(read) and "highlight" not in dumped(read)

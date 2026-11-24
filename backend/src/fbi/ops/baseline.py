@@ -30,8 +30,7 @@ EXACT_COUNT_LIMIT = 20_000_000
 SKIP_PATHS = frozenset({"/api/v1/admin/analyst/ask", "/api/v1/search"})
 """Not reads (or calling an external model), or meaningless without a query: never snapshotted."""
 
-PRODUCT_PREVIEW = ("/api/v1/home", "/api/v1/picks", "/api/v1/parlays/daily", "/api/v1/parlays/multiday",
-                   "/api/v1/odds/best")
+PRODUCT_PREVIEW = ("/api/v1/home", "/api/v1/picks", "/api/v1/parlays/daily", "/api/v1/parlays/multiday")
 """Product endpoints also captured with ?preview=shadow: the labelled admin preview."""
 
 

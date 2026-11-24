@@ -3,7 +3,7 @@ import { OddsScreen } from "@/product/odds/OddsScreen";
 import { validateOddsSearch, type OddsSearch } from "@/product/odds/oddsSearch";
 import { titled } from "@/lib/i18n/head";
 
-/** The explorer's family, market, line, filters and order live in the URL (plan Cuotas, UX-069); the old page reads none. */
+/** The explorer's family, market, line, filters and order live in the URL (plan Cuotas, UX-069); the page reads them all (the old one, which read none, was retired in UX-232). */
 export const Route = createFileRoute("/odds/")({
   validateSearch: (search: Record<string, unknown>): OddsSearch => validateOddsSearch(search),
   head: titled("nav.odds"),

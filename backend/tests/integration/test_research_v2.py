@@ -79,18 +79,22 @@ def test_the_admin_console_reads_the_roles_of_the_latest_run(db: psycopg.Connect
 
     run = "research-v2-2024-20311231T000000Z"
     with db.cursor() as cur:
-        for name, kind, family, role, metrics in (
+        for name, kind, family, role, metrics, reason in (
             (f"{run}:market:pinnacle/closing/shin", "market", "market", "CHAMPION",
-             '{"common_logloss": 0.95, "n_common": 1700}'),
+             '{"common_logloss": 0.95, "n_common": 1700}',
+             "lowest log loss of the de-vigged market baselines, 0.95000 on the 1700 fixtures every one of them priced"),
             (f"{run}:dixon_coles", "backtest", "dixon_coles", "REJECTED",
              '{"own_sample": {"n": 1700, "log_loss": 0.98, "ece": 0.02}, "research_v2": {"champion": '
-             '"pinnacle/closing/shin", "vs_champion": {"n": 1700, "diff": [0.02, 0.01, 0.03]}, "blends": {}}}'),
-            (f"{run}:audit:shadow-picks", "audit", "shadow_picks", None, '{"overall": {"n": 3}}'),
+             '"pinnacle/closing/shin", "vs_champion": {"n": 1700, "diff": [0.02, 0.01, 0.03]}, "blends": {}}}',
+             "worse than the champion and adds nothing to it: log loss vs pinnacle/closing/shin: +0.0200 "
+             "[+0.0100, +0.0300] on 1700 fixtures (worse); no blend (too few fixtures). Still usable to price "
+             "fixtures the market does not."),
+            (f"{run}:audit:shadow-picks", "audit", "shadow_picks", None, '{"overall": {"n": 3}}', None),
         ):
             cur.execute("INSERT INTO analytics.experiments (name, kind, question, model_family, config, code_version, "
                         "metrics, status, finished_at, run_label, role, role_reason) VALUES (%s, %s, 'q', %s, '{}', "
-                        "'x', %s, 'completed', now(), 'RESEARCH_V2', %s, 'because')", (name, kind, family, metrics,
-                                                                                        role))
+                        "'x', %s, 'completed', now(), 'RESEARCH_V2', %s, %s)", (name, kind, family, metrics,
+                                                                                 role, reason))
     db.commit()
     mp = pytest.MonkeyPatch()
     mp.setenv("FBI_DATABASE_URL", migrated_database.replace("postgresql://", "postgresql+psycopg://"))
@@ -109,4 +113,9 @@ def test_the_admin_console_reads_the_roles_of_the_latest_run(db: psycopg.Connect
     assert d["qualified_models"] == 0 and d["challengers"] == 0
     assert [m["role"] for m in d["models"]] == ["REJECTED"]
     assert d["models"][0]["metrics"]["vs_champion"]["diff"] == [0.02, 0.01, 0.03]
+    # C-11 1.1 (AP-A04): the reason as a code too; the sentence stays as it was
+    assert d["models"][0]["role_reason_code"] == "rechazado_peor_que_mercado"
+    assert d["models"][0]["role_reason"].startswith("worse than the champion")
+    assert d["markets"][0]["role_reason_code"] == "campeon_mercado"
+    assert d["audit"]["role_reason_code"] is None
     assert d["audit"]["metrics"]["overall"] == {"n": 3}

@@ -587,10 +587,10 @@ test("the parlay slip under a thumb: a 44 px close, nothing on its title, its fi
 }) => {
   const w = watch(page);
   const { body } = await getJson<{
-    data: { fixtures: Array<{ fixture_id: number; kickoff_at: string }> };
-  }>(page.request, "/api/v1/odds/best?hours=72&market=1X2");
+    data: { rows: Array<{ fixture_id: number; kickoff_at: string }> };
+  }>(page.request, "/api/v1/odds/board?market=result.1x2&hours=72&limit=50");
   const soon = Date.now() + 30 * 60_000;
-  const ids = body.data.fixtures
+  const ids = body.data.rows
     .filter((f) => Date.parse(f.kickoff_at) > soon)
     .map((f) => f.fixture_id)
     .slice(0, 2);
@@ -732,10 +732,10 @@ test("Mis picks with an open pick, its confirmation, and a match's markets: 44 p
   test.setTimeout(180_000);
   const w = watch(page);
   const { body } = await getJson<{
-    data: { fixtures: Array<{ fixture_id: number; kickoff_at: string }> };
-  }>(page.request, "/api/v1/odds/best?hours=72&market=1X2");
+    data: { rows: Array<{ fixture_id: number; kickoff_at: string }> };
+  }>(page.request, "/api/v1/odds/board?market=result.1x2&hours=72&limit=50");
   const soon = Date.now() + 30 * 60_000;
-  const fixture = body.data.fixtures.find((f) => Date.parse(f.kickoff_at) > soon);
+  const fixture = body.data.rows.find((f) => Date.parse(f.kickoff_at) > soon);
   if (!fixture) {
     note(test.info(), "no upcoming match with a 1X2 price");
     return;
