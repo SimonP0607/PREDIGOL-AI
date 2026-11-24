@@ -1,0 +1,131 @@
+{
+  "contract": "C-18",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-24T15:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "label": "tendencia_no_pick",
+  "label_es": "Análisis de tendencias · no es un pick oficial",
+  "label_en": "Trend analysis · not an official pick",
+  "max_legs": 3,
+  "max_combined_odds": 6.0,
+  "allowed_markets": [
+    "CARDS_OU",
+    "CORNERS_OU",
+    "HT_OU",
+    "SHOTS_OU"
+  ],
+  "candidates": {
+    "items": [
+      {
+        "fixture_id": 990002,
+        "kickoff_at": "2026-11-25T19:00:00Z",
+        "market": "CARDS_OU",
+        "selection": "Over",
+        "line": 4.5,
+        "label_es": "Más de 4,5 tarjetas",
+        "label_en": "Over 4.5 cards",
+        "trend_es": "8 de los últimos 10",
+        "trend_en": "8 of the last 10",
+        "frequency": {
+          "hits": 8,
+          "sample": 10,
+          "pct": 80.0,
+          "low_pct": 49.0,
+          "high_pct": 94.3
+        },
+        "settlement_rule": "cards_ft@v1",
+        "best_odds": 1.95
+      },
+      {
+        "fixture_id": 990001,
+        "kickoff_at": "2026-11-25T19:00:00Z",
+        "market": "CORNERS_OU",
+        "selection": "Over",
+        "line": 9.5,
+        "label_es": "Más de 9,5 córners",
+        "label_en": "Over 9.5 corners",
+        "trend_es": "7 de los últimos 10",
+        "trend_en": "7 of the last 10",
+        "frequency": {
+          "hits": 7,
+          "sample": 10,
+          "pct": 70.0,
+          "low_pct": 39.7,
+          "high_pct": 89.2
+        },
+        "settlement_rule": "corners_ft@v1",
+        "best_odds": 1.85
+      },
+      {
+        "fixture_id": 990003,
+        "kickoff_at": "2026-11-25T19:00:00Z",
+        "market": "HT_OU",
+        "selection": "Under",
+        "line": 1.5,
+        "label_es": "Menos de 1,5 goles en la primera parte",
+        "label_en": "Under 1.5 first-half goals",
+        "trend_es": "9 de los últimos 12",
+        "trend_en": "9 of the last 12",
+        "frequency": {
+          "hits": 9,
+          "sample": 12,
+          "pct": 75.0,
+          "low_pct": 46.8,
+          "high_pct": 91.1
+        },
+        "settlement_rule": "goals_1h@v1",
+        "best_odds": 1.4
+      }
+    ]
+  },
+  "slip": {
+    "legs": [
+      {
+        "fixture_id": 990001,
+        "kickoff_at": "2026-11-25T19:00:00Z",
+        "market": "CORNERS_OU",
+        "selection": "Over",
+        "line": 9.5,
+        "label_es": "Más de 9,5 córners",
+        "label_en": "Over 9.5 corners",
+        "trend_es": "7 de los últimos 10",
+        "trend_en": "7 of the last 10",
+        "frequency": {
+          "hits": 7,
+          "sample": 10,
+          "pct": 70.0,
+          "low_pct": 39.7,
+          "high_pct": 89.2
+        },
+        "settlement_rule": "corners_ft@v1",
+        "best_odds": 1.85
+      },
+      {
+        "fixture_id": 990002,
+        "kickoff_at": "2026-11-25T19:00:00Z",
+        "market": "CARDS_OU",
+        "selection": "Over",
+        "line": 4.5,
+        "label_es": "Más de 4,5 tarjetas",
+        "label_en": "Over 4.5 cards",
+        "trend_es": "8 de los últimos 10",
+        "trend_en": "8 of the last 10",
+        "frequency": {
+          "hits": 8,
+          "sample": 10,
+          "pct": 80.0,
+          "low_pct": 49.0,
+          "high_pct": 94.3
+        },
+        "settlement_rule": "cards_ft@v1",
+        "best_odds": 1.95
+      }
+    ],
+    "combined_odds": 3.61,
+    "within_limits": true
+  }
+}

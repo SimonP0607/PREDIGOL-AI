@@ -1,0 +1,28 @@
+{
+  "contract": "C-18",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-24T15:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "label": "tendencia_no_pick",
+  "label_es": "Análisis de tendencias · no es un pick oficial",
+  "label_en": "Trend analysis · not an official pick",
+  "max_legs": 3,
+  "max_combined_odds": 6.0,
+  "allowed_markets": [],
+  "candidates": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "slip": {
+    "missing_reason": "sin_datos"
+  },
+  "discarded": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "min_sample": 8
+}
