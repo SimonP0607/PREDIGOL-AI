@@ -76,10 +76,13 @@
     "noneHint": "Try the short name of the team or the competition.",
     "groups": {
       "team": "Teams",
+      "national_team": "National teams",
+      "player": "Players",
       "competition": "Competitions",
       "fixture": "Matches"
     },
-    "scope": "For now it finds teams, competitions and matches.",
+    "didYouMean": "Did you mean…?",
+    "scope": "It finds teams, national teams, players, competitions and matches.",
     "keys": "↑ ↓ to move · Enter to open · Esc to close"
   }
 }
