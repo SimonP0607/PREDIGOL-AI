@@ -44,3 +44,8 @@ b38b556c4e81af7bf093ade5a13d7df6089eed90:backend/tests/unit/test_contain_trace.p
 # paran el escaneo de cualquier otro PR. Ninguna es una credencial, solo texto que nombra la etiqueta pública de un mercado del catálogo.
 d700de3b2e05514b6dc1d66859d7b384af533c04:.gitleaksignore:generic-api-key:38
 d700de3b2e05514b6dc1d66859d7b384af533c04:docs/proyecto/REGISTRO_CODIGOS.md:generic-api-key:25
+
+# Etiqueta pública de un mercado del catálogo (el 1X2 de los 90 minutos) en una prueba de BE-110 (PR #556): la regla genérica la tomó por una credencial por ir
+# junto a la palabra «key» en el argumento. No es un valor secreto. La línea ya está reescrita en el siguiente commit del PR (la etiqueta va en una constante); el commit
+# publicado no se reescribe.
+66d326074e294040969001b32aa831df7d66aba5:backend/tests/unit/test_parlay_markets_v2.py:generic-api-key:93

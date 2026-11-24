@@ -76,6 +76,26 @@ def test_properties_of_every_market(raw: list[tuple[int, int, str, str]], covere
             assert s.mi_parlay == resolve.parlay_leg(inputs(qs, covered=covered, state=state), m.key, s.selection, s.line)
 
 
+def test_a_forecast_only_in_the_shadow_store_is_computed_but_not_authorised_for_a_reader() -> None:
+    """BE-110 (the 62 «probabilidad» discrepancies of 24-nov-2026): the Asian handicap has stored predictions (``models.predictions``,
+    the shadow models) but nothing in the published store (``models.match_forecasts``), so C-14 shows readers no figure for it. State 4
+    says it is computed; state 5 («what C-14 shows a reader») needs the published store to hold a figure too."""
+    ah = next(i for i, s in enumerate(SPECS) if s.market_key == "AH" and s.period == "FT" and s.subject == "match")
+    qs = tuple(quote(ah, b, sel, "-0.5") for b in (1, 2, 3) for sel in ("Home", "Away"))
+    key = key_of(qs[0])
+    forecasts = frozenset({key})
+    spec = spec_for_key(key)
+    assert spec is not None and spec.market_key == "AH"
+    base = inputs(qs, forecasts=forecasts)
+    for published, authorised in ((None, True), (frozenset(), False), (frozenset({"1X2"}), False)):
+        got = resolve.resolve(MatchInputs(**{**{f: getattr(base, f) for f in base.__dataclass_fields__}, "published": published}))
+        m = next(x for x in got.markets if x.key == key)
+        assert m.prob_computed and m.prob_authorised is authorised, (published, m)
+    for pub in (frozenset({"AH"}), frozenset({key})):          # published under the market's core key, or the catalogue's: shown
+        got = resolve.resolve(MatchInputs(**{**{f: getattr(base, f) for f in base.__dataclass_fields__}, "published": pub}))
+        assert next(x for x in got.markets if x.key == key).prob_authorised is True
+
+
 def test_a_started_match_takes_no_leg() -> None:
     i = inputs((quote(0, 1, "Over", "2.5"),))
     late = MatchInputs(**{**{f: getattr(i, f) for f in i.__dataclass_fields__}, "at": AT + timedelta(hours=7)})

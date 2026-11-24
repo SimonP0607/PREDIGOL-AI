@@ -23,6 +23,19 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+MatrixMode = Literal["off", "show", "on"]
+
+
+class MatrixModules(BaseModel):
+    """What each module does with C-16 (plan PM, PM-14-04): ``off`` decides as it always did, ``show`` reads the matrix and only says
+    what it says, ``on`` lets it replace the module's own check. Always ``off`` while ``FBI_AVAILABILITY`` is off."""
+
+    odds: MatrixMode = "off"
+    picks: MatrixMode = "off"
+    news: MatrixMode = "off"
+    parlay: MatrixMode = "off"
+
+
 class DisplayPrefs(BaseModel):
     """How the reader wants PrediGol shown (plan maestro UX/UI 2026, decision 8). Presentation only."""
 
@@ -152,6 +165,9 @@ class Me(Contract):
     stakes: bool = Field(default=False, description="Variable units on picks, parlays, Mis picks and Transparencia (plan de correcciones UX, AP-K07, decision D3) (FBI_STAKES, off by default).")
     trend_builder: bool = Field(default=False, description="The parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7) (FBI_TREND_BUILDER, off by default).")
     transparency_export: bool = Field(default=False, description="The download of the published picks (CSV and JSON, with the calibration and its uncertainty) in «Cómo le va a PrediGol» (plan PM, PM-14-08; FBI_TRANSPARENCY_EXPORT, off by default; it needs the page open).")
+    matrix_modules: MatrixModules = Field(default_factory=MatrixModules, description=(
+        "What Cuotas, Picks, Noticias and Mi parlay do with C-16 (plan PM, PM-14-04; FBI_MATRIX_ODDS, FBI_MATRIX_PICKS, FBI_MATRIX_NEWS, "
+        "FBI_MATRIX_PARLAY: off by default; show: they read the matrix and only say what it says; on: it replaces their own check)."))
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")
