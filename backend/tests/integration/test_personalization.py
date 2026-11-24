@@ -422,8 +422,7 @@ def test_two_readers_with_different_favourites_and_habits_get_the_same_picks_pri
     day_from, day_to = (now - timedelta(hours=12)).isoformat(), (now + timedelta(hours=12)).isoformat()
     paths = ["/api/v1/today", "/api/v1/today/no-pick", "/api/v1/home", "/api/v1/picks", "/api/v1/daily",
              "/api/v1/picks/started", f"/api/v1/matches/{fid}", f"/api/v1/matches/{fid}/forecast",
-             f"/api/v1/matches/{fid}/reading", f"/api/v1/matches/{fid}/news", f"/api/v1/odds/fixtures/{fid}",
-             "/api/v1/odds/best"]
+             f"/api/v1/matches/{fid}/reading", f"/api/v1/matches/{fid}/news", f"/api/v1/odds/fixtures/{fid}"]
     day = {"kickoff_after": day_from, "kickoff_before": day_to, "order": "asc", "limit": 200}
     answers: dict[int, dict[str, Any]] = {}
     for user in readers:

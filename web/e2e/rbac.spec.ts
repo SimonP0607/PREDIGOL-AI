@@ -62,7 +62,7 @@ test("a USER gets the product and 403 on every admin route, and no shadow previe
     "/api/v1/home",
     "/api/v1/picks",
     "/api/v1/parlays/daily",
-    "/api/v1/odds/best",
+    "/api/v1/odds/board?market=result.1x2",
     "/api/v1/live",
   ]) {
     expect((await user.get(path)).status(), path).toBe(200);

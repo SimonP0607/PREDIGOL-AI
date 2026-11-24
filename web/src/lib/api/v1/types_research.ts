@@ -3,6 +3,20 @@ import type { Iso } from "./types";
 
 export type ResearchRole = "CHAMPION" | "CHALLENGER" | "RESEARCH" | "REJECTED";
 
+/**
+ * C-11 1.1 (AP-A04, AP-A05): why an entry has its role, as a code to translate (fbi.research.reason_codes). Its figures
+ * are in `metrics` (vs_champion, blend, segments); `role_reason` keeps the server's sentence.
+ */
+export type ResearchReasonCode =
+  | "campeon_mercado"
+  | "variante_mercado"
+  | "mejor_que_mercado"
+  | "aporta_informacion"
+  | "rechazado_peor_que_mercado"
+  | "evidencia_insuficiente"
+  | "sin_partidos_comunes"
+  | "muestra_insuficiente";
+
 export interface ResearchEntry {
   experiment_id: number;
   name: string;
@@ -10,6 +24,8 @@ export interface ResearchEntry {
   model_family: string;
   role: ResearchRole | null;
   role_reason: string | null;
+  /** C-11 1.1; null for a sentence the list does not know, absent from an older API. */
+  role_reason_code?: ResearchReasonCode | null;
   segment: string | null;
   finished_at: Iso | null;
   data_as_of: Iso | null;

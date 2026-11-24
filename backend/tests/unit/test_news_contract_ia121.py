@@ -238,3 +238,20 @@ def test_an_active_story_none_of_whose_sources_may_be_shown_waits_in_the_queue_a
     page = NewsPrivate(freshness=Freshness(generated_at=world.AT, stale=False), view="portada", front=body, story_status=news_v2.NO_DATA)
     public = to_public(page, News)
     assert s.key not in json.dumps(public.model_dump(mode="json"))
+
+
+# ── C-06 1.1 (AP-P11): whether the web was searched for a match ─────────────────────────────────────────────────────────
+
+def test_the_search_of_a_match_says_when_and_how_many_pages_and_never_guesses() -> None:
+    from datetime import UTC, datetime
+
+    from fbi.api.contracts.intelligence.base import Missing
+    from fbi.api.contracts.news import NewsSearch
+    from fbi.api.services import news_v2 as c06
+
+    at = datetime(2026, 11, 21, 16, 0, tzinfo=UTC)
+    assert c06.search_fields(NewsSearch(searched="yes", last_searched_at=at, searches=2, sources_read=14)) == (at, 14)
+    assert c06.search_fields(NewsSearch(searched="yes", last_searched_at=at, searches=1, sources_read=None)) == (
+        at, Missing(missing_reason="sin_datos"))
+    assert c06.search_fields(NewsSearch(searched="no", searches=0, sources_read=0)) == (Missing(missing_reason="sin_datos"), 0)
+    assert c06.search_fields(NewsSearch(searched="unknown")) == (None, None)

@@ -1,6 +1,7 @@
 /**
- * Cuotas (plan Cuotas, UX-069): the explorer by families while the API says `odds_explorer` (FBI_ODDS_EXPLORER, in GET
- * /auth/me), the page of always otherwise. The explorer is its own chunk: a reader of the page of always never downloads it.
+ * Cuotas (plan Cuotas, UX-069): the explorer by families for every reader. The page of always (`OddsPage`, fed by `/odds/best`)
+ * was retired with that endpoint (PM-13-07, UX-232), and `odds_explorer` (FBI_ODDS_EXPLORER, in GET /auth/me) no longer decides
+ * anything here. The explorer is its own chunk, loaded when the route opens.
  */
 import { lazy, Suspense } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
@@ -9,7 +10,6 @@ import { ChevronRight, Clock } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { SkeletonCards } from "@/product/shared/States";
-import { OddsPage } from "./OddsPage";
 import type { DayKey } from "./explorer/model";
 
 const ExplorerScreen = lazy(() =>
@@ -39,15 +39,7 @@ function StatusLink() {
 
 export function OddsScreen() {
   const user = useAuth().user;
-  const on = user?.odds_explorer === true;
   const status = user?.odds_status === true ? <StatusLink /> : null;
-  if (!on)
-    return (
-      <>
-        <OddsPage />
-        {status}
-      </>
-    );
   if (user?.odds_by_match !== true)
     return (
       <>

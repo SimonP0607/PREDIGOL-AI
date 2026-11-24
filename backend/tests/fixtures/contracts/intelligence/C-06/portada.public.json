@@ -1,6 +1,6 @@
 {
   "contract": "C-06",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "public",
   "freshness": {
     "generated_at": "2026-11-21T19:00:00Z",
@@ -80,7 +80,9 @@
       ],
       "image": {
         "kind": "monograma"
-      }
+      },
+      "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+      "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences."
     },
     "breaking": {
       "items": [
@@ -155,7 +157,9 @@
           ],
           "image": {
             "kind": "monograma"
-          }
+          },
+          "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+          "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences."
         },
         {
           "id": "st-ej-rumor-fichaje",
@@ -194,6 +198,12 @@
           ],
           "image": {
             "kind": "monograma"
+          },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
           }
         }
       ]
@@ -271,7 +281,9 @@
           ],
           "image": {
             "kind": "monograma"
-          }
+          },
+          "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+          "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences."
         }
       ]
     },
@@ -322,6 +334,12 @@
           ],
           "image": {
             "kind": "monograma"
+          },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
           }
         },
         {
@@ -361,6 +379,12 @@
           ],
           "image": {
             "kind": "monograma"
+          },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
           }
         }
       ]

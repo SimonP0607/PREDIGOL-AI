@@ -82,6 +82,21 @@ def test_one_story_is_served_from_the_store_with_what_each_source_allows(conn: p
     assert not isinstance(unsigned.story, Missing) and unsigned.story is not None
     assert unsigned.story.own_text.headline_es == s.headline_es, "the owner still sees the text he must moderate"
 
+    # C-06 1.1: no English text stored yet -> sin_datos; once the writer stores it, it is served under the same rights
+    assert s.headline_en == Missing(missing_reason="sin_datos") and s.essentials_en == Missing(missing_reason="sin_datos")
+    from fbi.news import store
+
+    store.revise_story(conn, key, at=NOW - timedelta(minutes=1), written_by="writer-v1", text_version="writer-v1",
+                       headline_es=s.headline_es, summary_es=s.summary_es,
+                       headline_en="Club Ejemplo Norte calls up its two first-choice forwards",
+                       summary_en="The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences.")
+    english = to_public(news_v2.build_story(conn, key, at=NOW, publish=SIGNED), News).story
+    assert isinstance(english, StoryDetail)
+    assert english.headline_en == "Club Ejemplo Norte calls up its two first-choice forwards"
+    assert english.essentials_en == english.summary_en and english.essentials_es == s.essentials_es
+    hidden = to_public(news_v2.build_story(conn, key, at=NOW, publish=publish_with(policy(signed=()))), News).story
+    assert isinstance(hidden, StoryDetail) and hidden.headline_en == Missing(missing_reason="pendiente_derechos")
+
 
 def test_the_front_page_search_and_match_read_the_store(conn: psycopg.Connection[Any]) -> None:
     key = build_story(conn)
@@ -130,6 +145,8 @@ def test_the_front_page_search_and_match_read_the_store(conn: psycopg.Connection
     upcoming = fixture(NOW + timedelta(hours=20))
     match = to_public(news_v2.build_match(conn, upcoming, at=NOW, publish=SIGNED), News).match
     assert match is not None and [c.id for c in match.stories.items] == [key] and match.window_from == AT - timedelta(days=5)
+    # C-06 1.1 (AP-P11): never searched -> sin_datos and 0 pages, not «buscamos y no hubo nada»
+    assert (match.searched_at, match.sources_checked) == (Missing(missing_reason="sin_datos"), 0)
     named = to_public(news_v2.build_story(conn, key, at=NOW, publish=SIGNED), News).story
     assert isinstance(named, StoryDetail) and named.entities[0].name == "Club Ejemplo Norte", "PrediGol's own name of the team"
     late = fixture(NOW + timedelta(days=30))

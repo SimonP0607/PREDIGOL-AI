@@ -1,7 +1,7 @@
-"""What the six client routes answer does not change unseen (plan UX, A0 and section 4: "instantáneas de forma").
+"""What the client routes answer does not change unseen (plan UX, A0 and section 4: "instantáneas de forma").
 
 The user layer consumes PrediGol Intelligence and never alters it, and that includes what the API already answers:
-``/home``, ``/picks``, ``/daily``, ``/odds/best``, ``/me/history`` and ``/matches/{id}/center``. Their parameters and the
+``/home``, ``/picks``, ``/daily``, ``/me/history`` and ``/matches/{id}/center`` (``/odds/best``, the sixth, was retired in UX-232). Their parameters and the
 JSON Schema of their 200 answers (with every schema they refer to) are kept in ``tests/snapshots/client_api_shapes.json``.
 A deliberate change rewrites it with ``python -m scripts.api_shapes write --reason "..."``, which appends the date and the
 reason to the file; this test only says whether the code and the file agree.
@@ -21,7 +21,7 @@ def now() -> dict[str, Any]:
     return api_shapes.current()
 
 
-def test_the_six_client_routes_answer_the_shape_kept_in_the_snapshot(now: dict[str, Any]) -> None:
+def test_the_five_client_routes_answer_the_shape_kept_in_the_snapshot(now: dict[str, Any]) -> None:
     diff = api_shapes.differences(api_shapes.stored()["routes"], now)
     assert not diff, (
         "the shape of a client route changed. If it is meant, rewrite the snapshot with its reason:\n"
@@ -30,7 +30,7 @@ def test_the_six_client_routes_answer_the_shape_kept_in_the_snapshot(now: dict[s
 
 def test_the_snapshot_covers_exactly_the_routes_the_plan_names(now: dict[str, Any]) -> None:
     assert set(now) == {f"{m.upper()} {p}" for m, p in api_shapes.ROUTES}
-    assert len(api_shapes.ROUTES) == 6
+    assert len(api_shapes.ROUTES) == 5
 
 
 def test_every_change_of_the_snapshot_carries_a_date_and_a_reason() -> None:

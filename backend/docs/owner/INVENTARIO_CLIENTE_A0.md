@@ -37,8 +37,8 @@ sesión) y **admin** (`/api/v1/admin/*`, solo SUPER_ADMIN; 109 direcciones que u
 - **18 rutas que escriben**: 12 de la cuenta (`/auth/*`: inicio y cierre de sesión, segundo factor, contraseña, preferencias y
   sesiones) y 6 de lo que guarda el usuario (`/me/picks` y `/me/parlays`: guardar, validar, cambiar la cuota propia y borrar).
 
-Las seis que el plan congela con una instantánea de forma (A0) son `/home`, `/picks`, `/daily`, `/odds/best`, `/me/history` y
-`/matches/{id}/center`: `tests/snapshots/client_api_shapes.json`, comprobada por `tests/unit/test_client_api_shapes.py`.
+Las cinco que el plan congela con una instantánea de forma (A0) son `/home`, `/picks`, `/daily`, `/me/history` y
+`/matches/{id}/center` (eran seis: `/odds/best` se retiró en UX-232 y ya responde 404): `tests/snapshots/client_api_shapes.json`, comprobada por `tests/unit/test_client_api_shapes.py`.
 
 ## 3. Datos personales que ya existen y dónde se escriben
 

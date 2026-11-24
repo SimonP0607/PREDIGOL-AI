@@ -65,11 +65,22 @@ def test_the_fingerprint_reads_the_words_not_the_typography() -> None:
 
 # ── the words against the migration ───────────────────────────────────────────────────────────────────────────────────────
 
+def later_categories() -> tuple[str, ...]:
+    """The categories migration 0174 added (C-06 1.1): the check of news.stories is 0146's list and these."""
+    path = BACKEND / "migrations" / "versions" / "0174_news_categories.py"
+    spec = importlib.util.spec_from_file_location("migration_0174", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.CATEGORIES_BEFORE == migration().CATEGORIES
+    return tuple(module.NEW_CATEGORIES)
+
+
 def test_the_words_of_the_code_are_the_checks_of_the_migration() -> None:
     m = migration()
     pairs: list[tuple[Any, Any]] = [
         (m.FEED_KINDS, vocab.FEED_KINDS), (m.FOUND_VIA, vocab.FOUND_VIA), (m.SOURCE_STATES, vocab.SOURCE_STATES),
-        (m.STORE_LEVELS, vocab.STORE_LEVELS), (m.PUBLISH_LEVELS, vocab.PUBLISH_LEVELS), (m.CATEGORIES, vocab.CATEGORIES),
+        (m.STORE_LEVELS, vocab.STORE_LEVELS), (m.PUBLISH_LEVELS, vocab.PUBLISH_LEVELS), (m.CATEGORIES + later_categories(), vocab.CATEGORIES),
         (m.LEVELS, vocab.LEVELS), (m.CLAIM_TYPES, vocab.CLAIM_TYPES), (m.STATUSES, vocab.STATUSES),
         (m.GROUP_METHODS, vocab.GROUP_METHODS), (m.ENTITY_TYPES, vocab.ENTITY_TYPES), (m.ROLES, vocab.ROLES),
         (m.LINK_METHODS, vocab.LINK_METHODS), (m.DECIDERS, vocab.DECIDERS),

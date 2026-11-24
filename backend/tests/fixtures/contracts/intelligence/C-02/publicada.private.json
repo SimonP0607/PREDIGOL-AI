@@ -1,6 +1,6 @@
 {
   "contract": "C-02",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T16:42:00Z",
@@ -116,6 +116,21 @@
     "market_key": "OU",
     "state": "en_calibracion",
     "reason": "sin_calibrador_validado"
+  },
+  "reader_reason": {
+    "text_es": "PrediGol estima un 57 % para esta selección; el mercado, sin su margen, un 52 %. A la mejor cuota, 1,91, el valor esperado es de +8,9 %.",
+    "text_en": "PrediGol estimates 57% for this selection; the market, without its margin, 52%. At the best odds, 1.91, the expected value is +8.9%."
+  },
+  "highlight": {
+    "text_es": "La mejor cuota disponible, 1,91, paga más que la cuota justa de la estimación de PrediGol, 1,75.",
+    "text_en": "The best available odds, 1.91, pay more than the fair odds of PrediGol's estimate, 1.75.",
+    "source": {
+      "name": "Cuotas de 5 casas de apuestas",
+      "url": {
+        "missing_reason": "sin_datos"
+      }
+    },
+    "as_of": "2026-11-21T16:30:00Z"
   },
   "decision_id": 770001,
   "layer": "decision-v1",

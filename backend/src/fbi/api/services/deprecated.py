@@ -17,8 +17,14 @@ log = structlog.get_logger(__name__)
 
 Caller = Literal["browser", "e2e", "testclient", "script", "other"]
 
-SUCCESSORS: dict[str, str] = {"/odds/best": "/api/v1/odds/board"}
-"""Each endpoint on its way out and the one that replaces it (the ``Link: rel="successor-version"`` header)."""
+SUCCESSORS: dict[str, str] = {}
+"""Each endpoint on its way out and the one that replaces it (the ``Link: rel="successor-version"`` header). Empty since UX-232:
+the one that was here, ``/odds/best``, is retired."""
+
+RETIRED: dict[str, str] = {"/odds/best": "/api/v1/odds/board"}
+"""The register of retired routes (plan maestro PM, PM-13-07, UX-232): each path that used to answer under ``/api/v1`` and the one
+that replaced it. They answer 404 now; a test checks that none of them is mounted again by mistake. ``audit.deprecated_api_use`` keeps
+their count (nothing is deleted)."""
 
 _COUNT = """
 INSERT INTO audit.deprecated_api_use (day, endpoint, caller, role)

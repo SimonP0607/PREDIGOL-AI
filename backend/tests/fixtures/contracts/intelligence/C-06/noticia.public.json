@@ -1,6 +1,6 @@
 {
   "contract": "C-06",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "public",
   "freshness": {
     "generated_at": "2026-11-21T19:00:00Z",
@@ -80,6 +80,8 @@
     "image": {
       "kind": "monograma"
     },
+    "headline_en": "Club Ejemplo Norte calls up its two first-choice forwards",
+    "summary_en": "The official squad includes J. Ejemplo and A. Ejemplo. The club reported no new absences.",
     "essentials_es": "La convocatoria oficial incluye a J. Ejemplo y A. Ejemplo. El club no informó bajas nuevas.",
     "level_explanation_es": "Lo comunicó una fuente oficial (club, liga o federación).",
     "match_impact": {

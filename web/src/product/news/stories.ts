@@ -41,6 +41,10 @@ const CATEGORY_WORD: Readonly<Record<StoryCategory, string>> = {
   colombia: "stories.category.colombia",
   internacional: "stories.category.internacional",
   competiciones: "stories.category.competiciones",
+  premios: "stories.category.premios",
+  ceremonias: "stories.category.ceremonias",
+  polemicas: "stories.category.polemicas",
+  actualidad: "stories.category.actualidad",
 };
 
 export { CATEGORY_ORDER } from "./storyKinds";

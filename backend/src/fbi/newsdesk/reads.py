@@ -48,6 +48,9 @@ class Story:
     text_version: str | None
     status: str
     status_reason: str | None
+    headline_en: str | None = None
+    summary_en: str | None = None
+    """PrediGol's own text in English (``news-text-v1`` writes both languages; C-06 1.1)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,7 +133,7 @@ def _rows(conn: psycopg.Connection[Any], sql: str, params: Mapping[str, Any]) ->
 
 
 STORY_FIELDS: Final = ("story_key AS key, id, version, at, first_seen_at, event_at, valid_until, claim_type, category, level, lang, country, headline_es, "
-                       "summary_es, text_version, status, status_reason")
+                       "summary_es, text_version, status, status_reason, headline_en, summary_en")
 TABLES_SQL: Final = "SELECT to_regclass('news.stories') IS NOT NULL AND to_regclass('news.item_entities') IS NOT NULL"
 RECENT_SQL: Final = f"""
 SELECT {STORY_FIELDS} FROM (
