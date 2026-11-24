@@ -9,7 +9,7 @@ is the safer reading of it. The Admin Console's preview never depends on them.
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Literal
 
 from fbi.core.env import environment
 
@@ -116,6 +116,30 @@ AVAILABILITY: Final = "FBI_AVAILABILITY"
 """The availability matrix over HTTP (plan PM, PM-02-05; contract C-16): OFF while the line is absent - its five routes answer 404,
 the private ones too - and ``=1`` opens them (the API recreated). It reads the tables of the nightly batch and the match's own data;
 it changes nothing a page shows until a module reads it (PM-14-04)."""
+
+MATRIX_MODULES: Final = ("odds", "picks", "news", "parlay")
+"""The four modules that read C-16 (plan PM, PM-14-04): Cuotas, Picks, Noticias and Mi parlay."""
+MATRIX_MODULE_SWITCH: Final = {"odds": "FBI_MATRIX_ODDS", "picks": "FBI_MATRIX_PICKS", "news": "FBI_MATRIX_NEWS",
+                               "parlay": "FBI_MATRIX_PARLAY"}
+"""One line per module (PM-14-04, ``Un interruptor de activación por módulo``): OFF while the line is absent - the module decides as
+it always did - ``=show`` makes it READ C-16 and only SAY what the matrix says (the one note per screen of ``UnavailableNotes``: nothing
+is hidden, no price, pick or leg changes) and ``=on`` makes the matrix replace the module's own check (Cuotas leaves out the markets
+the matrix says have no price in force; Mi parlay's flag also asks the matrix's market verdict; Picks and Noticias only say it:
+a published pick is never withdrawn by a matrix). All of them read C-16, so ``FBI_AVAILABILITY`` must be on, and each is turned
+on only after the shadow comparison (PM-02-06) has its fourteen days with every discrepancy explained."""
+MatrixMode = Literal["off", "show", "on"]
+
+
+def matrix_mode(module: str) -> MatrixMode:
+    """What a module does with C-16: ``off`` (the default, and whenever C-16 is off or the line is unreadable), ``show`` or ``on``."""
+    name = MATRIX_MODULE_SWITCH.get(module)
+    if name is None or not availability_on():
+        return "off"
+    raw = (environment().get(name) or "").strip().lower()
+    if raw == "show":
+        return "show"
+    return "on" if raw in ON else "off"
+
 
 AVAILABILITY_PHASES: Final = "FBI_AVAILABILITY_PHASES"
 """The cups split by phase in C-16 (plan PM, PM-02-07): OFF while the line is absent - C-16 answers ``todas`` only and a match's blocks

@@ -18,7 +18,14 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LiveApiError, STAGE_EVENT, UNAUTHENTICATED_EVENT, v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
-import type { Language, Me, PermissionKey, PreferencesIn } from "@/lib/api/v1/types_auth";
+import type {
+  Language,
+  MatrixMode,
+  MatrixModule,
+  Me,
+  PermissionKey,
+  PreferencesIn,
+} from "@/lib/api/v1/types_auth";
 import { browserLocale, isLocale, rememberLocale, type Locale } from "@/lib/i18n";
 import { setObservedUser } from "@/lib/observability";
 import { detectTimeZone, isValidTimeZone } from "@/lib/time";
@@ -270,6 +277,16 @@ export function useAvailabilityOn(): boolean {
   return useContext(AuthContext)?.user?.availability === true;
 }
 
+/**
+ * What a module does with the availability matrix (plan PM, PM-14-04; FBI_MATRIX_ODDS, _PICKS, _NEWS, _PARLAY): `off` decides as it
+ * always did, `show` reads C-16 and only says what it says, `on` lets it replace the module's own check. It is `off` while C-16 is off
+ * (the API says so), while the API says nothing and outside the provider.
+ */
+export function useMatrixMode(module: MatrixModule): MatrixMode {
+  const u = useContext(AuthContext)?.user;
+  if (u?.availability !== true) return "off";
+  return u.matrix_modules?.[module] ?? "off";
+}
 /** Whether the owner's console of the provider's requests is on (plan PM, PM-04-05; FBI_USAGE_CONSOLE). Off outside the provider. */
 export function useUsageConsoleOn(): boolean {
   return useContext(AuthContext)?.user?.usage_console === true;

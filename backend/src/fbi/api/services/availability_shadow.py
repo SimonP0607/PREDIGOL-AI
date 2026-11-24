@@ -22,6 +22,7 @@ from typing import Any, Final
 from fbi.api.contracts.intelligence.base import Missing
 from fbi.api.repositories import Conn, fetch_all
 from fbi.api.services.availability import parlay_rules
+from fbi.api.services.forecast import VERSION as PUBLISHED_FORECAST_VERSION
 from fbi.api.services.forecast import users_may_see
 from fbi.api.services.market_probs import build as market_probs
 from fbi.api.services.market_probs import parlay_policy
@@ -49,7 +50,8 @@ def compare_match(conn: Conn, fixture_id: int, *, at: datetime, catalogue: Any, 
                   parlay_on: bool, state_of: Any, users: bool) -> list[shadow.Finding]:
     """The discrepancies of one match in C-14's three readings (Mi parlay's flag, the market listed, the model shown)."""
     probs = market_probs(conn, fixture_id, at=at, catalogue=catalogue, shadow=True)
-    found = resolver.availability(conn, fixture_id, at=at, rules=rules, parlay_on=parlay_on, state_of=state_of, forecast_users=users)
+    found = resolver.availability(conn, fixture_id, at=at, rules=rules, parlay_on=parlay_on, state_of=state_of, forecast_users=users,
+                                  published_versions=(PUBLISHED_FORECAST_VERSION,))
     if found is None:
         return []
     by_key = {m.key: m for m in found.markets}

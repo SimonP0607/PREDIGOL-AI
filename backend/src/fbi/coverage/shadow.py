@@ -41,8 +41,11 @@ MAX_ROWS_PER_DAY: Final = 20_000
 """A bound on what one day may append (500 matches x some 40 markets): a module gone wrong must not fill the table."""
 
 C13_DATA: Final[dict[str, str]] = {"corners_for": "corners", "shots_for": "shots", "shots_on_target_for": "shots_on_target",
-                                   "xg_for": "xg", "fouls": "fouls", "cards": "yellow_cards"}
-"""The figures of the statistics documents (C-13, ``fbi.stats.team``) and the datum of the matrix each one rests on."""
+                                   "xg_for": "xg", "fouls": "fouls", "cards": "events"}
+"""The figures of the statistics documents (C-13, ``fbi.stats.team``) and the datum of the matrix each one rests on. BE-110: the cards
+figure counts the cards of the match's EVENTS (the rule ``cards_lines_ft@v1``: every card shown counts one, from
+``market.fixture_outcomes``), not the team statistics' ``yellow_cards`` the matrix grades: compared with that datum it gave five
+false discrepancies on 24-nov-2026 (Premier League, J2 and J3 League: events at A, team yellow cards at D)."""
 
 
 def mode(env: Mapping[str, str] | None = None) -> str:

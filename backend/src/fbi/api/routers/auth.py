@@ -13,6 +13,7 @@ from fbi.api.contracts.auth import (
     DisplayPrefs,
     IdentityIn,
     LoginIn,
+    MatrixModules,
     Me,
     MfaCodeIn,
     MfaEnrolled,
@@ -40,6 +41,7 @@ from fbi.api.security import (
 )
 from fbi.api.services import news as news_service
 from fbi.api.switches import (
+    MATRIX_MODULES,
     availability_on,
     competition_directory_on,
     competition_page_on,
@@ -53,6 +55,7 @@ from fbi.api.switches import (
     match_coverage_on,
     match_intelligence_on,
     match_shot_funnel_on,
+    matrix_mode,
     my_books_on,
     nav_v2_on,
     news_feed_on,
@@ -122,6 +125,7 @@ def me_of(p: Principal, row: dict[str, Any] | None = None) -> Me:
         my_books=my_books_on(),
         stakes=stakes_on(),
         trend_builder=trend_builder_on(),
+        matrix_modules=MatrixModules(**{m: matrix_mode(m) for m in MATRIX_MODULES}),
     )
 
 
