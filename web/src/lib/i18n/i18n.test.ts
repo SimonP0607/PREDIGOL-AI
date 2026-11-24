@@ -15,6 +15,7 @@ import "@/components/analytics/stats/readText";
 import "@/admin/userText";
 import "@/admin/usageText";
 import "@/admin/emailText";
+import "@/admin/helpGapsText";
 import "@/product/news/storyText";
 import "@/product/match/marketsV3Text";
 import "@/live/pipelineText";

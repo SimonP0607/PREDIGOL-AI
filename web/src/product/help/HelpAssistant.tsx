@@ -19,11 +19,12 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { t } from "@/lib/i18n";
+import { track } from "@/lib/track";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useReportProblem } from "@/product/support/report";
 import { WhatsappLink } from "@/product/support/WhatsappLink";
-import { answerOf, ask, type AssistantAnswer } from "./helpSearch";
+import { answerOf, ask, unansweredTerms, type AssistantAnswer } from "./helpSearch";
 import { faqQuestion, type FaqId } from "./faq";
 import { NO_REACH, type Reach } from "./reach";
 import {
@@ -107,6 +108,11 @@ export function answerTo(
     return [me, { who: "bot", kind: "found", answers: result.answers, asked: q }];
   if (result.kind === "blocked") return [me, { who: "bot", kind: "blocked", asked: q }];
   return [me, { who: "bot", kind: "none", asked: q, suggest: suggestionsFor(faqShown) }];
+}
+
+/** The words to count for the owner (AP-H02) when the assistant had no answer for what the reader wrote; none when it had one. */
+export function unansweredWords(turns: readonly Turn[], text: string): string[] {
+  return turns.some((x) => x.who === "bot" && x.kind === "none") ? unansweredTerms(text) : [];
 }
 
 /** What the reader wrote in this conversation, for the message to a person. */
@@ -200,6 +206,8 @@ export function Assistant({
     e.preventDefault();
     const next = answerTo(text, faqShown, reach);
     if (!next.length) return;
+    // AP-H02: what the help had no answer for is counted by word, for the owner to add answers (never the question itself).
+    for (const term of unansweredWords(next, text)) track("help_unanswered", { term });
     setTurns((all) => [...all, ...next]);
     setText("");
   }

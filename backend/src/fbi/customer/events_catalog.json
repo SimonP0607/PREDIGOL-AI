@@ -1,5 +1,5 @@
 {
-  "_comment": "The closed catalog of product events (plan UX, A6 and section 39): every event a reader's browser (web) or the server (server) may record, each tied to a product decision, with the only properties it may carry. A property is an enumeration, a bounded integer, a boolean, a slug ([a-z0-9_.-], at most 40) or an id - never free text, an address, an IP or a form's content. web/src/lib/track.ts holds the same catalog (a test checks the parity). Nothing here ever reaches a model, the decision layer or the AI's package.",
+  "_comment": "The closed catalog of product events (plan UX, A6 and section 39): every event a reader's browser (web) or the server (server) may record, each tied to a product decision, with the only properties it may carry. A property is an enumeration, a bounded integer, a boolean, a word (3 to 20 letters a-z, lower case: the help's unanswered questions, AP-H02), a slug ([a-z0-9_.-], at most 40) or an id - never free text, an address, an IP or a form's content. web/src/lib/track.ts holds the same catalog (a test checks the parity). Nothing here ever reaches a model, the decision layer or the AI's package.",
   "events": {
     "account_activated": {"group": "entry", "source": "server", "props": {}},
     "onboarding_started": {"group": "entry", "source": "web", "props": {}},
@@ -19,6 +19,7 @@
     "forecast_viewed": {"group": "use", "source": "web", "props": {"match_id": {"id": true}}},
     "term_explained": {"group": "use", "source": "web", "props": {"term": {"slug": true}}},
     "explain_opened": {"group": "use", "source": "web", "props": {"what": {"slug": true}}},
+    "help_unanswered": {"group": "use", "source": "web", "props": {"term": {"word": true}}},
     "pick_opened": {"group": "picks", "source": "web", "props": {"pick_id": {"id": true}}},
     "pick_explanation_opened": {"group": "picks", "source": "web", "props": {"pick_id": {"id": true}}},
     "pick_saved": {"group": "picks", "source": "web", "props": {"origin": {"enum": ["pick", "market", "odds", "other"]}, "market": {"enum": ["1X2", "OU", "BTTS", "AH", "DC"]}}},

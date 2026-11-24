@@ -429,6 +429,46 @@ def test_the_owner_sees_what_came_of_each_guide_by_version_only_with_enough_read
     assert client(READER).get("/api/v1/admin/product").status_code == 403
 
 
+def test_a_word_the_help_had_no_answer_for_is_kept_only_as_a_plain_lower_case_word(fresh: str) -> None:
+    """AP-H02: help_unanswered carries one word (3 to 20 letters a-z), never the question, an address or a number."""
+    c = client(READER)
+    ok = c.post("/api/v1/events", json={"events": [{"name": "help_unanswered", "props": {"term": "reembolso"}}]})
+    assert ok.status_code == 200 and ok.json() == {"recorded": 1}
+    for bad in ("Reembolso", "a@b.co", "ab", "x" * 21, "dos palabras", "12345", "cómo", ""):
+        r = c.post("/api/v1/events", json={"events": [{"name": "help_unanswered", "props": {"term": bad}}]})
+        assert r.status_code == 422, (bad, r.text)
+    assert [(n, p) for _, n, p in rows(fresh)] == [("help_unanswered", {"term": "reembolso"})]
+
+
+def test_the_owner_sees_a_word_readers_asked_the_help_only_with_enough_readers(
+        fresh: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """AP-H02: the words of what the help could not answer, most readers first, each only if at least the floor of
+    different readers wrote it; the owner never sees who."""
+    now = datetime.now(UTC)
+    at = max(now - timedelta(minutes=5), events.day_bounds(events.bogota_day(now))[0])
+    readers = [f"{c}" * 20 for c in "0123"]
+    with psycopg.connect(fresh) as conn:
+        for subject in readers:
+            put(conn, subject, "session_started", at, {"device": "phone", "width": 390, "client": "browser", "lang": "es"})
+            put(conn, subject, "help_unanswered", at, {"term": "reembolso"})
+        put(conn, readers[0], "help_unanswered", at, {"term": "reembolso"})      # twice: still one reader
+        for subject in readers[:3]:
+            put(conn, subject, "help_unanswered", at, {"term": "factura"})
+        put(conn, readers[0], "help_unanswered", at, {"term": "pasaporte"})       # one reader: under the floor
+        conn.commit()
+        monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "3")
+        full = events.overview(conn, at=now)
+        monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "5")
+        thin = events.overview(conn, at=now)
+    assert full.unanswered == [{"key": "reembolso", "label": None, "events_30d": 5, "subjects_30d": 4},
+                               {"key": "factura", "label": None, "events_30d": 3, "subjects_30d": 3}]
+    assert thin.unanswered == [] and thin.status == "insufficient_data"
+    monkeypatch.setenv("FBI_PRODUCT_MIN_SUBJECTS", "3")
+    body = client(OWNER).get("/api/v1/admin/product").json()
+    assert [r["key"] for r in body["unanswered"]] == ["reembolso", "factura"]
+    assert client(READER).get("/api/v1/admin/product").status_code == 403
+
+
 def test_a_server_event_is_recorded_in_the_callers_transaction(fresh: str) -> None:
     with psycopg.connect(fresh) as conn:
         assert events.record_server(conn, user_id(conn, READER), "account_activated")
