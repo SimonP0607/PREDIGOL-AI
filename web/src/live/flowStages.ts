@@ -54,7 +54,12 @@ export const STAGE_JOBS: Readonly<Record<Stage, readonly string[]>> = {
     "results_repair",
     "final_prematch",
   ],
-  validation: ["quality_sweep", "historical_validation", "synthetic_journey"],
+  validation: [
+    "quality_sweep",
+    "historical_validation",
+    "synthetic_journey",
+    "availability_shadow",
+  ],
   models: [
     "feature_build",
     "elo_refresh",
