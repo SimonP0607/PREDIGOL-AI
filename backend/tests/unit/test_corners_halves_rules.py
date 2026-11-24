@@ -1,6 +1,6 @@
 """PM-05-03: the corners of a half are graded by a NEW version of the two rules, behind ``FBI_CORNERS_BY_HALF``. A rule is never edited: the
 first version of every rule is pinned by a hash, so changing a word of it fails here and has to be a new version. Off, the bets are
-linked and explained exactly as before; on, they are liquidable with the columns the view got in migration 0176."""
+linked and explained exactly as before; on, they are liquidable with the columns the view got in migration 0177."""
 
 from __future__ import annotations
 

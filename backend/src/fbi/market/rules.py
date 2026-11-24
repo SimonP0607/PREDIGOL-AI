@@ -20,7 +20,7 @@ corners of ONE HALF has nothing to be graded on in anything we keep, so its rule
 
 That premise was wrong for corners (PM-05-03): the provider gives them by half (``/fixtures/statistics?half=true``) and PM-05-01 keeps them.
 The first version of those two rules is NOT edited - it still says what it said, and it stays in force while ``FBI_CORNERS_BY_HALF`` is off. A
-second version (``corners_1h@v2``, ``corners_2h@v2``) reads the columns ``market.fixture_outcomes`` got in migration 0176, known only when the
+second version (``corners_1h@v2``, ``corners_2h@v2``) reads the columns ``market.fixture_outcomes`` got in migration 0177, known only when the
 four figures came and the halves add up to the match total. ``RULES_BY_MEASURE`` answers with the version in force; ``RULES`` and
 ``RULES_BY_KEY`` hold every version, because a bet already linked to ``@v1`` keeps its key.
 """

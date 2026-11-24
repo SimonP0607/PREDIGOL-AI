@@ -24,8 +24,8 @@ accident; nothing is read from the database, which keeps the migration renderabl
 twice). Additive: no table changes, no row is written, ``lock_timeout`` 10 s. Downgrade drops the view and creates it again exactly as 0092 left
 it (without the four columns), so that 0175's tables, which the new columns read, can be dropped in turn.
 
-Revision ID: 0176
-Revises: 0175
+Revision ID: 0177
+Revises: 0176
 """
 
 from __future__ import annotations
@@ -35,8 +35,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "0176"
-down_revision = "0175"
+revision = "0177"
+down_revision = "0176"
 branch_labels = None
 depends_on = None
 

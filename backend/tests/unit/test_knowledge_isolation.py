@@ -210,10 +210,10 @@ def test_only_its_own_migrations_name_the_tables() -> None:
     # 0092 (plan F9) adds market.fixture_outcomes: a view of how FINISHED matches ended, whose cards by period are counted from the classified
     # events. It is a dataset of OUTCOMES - the labels that grade a bet and, one day, train a model - not a pre-match input, and the next test
     # holds the door: the model packages never name it (F10 opens that door by deciding it here, with its own leakage tests).
-    # 0176 (plan PM, PM-05-03) appends four columns to that same view - the corners of each half, from core.fixture_team_stats_period - and reads
+    # 0177 (plan PM, PM-05-03) appends four columns to that same view - the corners of each half, from core.fixture_team_stats_period - and reads
     # the view's own statement from 0092. It adds no new way into Match Knowledge: the figures are outcomes of finished matches (labels that grade
     # a bet), the view stays unread by the model packages and the families (the next tests), and no table of Match Knowledge is touched.
-    assert naming == {"0089_event_kinds.py", "0090_match_knowledge.py", "0092_market_catalogue.py", "0176_corners_by_half_outcomes.py"}, (
+    assert naming == {"0089_event_kinds.py", "0090_match_knowledge.py", "0092_market_catalogue.py", "0177_corners_by_half_outcomes.py"}, (
         f"migrations naming Match Knowledge's tables: {sorted(naming)}. A migration that adds an object over them (a view, a function, a key) opens "
         "a second way in: decide here, with the reason, whether the pre-match side may reach it")
 
