@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
+from fbi.domain.market_probability import DevigMethod
 
 
 def model_versions(conn: Conn) -> list[Row]:
@@ -65,14 +66,26 @@ def baseline_evaluations(conn: Conn, session_id: int) -> list[Row]:
 
 
 def market_baseline(conn: Conn) -> Row:
+    """What the live de-vigged consensus holds: its fixtures, the methods in use and the last time.
+
+    AP-A02 (plan de correcciones UX): the table has millions of rows, and ``count(DISTINCT fixture_id)`` with ``array_agg(DISTINCT
+    devig_method)`` over all of them ran past the 10 s statement timeout in production, so ``GET /admin/models`` answered 500. The same
+    three figures are read with the indexes the table has: the newest row of each fixture (``(fixture_id, as_of DESC)``, a lookup per
+    fixture, ~1 s) and, for each of the four methods the schema allows (``DevigMethod``, the table's CHECK), whether one row exists.
+    """
     r = fetch_one(conn, """
-        SELECT count(DISTINCT fixture_id) AS fixtures_with_consensus,
-               COALESCE(array_agg(DISTINCT devig_method) FILTER (WHERE devig_method IS NOT NULL), '{}') AS methods,
-               max(as_of) AS last_as_of
-        FROM market.market_consensus
+        SELECT count(m.as_of) AS fixtures_with_consensus, max(m.as_of) AS last_as_of
+        FROM core.fixtures f
+        LEFT JOIN LATERAL (SELECT c.as_of FROM market.market_consensus c WHERE c.fixture_id = f.id
+                           ORDER BY c.as_of DESC LIMIT 1) m ON true
     """)
     assert r is not None
-    return r
+    methods = fetch_all(conn, """
+        SELECT x.method FROM unnest(%s::text[]) AS x(method)
+        WHERE EXISTS (SELECT 1 FROM market.market_consensus c WHERE c.devig_method = x.method)
+        ORDER BY x.method
+    """, ([m.value for m in DevigMethod],))
+    return {**r, "methods": [str(m["method"]) for m in methods]}
 
 
 def candidate_counts(conn: Conn) -> dict[str, int]:
