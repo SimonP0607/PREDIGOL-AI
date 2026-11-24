@@ -59951,11 +59951,7 @@
   },
   {
    "date": "2026-11-24",
-   "reason": "IA-164: C-06 1.1.0 - cuatro categorías generales, texto propio en inglés y búsqueda del partido (searched_at, sources_checked)"
-  },
-  {
-   "date": "2026-11-24",
-   "reason": "IA-165/IA-166: C-17 Unidades y C-18 Tendencias 1.0.0, contrato y ejemplo sin ruta (FBI_STAKES y FBI_TREND_BUILDER apagados)"
+   "reason": "IA-164: C-06 1.1.0 (categorías generales, texto en inglés, búsqueda del partido); IA-165/IA-166: C-17 Unidades y C-18 Tendencias 1.0.0 sin ruta"
   }
  ]
 }
