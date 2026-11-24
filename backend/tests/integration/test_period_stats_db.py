@@ -39,7 +39,7 @@ def body_of(name: str, home: int, away: int) -> dict[str, Any]:
     body = data["body"]
     body["response"][0]["team"]["id"] = home
     body["response"][1]["team"]["id"] = away
-    return body  # type: ignore[no-any-return]
+    return body
 
 
 def grade(c: psycopg.Connection, cs: int, level: str = "A") -> None:
@@ -69,7 +69,8 @@ def provider_ids(c: psycopg.Connection, fid: int) -> tuple[int, int, int]:
 
 class Raw:
     def __init__(self, body: dict[str, Any], n: int) -> None:
-        self.body, self.endpoint, self.params = body, "/fixtures/statistics", {}
+        self.params: dict[str, Any] = {}
+        self.body, self.endpoint = body, "/fixtures/statistics"
         self.fetched_at = NOW
         self.payload_hash = f"period-test-{n}"
         self.http_status, self.results_count, self.file_path, self.bytes_written, self.persisted = 200, 2, "x", 1, True
@@ -79,7 +80,8 @@ class FakeProvider:
     """Answers every ``/fixtures/statistics`` with the real answer ``name`` (teams set to the match's); counts the requests."""
 
     def __init__(self, c: psycopg.Connection, answer: str | dict[str, str] = "typical") -> None:
-        self.c, self.answer, self.calls, self.params = c, answer, 0, []
+        self.params: list[dict[str, Any]] = []
+        self.c, self.answer, self.calls = c, answer, 0
 
     async def fetch_raw(self, endpoint: str, params: dict[str, Any]) -> Raw:
         assert endpoint == "/fixtures/statistics" and params["half"] == "true"
@@ -169,7 +171,7 @@ async def test_a_competition_with_no_statistic_built_is_closed_after_five(conn: 
     """Five matches asked, none with halves: the competition has a decision and nothing built, so the sixth is not asked."""
     c = conn
     _, _, fids = league(c, 10, matches=8)
-    empty = {"response": []}
+    empty: dict[str, Any] = {"response": []}
 
     class Empty(FakeProvider):
         async def fetch_raw(self, endpoint: str, params: dict[str, Any]) -> Raw:
