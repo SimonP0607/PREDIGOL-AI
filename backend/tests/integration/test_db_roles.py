@@ -104,6 +104,18 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "analytics.evaluation_segments", "DELETE", False),
     ("predigol_api", "analytics.evaluation_segments", "SELECT", True),
     ("predigol_api", "analytics.evaluation_reports", "INSERT", False),
+    # the team statistics by half and the register of what was asked for them (PM-05-01, PM-05-02, 0175): the worker adds and rewrites a
+    # match's rows, never deletes one; the API reads them
+    ("predigol_worker", "core.fixture_team_stats_period", "INSERT", True),
+    ("predigol_worker", "core.fixture_team_stats_period", "UPDATE", True),
+    ("predigol_worker", "core.fixture_team_stats_period", "DELETE", False),
+    ("predigol_worker", "core.fixture_period_asks", "INSERT", True),
+    ("predigol_worker", "core.fixture_period_asks", "UPDATE", True),
+    ("predigol_worker", "core.fixture_period_asks", "DELETE", False),
+    ("predigol_api", "core.fixture_team_stats_period", "SELECT", True),
+    ("predigol_api", "core.fixture_period_asks", "SELECT", True),
+    ("predigol_api", "core.fixture_team_stats_period", "INSERT", False),
+    ("predigol_api", "core.fixture_period_asks", "UPDATE", False),
     # the current-price book (BE-010): the worker builds it and purges it, the API reads it
     ("predigol_worker", "market.book_current", "INSERT", True),
     ("predigol_worker", "market.book_current", "UPDATE", True),
