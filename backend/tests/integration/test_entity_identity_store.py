@@ -238,3 +238,29 @@ def test_the_sql_position_table_is_the_python_one(db: psycopg.Connection[Any]) -
     sql = dict(db.execute("SELECT v, core.position_group(v) FROM unnest(%s::text[]) v", (values,)).fetchall())
     assert sql == {v: position_group(v) for v in values}
     assert one(db, "SELECT core.position_group(NULL)") is None
+
+
+def test_national_teams_and_competitions_get_their_spanish_and_english_names(db: psycopg.Connection[Any]) -> None:
+    """C-10 1.1 (AP-B02, AP-B07): the localized names enter with our own names, with their language, as source
+    ``localized``; a club named like a country gets nothing, and a second sync writes nothing."""
+    teams = {}
+    for pid, name, national in ((7_100_101, "Spain", True), (7_100_102, "Spain U21", True), (7_100_103, "Mexico W U17", True),
+                                (7_100_104, "England", False)):
+        teams[name] = int(one(db, "INSERT INTO core.teams (provider_team_id, name, country, is_national) VALUES (%s, %s, "
+                                  "'Spain', %s) RETURNING id", pid, name, national))
+    cup = int(one(db, "INSERT INTO core.competitions (provider_league_id, name, country, type, entity_scope, "
+                      "competition_type) VALUES (7_100_101, 'World Cup', 'World', 'cup', 'national_team', 'international') "
+                      "RETURNING id"))
+    store.sync_core(db, actor="test")
+
+    def localized(etype: str, eid: int) -> set[tuple[str, tuple[str, ...]]]:
+        rows = db.execute("SELECT alias, languages FROM core.entity_aliases_live WHERE entity_type = %s AND entity_id = %s "
+                          "AND alias_type = 'localized' AND source = 'localized'", (etype, eid)).fetchall()
+        return {(r[0], tuple(r[1])) for r in rows}
+
+    assert localized("team", teams["Spain"]) == {("España", ("es",))}  # «Spain» in English is its own name already
+    assert localized("team", teams["Spain U21"]) == {("España Sub-21", ("es",))}
+    assert localized("team", teams["Mexico W U17"]) == {("México Femenina Sub-17", ("es",)), ("Mexico Women U17", ("en",))}
+    assert localized("team", teams["England"]) == set(), "only a national team gets a country's names"
+    assert {("Mundial", ("es",)), ("Copa del Mundo", ("es",)), ("FIFA World Cup", ("en",))} <= localized("competition", cup)
+    assert store.sync_core(db, actor="test").already_loaded

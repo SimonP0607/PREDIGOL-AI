@@ -29,7 +29,7 @@ AT = datetime(2026, 11, 21, 16, 42, tzinfo=UTC)
 def test_c10_is_registered_with_its_two_routes() -> None:
     spec = by_id()["C-10"]
     assert (spec.public, spec.private) == (SearchV2, SearchV2Private)
-    assert spec.version == "1.0.0"
+    assert spec.version == "1.1.0"  # C-10 1.1: localized names and the senior team first, no field changed
     assert spec.public_routes == CATALOGUE["C-10"].public == ("/api/v1/search/v2",)
     assert spec.private_routes == CATALOGUE["C-10"].private == ("/api/v1/admin/search/v2",)
 
@@ -104,3 +104,14 @@ def test_the_refresh_refuses_the_window_and_an_open_fixtures_sync() -> None:
     assert refusal(datetime(2026, 11, 21, 4, 0, tzinfo=UTC), 0) is not None
     assert refusal(datetime(2026, 11, 21, 12, 0, tzinfo=UTC), 1) == "1 fixtures_sync run(s) open"
     assert refusal(datetime(2026, 11, 21, 12, 0, tzinfo=UTC), 0) is None
+
+
+# ── C-10 1.1: the senior national team first ─────────────────────────────────────────────────────────────────────────
+
+def test_the_senior_national_team_comes_first_unless_the_query_asks_for_a_junior_one() -> None:
+    sql = repo.ENTITIES_SQL
+    assert "ORDER BY junior, rank DESC, length(label), label, entity_id" in sql
+    assert "b.kind = 'national_team' AND NOT q.asks_junior AND b.label ~ ' (W|U[0-9][0-9])( |$)'" in sql
+    assert "sub ?[0-9][0-9]" in sql and "femenina" in sql and "women" in sql
+    assert sql.rstrip().endswith("ORDER BY kind, rn")  # the junior flag orders, it is never selected
+    assert "junior" not in sql.split("SELECT kind, entity_id, label")[1].split("FROM ranked")[0]
