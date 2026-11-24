@@ -15,6 +15,7 @@ import { live } from "@/lib/api/v1/queries";
 import { usePreviewParam } from "@/lib/auth/AuthProvider";
 import type { PickExplanation } from "@/lib/api/v1/types_explanation";
 import { t } from "@/lib/i18n";
+import { t as pt } from "./pickWhyText";
 import { track } from "@/lib/track";
 import { cn } from "@/lib/utils";
 import {
@@ -36,6 +37,8 @@ import { useTransparencyOpen } from "@/product/transparency/useTransparencyOpen"
 import {
   HOW_STEPS,
   conclusionText,
+  serverHighlight,
+  serverReason,
   contextEmptyText,
   dayText,
   contextLines,
@@ -194,6 +197,7 @@ export function PickExplanationView({
   const conclusionId = useId();
   // what the server wrote is checked before it is drawn: no rumour, no foreign script (AP-T02)
   const context = readerLines(contextLines(e));
+  const highlight = serverHighlight(e);
   const day = e.day;
   return (
     <div className="space-y-3" data-testid="why-explanation" data-status={e.user_status}>
@@ -226,7 +230,21 @@ export function PickExplanationView({
         >
           {t("picks.why.layers.conclusion")}
         </h3>
-        <p className="text-sm font-medium leading-relaxed">{conclusionText(e)}</p>
+        <p className="text-sm font-medium leading-relaxed" data-testid="why-conclusion">
+          {serverReason(e) ?? conclusionText(e)}
+        </p>
+        {highlight ? (
+          <div
+            className="space-y-0.5 border-t border-primary/20 pt-1.5"
+            data-testid="why-highlight"
+          >
+            <p className="text-xs font-semibold text-muted-foreground">{pt("pickwhy.highlight")}</p>
+            <p className="text-sm leading-relaxed">{highlight.text}</p>
+            <p className="text-caption text-subtle-foreground">
+              {pt("pickwhy.source", { source: highlight.source, when: highlight.asOf })}
+            </p>
+          </div>
+        ) : null}
       </section>
 
       <div>

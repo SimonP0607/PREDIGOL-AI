@@ -11,9 +11,13 @@
  *   5 how         the steps of «Cómo se decide» - the same as Transparencia - and whether it is a pick of the day
  */
 import { getLocale, t } from "@/lib/i18n";
-import { formatOdds, fmtPct, toNumber } from "@/lib/i18n/format";
+import { formatOdds, fmtPct, localizeServerText, toNumber } from "@/lib/i18n/format";
 import { formatDateTime, formatTime } from "@/lib/time";
-import type { PickExplanation } from "@/lib/api/v1/types_explanation";
+import type {
+  PickExplanation,
+  ReaderHighlightV11,
+  ReaderTextV11,
+} from "@/lib/api/v1/types_explanation";
 import type { NarrativeSectionKey } from "@/lib/api/v1/types_reading";
 import { factText } from "@/product/reading/text";
 import { failsInTen } from "@/product/match/intelligence";
@@ -141,4 +145,31 @@ export function dayText(e: PickExplanation): string | null {
   return day.user_status === "EVALUATION"
     ? t("picks.why.dayEvaluation", vars)
     : t("picks.why.day", vars);
+}
+
+function readerText(
+  v: ReaderTextV11 | { missing_reason: string } | null | undefined,
+): string | null {
+  if (!v || !("text_es" in v)) return null;
+  return localizeServerText(getLocale() === "es" ? v.text_es : v.text_en);
+}
+
+/**
+ * The reason the server wrote for a reader (C-02 1.1, AP-K05), in the reader's language, or null while the field is absent
+ * (the switch is off, an answer of 1.0.0) or says «sin_datos». It passes the same guard as every server text (AP-T02): when
+ * it does not pass, the reader sees the conclusion PrediGol builds from the figures instead.
+ */
+export function serverReason(e: PickExplanation): string | null {
+  return readerText(e.intelligence?.reader_reason);
+}
+
+/** The fact that explains the pick most, with its source and the hour it was read (C-02 1.1, AP-K06); null without one. */
+export function serverHighlight(
+  e: PickExplanation,
+): { text: string; source: string; asOf: string } | null {
+  const h = e.intelligence?.highlight;
+  if (!h || !("text_es" in h)) return null;
+  const text = readerText(h as ReaderHighlightV11);
+  if (!text) return null;
+  return { text, source: h.source.name, asOf: formatDateTime(h.as_of) };
 }

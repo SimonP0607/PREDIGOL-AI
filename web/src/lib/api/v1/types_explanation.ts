@@ -48,6 +48,32 @@ export interface ExplanationReview {
   risks: string[];
 }
 
+/** C-02 1.1 (AP-K05, AP-K06): a text written by the server in both languages, already checked (no model, no raw probability, no rumour). */
+export interface ReaderTextV11 {
+  text_es: string;
+  text_en: string;
+}
+
+/** The fact or figure that explains the pick most, with where it was read and as of when. */
+export interface ReaderHighlightV11 extends ReaderTextV11 {
+  source: { name: string; url?: string | { missing_reason: string } };
+  as_of: Iso;
+}
+
+/** What the field says when there is nothing to say it with. */
+export interface MissingV11 {
+  missing_reason: string;
+}
+
+/**
+ * The optional `intelligence` of the explanation (C-02 1.1): it travels only while `FBI_MATCH_INTELLIGENCE` is on and the pick is
+ * public, and its two reader fields are absent from an answer of 1.0.0.
+ */
+export interface PickIntelligence {
+  reader_reason?: ReaderTextV11 | MissingV11 | null;
+  highlight?: ReaderHighlightV11 | MissingV11 | null;
+}
+
 export interface PickExplanation {
   pick_id: number;
   version: string;
@@ -76,4 +102,6 @@ export interface PickExplanation {
   /** Layer 4, besides the pick's own lines: the reading's risks. */
   risks: ReadingFact[];
   review: ExplanationReview | null;
+  /** C-02 1.1; absent while the switch is off. */
+  intelligence?: PickIntelligence | null;
 }
