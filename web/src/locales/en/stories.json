@@ -123,5 +123,14 @@
   },
   "card": {
     "open": "Open the story"
+  },
+  "match": {
+    "title": "Match stories",
+    "note": "What the sources say about this match, since each team's previous match. PrediGol summarises in its own words; the full story is at the source.",
+    "since": "Since {date}",
+    "team": "More stories about {team}",
+    "all": "See all stories",
+    "count_one": "{count} story",
+    "count_other": "{count} stories"
   }
 }

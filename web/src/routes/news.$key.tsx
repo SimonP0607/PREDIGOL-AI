@@ -9,6 +9,5 @@ export const Route = createFileRoute("/news/$key")({
 });
 
 function Page() {
-  const { key } = Route.useParams();
-  return <StoryPage storyKey={key} />;
+  return <StoryPage storyKey={Route.useParams().key} />;
 }
