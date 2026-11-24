@@ -5,8 +5,9 @@ would say, read at the same instant - so that switching a module to the matrix c
 discrepancy needs a cause and a decision before its module is switched (the owner's reading, with the console of PM-02-08).
 
 This module holds the pure part - what a discrepancy is - and the writing. The readings of the modules are the API's own functions (C-14,
-C-13, Mi parlay's policy), so the comparison that reads them lives beside them (``fbi.api.services.availability_shadow``) and runs in the
-same process of its own as the nightly batch (``scripts.availability_refresh``), never in the worker. A sample of ``SAMPLE`` matches a
+C-13, Mi parlay's policy), so the comparison that reads them lives beside them (``fbi.api.services.availability_shadow``) and runs in a
+process of its own (``scripts.availability_refresh --shadow-only``, started by the worker's scheduler at ``HOUR``:``MINUTE``; BE-093),
+never in the worker. A sample of ``SAMPLE`` matches a
 day: the next ones to be played. Nothing a reader sees; ``analytics.availability_discrepancies`` only grows.
 """
 
@@ -27,6 +28,15 @@ SWITCH: Final = "FBI_AVAILABILITY_SHADOW"
 JOB: Final = "availability_shadow"
 SAMPLE: Final = 500
 HORIZON: Final = timedelta(hours=48)
+HOUR: Final = 8
+MINUTE: Final = 30
+"""08:30 UTC: after the night's pass (08:00, a few minutes; 15 at most), in a process of its own (BE-093). Away from the copies
+(03:50-05:00), the statistics pass (07:20) and the ``fixtures_sync`` (about :58 every six hours)."""
+RETRY_TIMES: Final[tuple[tuple[int, int], ...]] = ((9, 10), (11, 50))
+"""Further attempts the same day while no comparison of the day completed (no room, or a process that died)."""
+PROCESS_TIMEOUT: Final = 17 * 60
+"""How long the scheduler waits for the process: the comparison's 12 minutes (``fbi.coverage.job.SHADOW_SECONDS``) and 5 to start
+and write; under the run watchdog's 20 minutes for ``availability_shadow``."""
 MAX_ROWS_PER_DAY: Final = 20_000
 """A bound on what one day may append (500 matches x some 40 markets): a module gone wrong must not fill the table."""
 

@@ -100,10 +100,13 @@ at worst, and a duplicated tick costs nothing at all.
   * ``availability_refresh``  once a night at 08:00 UTC (attempts again at 08:40 and 11:20 when the first found no room), only while
     ``FBI_AVAILABILITY_REFRESH`` is on (the default; ``0`` turns it off): ONLY starts the recalculation of the availability matrix
     (``scripts.availability_refresh``, ``fbi.coverage.job``, PM-02-03) in a process of its own with a 512 MiB cap, and only when the
-    container has 384 MiB free besides its page cache - the worker sits near its 3 GiB. Incremental each night, full on Sundays; writes
-    only ``analytics.coverage_*``. Then, in the same process and once a day while ``FBI_AVAILABILITY_SHADOW`` is on (the default), the
-    shadow comparison of PM-02-06 (``fbi.api.services.availability_shadow``: 500 matches, ``analytics.availability_discrepancies``).
-    Database only; nothing a reader sees reads it while ``FBI_AVAILABILITY`` is off.
+    container has 384 MiB free besides its page cache - the worker sits near its 3 GiB. Incremental each night, full on Sundays (and the
+    next nights until one completes); writes only ``analytics.coverage_*``. Database only; nothing a reader sees reads it while
+    ``FBI_AVAILABILITY`` is off.
+  * ``availability_shadow``  once a day at 08:30 UTC (attempts again at 09:10 and 11:50 until one completes), while
+    ``FBI_AVAILABILITY_REFRESH`` and ``FBI_AVAILABILITY_SHADOW`` are on (the default): ONLY starts the shadow comparison of PM-02-06
+    (``scripts.availability_refresh --shadow-only``: 500 matches, ``analytics.availability_discrepancies``) in a process of its own with the
+    same cap and the same room as the pass (BE-093: in the pass's process it died twice without a row).
   * ``chronicle_v4``  every 30 min (``FBI_CHRONICLE_V4_MINUTES``), only while ``FBI_CHRONICLE_V4=shadow`` (off by default): the content plan
     (``content-plan-v1``) and the single chronicle (``chronicle-v4``, the small model, by batch when the gate allows) of the analysed matches
     of the next day, checked sentence by sentence (``fbi.chronicle.v4_job``, IA-103/IA-104), into ``ai.chronicles``. At most US$ 1 a day;
@@ -1412,41 +1415,94 @@ APP_DIR = Path(__file__).resolve().parents[2]
 """Where ``python -m scripts.<name>`` runs (``/app`` in the image)."""
 
 
+LEAN_ENV: dict[str, str] = {"OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "MALLOC_ARENA_MAX": "2"}
+"""BE-093: the environment of the matrix's processes. Their cap (``RLIMIT_AS``) counts ADDRESS SPACE, not resident memory: a numerical
+library that starts one thread per core (6 on the server) and a C library that reserves an arena of 64 MiB for each thread spend it
+without using it. One thread and two arenas: nothing these processes do is parallel."""
+
+
+def _matrix_process(args: list[str], timeout: float) -> subprocess.CompletedProcess[str]:
+    """``python -m scripts.availability_refresh <args>`` in a process of its own: lean environment, its own cap, never the worker's."""
+    return subprocess.run([sys.executable, "-m", "scripts.availability_refresh", *args], cwd=APP_DIR, capture_output=True, text=True,
+                          timeout=timeout, check=False, env={**os.environ, **LEAN_ENV})
+
+
+def _tail(done: subprocess.CompletedProcess[str], lines: int = 3) -> str:
+    """The last lines a process wrote: the result it prints, or the error that ended it (a process that dies leaves only this)."""
+    out = (done.stdout or "").strip().splitlines()[-1:]
+    err = (done.stderr or "").strip().splitlines()[-lines:]
+    return " | ".join(out + err)[:600]
+
+
+def _no_room(job_type: str, retry: bool) -> bool:
+    """True, with a ledger row, when the container lacks the room for one of the matrix's processes (``fbi.coverage.job.HEADROOM_MIB``)."""
+    from fbi.coverage import job as cov
+    from fbi.ingestion.ledger import RunCounters, RunLedger
+
+    room = cov.headroom_mib()
+    if room is None or room >= cov.HEADROOM_MIB:
+        return False
+    with _connect() as conn:
+        ledger = RunLedger(conn)
+        run_id = ledger.open(job_type, params={"skipped": "sin_margen_de_memoria", "headroom_mib": room,
+                                               "needed_mib": cov.HEADROOM_MIB, "retry": retry})
+        ledger.close(run_id, RunCounters(stopped_early="sin_margen_de_memoria"))
+    log.warning(f"{job_type}.skipped", reason="sin_margen_de_memoria", headroom_mib=room, needed_mib=cov.HEADROOM_MIB)
+    return True
+
+
+def _done_today(job_type: str) -> bool:
+    with _connect() as conn:
+        row = conn.execute("SELECT 1 FROM raw.ingestion_runs WHERE job_type = %s AND status = 'completed' "
+                           "AND started_at >= date_trunc('day', %s::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' "
+                           "LIMIT 1", (job_type, now())).fetchone()
+    return row is not None
+
+
 def _availability_refresh_now(*, retry: bool = False) -> None:
     """PM-02-03 (BE-056): START the recalculation of the availability matrix in a process of its own - never compute it here (the worker
     sits near its 3 GiB). Skipped, with a ledger row, when the container lacks the room for it; a retry does nothing once a pass of the
-    day completed. Never raises."""
+    day completed. The shadow comparison (PM-02-06) is NOT in this process any more (BE-093): it has its own start
+    (``_availability_shadow_now``), its own process and its own cap. Never raises."""
     from fbi.coverage import job as cov
-    from fbi.ingestion.ledger import RunCounters, RunLedger
 
     if cov.mode() != "on":
         return
     try:
-        if retry:
-            with _connect() as conn:
-                row = conn.execute("SELECT 1 FROM raw.ingestion_runs WHERE job_type = %s AND status = 'completed' "
-                                   "AND started_at >= date_trunc('day', %s::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' "
-                                   "LIMIT 1", (cov.JOB, now())).fetchone()
-            if row is not None:
-                return
-        room = cov.headroom_mib()
-        if room is not None and room < cov.HEADROOM_MIB:
-            with _connect() as conn:
-                ledger = RunLedger(conn)
-                run_id = ledger.open(cov.JOB, params={"skipped": "sin_margen_de_memoria", "headroom_mib": room,
-                                                      "needed_mib": cov.HEADROOM_MIB, "retry": retry})
-                ledger.close(run_id, RunCounters(stopped_early="sin_margen_de_memoria"))
-            log.warning("availability_refresh.skipped", reason="sin_margen_de_memoria", headroom_mib=room, needed_mib=cov.HEADROOM_MIB)
+        if retry and _done_today(cov.JOB):
             return
-        done = subprocess.run([sys.executable, "-m", "scripts.availability_refresh", "--scheduled",
-                               "--max-memory-mib", str(cov.CAP_MIB)],
-                              cwd=APP_DIR, capture_output=True, text=True, timeout=cov.PROCESS_TIMEOUT, check=False)
-        tail = (done.stdout or "").strip().splitlines()[-1:] or (done.stderr or "").strip().splitlines()[-1:]
-        log.info("availability_refresh.run", exit=done.returncode, headroom_mib=room, last=(tail[0] if tail else "")[:400])
+        if _no_room(cov.JOB, retry):
+            return
+        done = _matrix_process(["--scheduled", "--no-shadow", "--max-memory-mib", str(cov.CAP_MIB)], cov.PROCESS_TIMEOUT)
+        log.info("availability_refresh.run", exit=done.returncode, last=_tail(done))
     except subprocess.TimeoutExpired:
         log.error("availability_refresh.timeout", seconds=cov.PROCESS_TIMEOUT)
     except Exception as exc:
         log.error("availability_refresh.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+def _availability_shadow_now(*, retry: bool = False) -> None:
+    """PM-02-06 (BE-059, BE-093): START the day's shadow comparison in a process of its own (``--shadow-only``), after the night's pass
+    (``fbi.coverage.shadow.HOUR``), with the same cap and the same room as the pass. On 21 and 23-nov-2026 it ran in the pass's process,
+    after it, and that process died (\"process gone\") without a row of discrepancies; alone, it starts from a clean address space, and a
+    retry (``fbi.coverage.shadow.RETRY_TIMES``) catches a day it did not finish. Nothing once the day's comparison completed. Never
+    raises."""
+    from fbi.coverage import job as cov
+    from fbi.coverage import shadow
+
+    if cov.mode() != "on" or shadow.mode() != "on":
+        return
+    try:
+        if _done_today(shadow.JOB):
+            return
+        if _no_room(shadow.JOB, retry):
+            return
+        done = _matrix_process(["--scheduled", "--shadow-only", "--max-memory-mib", str(cov.CAP_MIB)], shadow.PROCESS_TIMEOUT)
+        log.info("availability_shadow.run", exit=done.returncode, last=_tail(done))
+    except subprocess.TimeoutExpired:
+        log.error("availability_shadow.timeout", seconds=shadow.PROCESS_TIMEOUT)
+    except Exception as exc:
+        log.error("availability_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
 
 async def _availability_refresh() -> None:
@@ -1457,6 +1513,16 @@ async def _availability_refresh() -> None:
 async def _availability_refresh_retry() -> None:
     new_run_id()
     await asyncio.to_thread(functools.partial(_availability_refresh_now, retry=True))
+
+
+async def _availability_shadow() -> None:
+    new_run_id()
+    await asyncio.to_thread(_availability_shadow_now)
+
+
+async def _availability_shadow_retry() -> None:
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_availability_shadow_now, retry=True))
 
 
 def _eval_cycle_shadow_now() -> None:
@@ -2505,6 +2571,17 @@ async def main() -> None:
             scheduler.add_job(_deadline("availability_refresh", "availability_refresh", _availability_refresh_retry), "cron",
                               hour=hour, minute=minute, timezone="UTC", id=f"availability_refresh_retry_{hour:02d}{minute:02d}",
                               max_instances=1, coalesce=True, misfire_grace_time=30 * 60)
+        from fbi.coverage import shadow as cov_shadow
+
+        if cov_shadow.mode() == "on":
+            # PM-02-06 (BE-093): the shadow comparison in a process of its own, after the pass and at its own attempts.
+            scheduler.add_job(_deadline("availability_shadow", "availability_shadow", _availability_shadow), "cron",
+                              hour=cov_shadow.HOUR, minute=cov_shadow.MINUTE, timezone="UTC", id="availability_shadow", max_instances=1,
+                              coalesce=True, misfire_grace_time=30 * 60)
+            for hour, minute in cov_shadow.RETRY_TIMES:
+                scheduler.add_job(_deadline("availability_shadow", "availability_shadow", _availability_shadow_retry), "cron",
+                                  hour=hour, minute=minute, timezone="UTC", id=f"availability_shadow_retry_{hour:02d}{minute:02d}",
+                                  max_instances=1, coalesce=True, misfire_grace_time=30 * 60)
     else:
         log.info("worker.availability_refresh_off", hint="FBI_AVAILABILITY_REFRESH is off: the availability matrix is not recalculated")
     from fbi.shadowjobs import eval_cycle as ec

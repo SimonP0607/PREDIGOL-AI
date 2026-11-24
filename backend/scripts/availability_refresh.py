@@ -15,6 +15,8 @@ pass (07:20 UTC) and the ``fixtures_sync``. Before anything else the process:
 * lowers its priority (``nice`` 10).
 
 After the pass, once a day while ``FBI_AVAILABILITY_SHADOW`` is on (the default), the same process runs the shadow comparison of PM-02-06
+when started by hand; the worker's scheduler starts it apart (``--no-shadow`` for the pass at 08:00, ``--shadow-only`` at 08:30 UTC, each
+process with its own cap: BE-093, after it died twice in the pass's process)
 (``fbi.api.services.availability_shadow``: what Mercados, Cuotas, the model's figure and the statistics show today against what the matrix
 would say, 500 matches still to be played, into ``analytics.availability_discrepancies``), with its own ledger row (``availability_shadow``).
 ``--no-shadow`` skips it; ``--shadow-only`` runs only it.
@@ -52,8 +54,15 @@ MIB = 1024 * 1024
 DEFAULT_CAP_MIB = 512
 
 
+LEAN_ENV: dict[str, str] = {"OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"}
+"""BE-093: one thread for the numerical libraries, set before they load (the worker's scheduler also passes ``MALLOC_ARENA_MAX``, which
+only works from the start of the process): the cap counts address space, and a thread per core reserves it without using it."""
+
+
 def cap_memory(mib: int) -> None:
     """The process's own limits, set before the heavy imports. Each step is best effort: where the kernel refuses, the run goes on."""
+    for name, value in LEAN_ENV.items():
+        os.environ.setdefault(name, value)
     with contextlib.suppress(ValueError, OSError):
         resource.setrlimit(resource.RLIMIT_AS, (mib * MIB, mib * MIB))
     with contextlib.suppress(OSError), open("/proc/self/oom_score_adj", "w", encoding="ascii") as fh:
@@ -62,8 +71,15 @@ def cap_memory(mib: int) -> None:
         os.nice(10)
 
 
-def peak_mib() -> float:
-    """The peak resident memory of this process (``ru_maxrss`` is in KiB on Linux)."""
+def peak_mib(status: str = "/proc/self/status") -> float:
+    """The peak resident memory of THIS process: ``VmHWM``, which the kernel resets when the program is replaced (``exec``). Not
+    ``ru_maxrss``: it keeps the peak of the process it was forked from, so a pass the worker starts read the worker's 3 GiB
+    (``memory_peak_mib`` 1.543,7 on 21-nov-2026 and 3.065,4 on 23-nov, the worker's container, not the pass). ``ru_maxrss`` only
+    where there is no ``/proc``."""
+    with contextlib.suppress(OSError, ValueError), open(status, encoding="ascii") as fh:
+        for line in fh:
+            if line.startswith("VmHWM:"):
+                return round(int(line.split()[1]) / 1024, 1)
     return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
 
 
@@ -142,6 +158,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 1 if counters.status == "failed" else 0
 
 
+SHADOW_STATEMENT_TIMEOUT = "60s"
+"""The longest one statement of the shadow comparison may take (BE-093): a match whose reading takes longer is an error of that match."""
+
 SHADOW_DONE_SQL = ("SELECT 1 FROM raw.ingestion_runs WHERE job_type = %s AND status = 'completed' "
                    "AND started_at >= date_trunc('day', %s::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC' LIMIT 1")
 
@@ -161,6 +180,7 @@ def shadow_phase(conn: Any, *, at: datetime, started: float, scheduled: bool) ->
     if db.execute(SHADOW_DONE_SQL, (shadow.JOB, at)).fetchone() is not None:
         db.commit()
         return
+    db.execute(f"SET statement_timeout = '{SHADOW_STATEMENT_TIMEOUT}'")  # BE-093: no reading of a match may hold the process
     db.commit()
     from fbi.api.services import availability_shadow
 

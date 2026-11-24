@@ -258,3 +258,38 @@ def test_a_short_season_does_not_inherit_the_providers_no_of_the_season_before(c
     job.run_pass(c, now=NOW + timedelta(minutes=5), full=True)
     assert cell(c, old2, "corners")[:5] == ("D", "D", False, False, "no_entregado")
     assert cell(c, new2, "corners")[:5] == ("MI", "MI", False, False, "muestra_insuficiente")
+
+
+def test_a_sunday_without_room_hands_the_full_pass_to_the_next_nights(conn: psycopg.Connection) -> None:
+    """Regression (BE-093, 22-nov-2026): the Sunday's full pass found no room in the worker's memory three times (aborted
+    ``sin_margen_de_memoria``) and the nights after it were incremental, so 120 of the 272 seasons of annex B waited a whole week without
+    a cell. A full pass is now due every night of the week until one completes."""
+    c = conn
+    c.execute("DELETE FROM raw.ingestion_runs WHERE job_type = %s", (job.JOB,))
+    sunday, monday, tuesday = NOW, NOW + timedelta(days=1), NOW + timedelta(days=2)
+    assert job.full_due(c, sunday)
+    # the Sunday: three attempts with no room, and an incremental pass on Monday - the full one is still due
+    for at in (sunday, sunday + timedelta(minutes=40), sunday + timedelta(hours=3, minutes=20)):
+        c.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, started_at, params) VALUES (%s, %s, 'aborted', %s, "
+                  "'{\"skipped\": \"sin_margen_de_memoria\"}')", (job.JOB, job.JOB, at))
+    c.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, started_at, params) VALUES (%s, %s, 'completed', %s, "
+              "'{\"full\": null, \"only\": null, \"report\": {\"full\": false, \"stopped\": null}}')", (job.JOB, job.JOB, monday))
+    # a manual pass of a few competitions (--only) and a full one stopped by its time budget do not count either
+    c.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, started_at, params) VALUES (%s, %s, 'completed', %s, "
+              "'{\"full\": true, \"only\": [7], \"report\": {\"full\": true, \"stopped\": null}}')", (job.JOB, job.JOB, monday))
+    c.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, started_at, params) VALUES (%s, %s, 'completed', %s, "
+              "'{\"full\": null, \"only\": null, \"report\": {\"full\": true, \"stopped\": \"tiempo_agotado\"}}')",
+              (job.JOB, job.JOB, monday + timedelta(hours=1)))
+    c.commit()
+    assert job.full_due(c, tuesday)
+    r = job.run_pass(c, now=tuesday)
+    assert r.full
+    # once one completes, the rest of the week is incremental again; the next Sunday is full whatever the week did
+    c.execute("INSERT INTO raw.ingestion_runs (job_name, job_type, status, started_at, params) VALUES (%s, %s, 'completed', %s, "
+              "'{\"full\": null, \"only\": null, \"report\": {\"full\": true, \"stopped\": null}}')", (job.JOB, job.JOB, tuesday))
+    c.commit()
+    assert not job.full_due(c, tuesday + timedelta(days=1))
+    assert not job.run_pass(c, now=tuesday + timedelta(days=1)).full
+    assert job.full_due(c, sunday + timedelta(days=7))
+    c.execute("DELETE FROM raw.ingestion_runs WHERE job_type = %s", (job.JOB,))
+    c.commit()
