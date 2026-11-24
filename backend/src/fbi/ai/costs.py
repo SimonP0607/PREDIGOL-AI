@@ -49,15 +49,21 @@ SELECT {col} AS key, count(*) AS requests, COALESCE(sum(cost_usd), 0) AS cost_us
 """
 
 REVIEWS_SQL = """
-SELECT count(*) FILTER (WHERE engine = 'llm' AND status = 'ok' AND NOT output ? 'reused_from') AS llm_reviews,
-       count(*) FILTER (WHERE engine = 'combined') AS reviews,
-       count(*) FILTER (WHERE engine = 'combined' AND decision = 'APPROVE'
-                        AND engine_version NOT LIKE '%%+none') AS approved_with_llm,
-       count(DISTINCT fixture_id) AS fixtures_reviewed
-  FROM ai.pick_reviews WHERE reviewed_at >= %(since)s AND reviewed_at < %(until)s AND engine IN ('rules', 'llm', 'combined')
+SELECT p.name,
+       count(*) FILTER (WHERE r.engine = 'llm' AND r.status = 'ok' AND NOT r.output ? 'reused_from') AS llm_reviews,
+       count(*) FILTER (WHERE r.engine = 'combined') AS reviews,
+       count(*) FILTER (WHERE r.engine = 'combined' AND r.decision = 'APPROVE'
+                        AND r.engine_version NOT LIKE '%%+none') AS approved_with_llm
+  FROM unnest(%(names)s::text[], %(sinces)s::timestamptz[], %(untils)s::timestamptz[]) AS p(name, since, until)
+  JOIN ai.pick_reviews r ON r.reviewed_at >= p.since AND r.reviewed_at < p.until
+ WHERE r.reviewed_at >= %(first)s AND r.reviewed_at < %(last)s AND r.engine IN ('rules', 'llm', 'combined')
+ GROUP BY p.name
 """
-"""The reviews of production: the rows of the shadow of phase 3 (``fbi.ai.config.SHADOW_ENGINES``) are not in these counts - a match only they
-reviewed is not a match reviewed (their cost is in ``ai.usage``, which these figures read beside them)."""
+"""The reviews of production, ALL the periods in one pass over the table (BE-091): ``ai.pick_reviews`` is 650 MB and the four
+periods overlap (today, 7 days, 30 days, the month), so one query per period read the same wide rows four times - and a
+``count(DISTINCT fixture_id)`` nobody read forced a scan by fixture: 16 s cold in production, past the 10 s limit, so the page of
+costs answered 500. The rows of the shadow of phase 3 (``fbi.ai.config.SHADOW_ENGINES``) are not in these counts - a match only
+they reviewed is not a match reviewed (their cost is in ``ai.usage``, which these figures read beside them)."""
 
 SELECTED_SQL = """
 SELECT count(*) AS selected FROM picks.daily_set_items i JOIN picks.daily_sets s ON s.id = i.set_id
@@ -123,13 +129,17 @@ def summary(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings
                            "projection": projection(conn, at=at, settings=settings), "alerts": alerts(conn, at=at),
                            "thresholds": list(ALERT_THRESHOLDS)}
     month = day_start(month_start(local_day(at)))
-    for name, since, until in [(n, *_period(at, d)) for n, d in PERIODS] + [("month", month,
-                                                                             at + timedelta(seconds=1))]:
+    periods = [(n, *_period(at, d)) for n, d in PERIODS] + [("month", month, at + timedelta(seconds=1))]
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(REVIEWS_SQL, {"names": [p[0] for p in periods], "sinces": [p[1] for p in periods],
+                                  "untils": [p[2] for p in periods], "first": min(p[1] for p in periods),
+                                  "last": max(p[2] for p in periods)})
+        reviews = {str(x["name"]): dict(x) for x in cur.fetchall()}
+    for name, since, until in periods:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(SUMMARY_SQL, {"since": since, "until": until})
             s = dict(cur.fetchone() or {})
-            cur.execute(REVIEWS_SQL, {"since": since, "until": until})
-            r = dict(cur.fetchone() or {})
+            r = reviews.get(name, {})
             cur.execute(LEGACY_SQL, {"since": since, "until": until})
             legacy = cur.fetchone()
             cur.execute(SELECTED_SQL, {"from_day": local_day(since), "to_day": local_day(until)})

@@ -71,7 +71,7 @@ move for a row of another engine. Each count of the statement must carry the con
 
 CHANGED = (
     ("src/fbi/ai/gate_a.py", "bool_or(engine = 'llm') AS llm", PRODUCTION),
-    ("src/fbi/ai/costs.py", "count(DISTINCT fixture_id) AS fixtures_reviewed", PRODUCTION),
+    ("src/fbi/ai/costs.py", "JOIN ai.pick_reviews r ON r.reviewed_at >= p.since", PRODUCTION),
     ("src/fbi/ai/gate_research.py", "SELECT (SELECT count(*) FROM ai.pick_reviews r", PRODUCTION),
     ("src/fbi/ai/postmortem.py", "SELECT DISTINCT f.id, f.kickoff_at", PRODUCTION),
     ("src/fbi/intel/match_review.py", "EXISTS (SELECT 1 FROM ai.pick_reviews pr", PRODUCTION),
