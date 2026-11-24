@@ -207,6 +207,7 @@
     },
     "showFull": "Show full table",
     "hideFull": "Hide full table",
+    "competitionTable": "Full table of the competition",
     "split": {
       "all": "All",
       "home": "Home",
