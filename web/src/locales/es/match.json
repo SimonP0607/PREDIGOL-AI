@@ -207,6 +207,7 @@
     },
     "showFull": "Ver tabla completa",
     "hideFull": "Ocultar tabla completa",
+    "competitionTable": "Tabla completa de la competición",
     "split": {
       "all": "Total",
       "home": "Local",
