@@ -100,5 +100,18 @@
       "events": "minuto de los goles"
     },
     "markets": "cuotas principales"
+  },
+  "probs": {
+    "reading": {
+      "evaluable": "{market}: la barra es la probabilidad de PrediGol, la marca │ lo que dicen las casas sin su margen y el punto ● lo ocurrido antes en hasta {n} partidos, con su intervalo.",
+      "evaluableNoHistory": "{market}: la barra es la probabilidad de PrediGol y la marca │ lo que dicen las casas sin su margen. Todavía no hay partidos suficientes de histórico.",
+      "validation": "{market}: este mercado aún no tiene probabilidad de PrediGol publicada. Se ve lo que dicen las casas sin su margen (marca │) y lo ocurrido antes en hasta {n} partidos (punto ●), con su intervalo.",
+      "validationNoHistory": "{market}: este mercado aún no tiene probabilidad de PrediGol publicada. Se ve solo lo que dicen las casas sin su margen (marca │); todavía no hay partidos suficientes de histórico.",
+      "oddsOnly": "{market}: sin probabilidad propia de PrediGol. Se ve lo que dicen las casas sin su margen (marca │) y lo ocurrido antes en hasta {n} partidos (punto ●), con su intervalo.",
+      "oddsOnlyNoHistory": "{market}: sin probabilidad propia de PrediGol. Se ve solo lo que dicen las casas sin su margen (marca │); todavía no hay partidos suficientes de histórico."
+    },
+    "method": "Barra: probabilidad de PrediGol, solo en mercados comprobados y con su sello. Marca │: media de las casas sin su margen. Punto ●: la selección liquidada con su regla en los últimos partidos, con su intervalo de Wilson.",
+    "tableCaption": "Probabilidades de {market}, selección por selección",
+    "selection": "Selección"
   }
 }

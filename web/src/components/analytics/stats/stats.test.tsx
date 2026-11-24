@@ -20,7 +20,12 @@ import { TrendMatrix, WilsonRow } from "./Trends";
 import { DistributionRow } from "./PositionDistribution";
 import { LastFive, StateBar } from "./SmallCharts";
 import { figValue, goodness, missingText } from "./format";
-import { TriMark } from "@/product/match/stats/ProbabilitiesPanel";
+import {
+  MarketCard,
+  PROBABILITIES_REVIEW,
+  TriMark,
+} from "@/product/match/stats/ProbabilitiesPanel";
+import { reviewProblems } from "@/components/analytics/evidence";
 
 setLocale("es");
 afterEach(() => setLocale("es"));
@@ -122,6 +127,36 @@ describe("C-14 drawn", () => {
     expect(renderToStaticMarkup(<TriMark s={corners.selections[0]!} owner={true} />)).toContain(
       "bg-warning",
     );
+  });
+});
+
+describe("the probabilities of a market inside EvidenceChart (UX-231)", () => {
+  const reader = probs as unknown as MarketProbs;
+  const sides = { home: "Local", away: "Visitante" };
+  const draw = (unit: string) =>
+    renderToStaticMarkup(
+      <MarketCard
+        m={reader.markets.items.find((m) => m.unit === unit)!}
+        sides={sides}
+        owner={false}
+      />,
+    );
+
+  test("its review of the 14 checks is complete", () => {
+    expect(reviewProblems(PROBABILITIES_REVIEW)).toEqual([]);
+  });
+
+  test("it carries its level, its sentence and the equivalent table", () => {
+    const html = draw("1X2");
+    expect(html).toContain("data-evidence=");
+    expect(html).toContain('data-review="completa"');
+    expect(html).toContain("la marca │");
+    expect(html).toContain('data-testid="probs-table"');
+    expect(html).toContain("Ver como tabla");
+  });
+
+  test("a market in calibration says it has no published probability of PrediGol", () => {
+    expect(draw("CORNERS_OU")).toContain("aún no tiene probabilidad de PrediGol publicada");
   });
 });
 

@@ -15,9 +15,37 @@ import { t } from "@/lib/i18n";
 import { fmtLine } from "@/lib/i18n/format";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { ChartCard, ChipChoice } from "@/components/analytics/stats/ChartCard";
+import { EvidenceChart } from "@/components/analytics/EvidenceChart";
+import type { ChartReview } from "@/components/analytics/evidence";
+import { ChipChoice } from "@/components/analytics/stats/ChartCard";
 import { catalogSelection, catalogTitle, periodLabel } from "../marketCatalog";
 import { lineWindow } from "./lines";
+import { t as tv } from "./matchvizText";
+
+/** The history is shown from this many matches; under it the chart is an anecdote (E0) and says so. */
+const MIN_HISTORY = 5;
+
+/** The hand review of the 14 checks (PM-10-06) for the probabilities of a market: static marks, a keyboard-reachable line choice. */
+export const PROBABILITIES_REVIEW: ChartReview = {
+  checks: {
+    contraste: "ok",
+    alternativa_textual: "ok",
+    texto_minimo: "ok",
+    sin_parpadeo: "ok",
+    color_no_unico: "ok",
+    teclado: "ok",
+    foco_visible: "ok",
+    instrucciones: "ok",
+    titulo_y_resumen: "ok",
+    incertidumbre: "ok",
+    lenguaje_llano: "ok",
+    tabla_equivalente: "ok",
+    zoom_y_espaciado: "ok",
+    lector_de_pantalla: "ok",
+  },
+  reviewedBy: "UX-231",
+  reviewedOn: "2026-11-23",
+};
 
 type Sides = { home: string; away: string };
 const FEATURED_UNITS = new Set(["1X2", "OU", "BTTS"]);
@@ -57,7 +85,7 @@ export function TriMark({ s, owner }: { s: SelectionMarks; owner: boolean }) {
 
 function Seal({ p }: { p: Probability }) {
   return (
-    <span className="text-[11px] text-subtle-foreground">
+    <span className="text-[12px] text-subtle-foreground">
       {p.calibration === "calibrada" ? t("stats.sealCalibrated") : t("stats.sealUncalibrated")} ·{" "}
       {p.origin}
     </span>
@@ -131,7 +159,72 @@ function SelectionRow({
   );
 }
 
-function MarketCard({ m, sides, owner }: { m: MarketMarks; sides: Sides; owner: boolean }) {
+/** The same figures as a table (the check «tabla equivalente»): what the bar, the tick and the dot say, in words. */
+function MarksTable({
+  caption,
+  rows,
+  owner,
+}: {
+  caption: string;
+  rows: { key: string; name: string; s: SelectionMarks }[];
+  owner: boolean;
+}) {
+  return (
+    <details className="group text-caption" data-testid="probs-table">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-md px-1 font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        {tv("matchviz.table.show")}
+      </summary>
+      <table className="mt-1 w-full border-collapse text-left text-xs">
+        <caption className="sr-only">{caption}</caption>
+        <thead>
+          <tr className="border-b border-border text-muted-foreground">
+            <th scope="col" className="py-1.5 pr-2 font-medium">
+              {tv("matchviz.probs.selection")}
+            </th>
+            <th scope="col" className="py-1.5 pr-2 text-right font-medium">
+              {t("stats.triModel")}
+            </th>
+            <th scope="col" className="py-1.5 pr-2 text-right font-medium">
+              {t("stats.triImplied")}
+            </th>
+            <th scope="col" className="py-1.5 text-right font-medium">
+              {t("stats.triHistory")}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ key, name, s }) => {
+            const model = present(s.model) ?? (owner ? present(s.model_shadow) : null);
+            const implied = present(s.implied);
+            const history = present(s.history);
+            return (
+              <tr key={key} className="border-b border-border/60 last:border-0">
+                <th scope="row" className="py-1.5 pr-2 font-normal text-muted-foreground">
+                  {name}
+                </th>
+                <td className="numeric py-1.5 pr-2 text-right">{model ? `${model.pct} %` : "—"}</td>
+                <td className="numeric py-1.5 pr-2 text-right">
+                  {implied ? `${implied.pct} %` : "—"}
+                </td>
+                <td className="numeric py-1.5 text-right">
+                  {history ? `${history.hits}/${history.n}` : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </details>
+  );
+}
+
+function readingKey(state: MarketMarks["state"], hasHistory: boolean): string {
+  const base =
+    state === "evaluable" ? "evaluable" : state === "en_calibracion" ? "validation" : "oddsOnly";
+  return `matchviz.probs.reading.${base}${hasHistory ? "" : "NoHistory"}`;
+}
+
+export function MarketCard({ m, sides, owner }: { m: MarketMarks; sides: Sides; owner: boolean }) {
   const lines = useMemo(
     () => [...new Set(m.selections.map((s) => s.line))].sort((a, b) => a - b),
     [m.selections],
@@ -142,11 +235,40 @@ function MarketCard({ m, sides, owner }: { m: MarketMarks; sides: Sides; owner: 
   const shown = withLines ? m.selections.filter((s) => s.line === line) : m.selections;
   const code = m.key.split(".")[0] ?? "";
   const title = `${catalogTitle({ code, subject: m.subject }, sides)}${m.period !== "FT" ? ` · ${periodLabel(m.period)}` : ""}`;
+  const samples = shown.map((s) => present(s.history)?.n ?? 0);
+  const n = Math.max(0, ...samples);
+  const rows = shown.map((s, i) => ({
+    key: `${s.selection}${s.line}`,
+    name: catalogSelection(
+      m.kind,
+      s.selection,
+      s.line === 0 && m.kind !== "asian_handicap" && m.kind !== "over_under" ? null : s.line,
+      sides,
+      i,
+    ),
+    s,
+  }));
   return (
-    <ChartCard
+    <EvidenceChart
       title={title}
       subtitle={t(`stats.stateNote.${m.state}`)}
       testId={`probs-${m.unit}`}
+      evidence="E1"
+      reading={{
+        kind: "text",
+        sentence: tv(readingKey(m.state, n >= MIN_HISTORY), { market: title, n }),
+        n,
+        minSample: MIN_HISTORY,
+      }}
+      review={PROBABILITIES_REVIEW}
+      method={tv("matchviz.probs.method")}
+      footer={
+        <MarksTable
+          caption={tv("matchviz.probs.tableCaption", { market: title })}
+          rows={rows}
+          owner={owner}
+        />
+      }
       actions={
         <span
           className={cn(
@@ -185,7 +307,7 @@ function MarketCard({ m, sides, owner }: { m: MarketMarks; sides: Sides; owner: 
           />
         ))}
       </ul>
-    </ChartCard>
+    </EvidenceChart>
   );
 }
 
