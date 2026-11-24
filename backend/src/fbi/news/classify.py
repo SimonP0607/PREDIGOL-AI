@@ -52,13 +52,14 @@ TOPIC: Final[dict[str, vocab.Category]] = {"fichajes": "fichajes", "lesiones": "
                                            "declaraciones": "declaraciones"}
 COMPETITION_TYPES: Final = frozenset({"resultados", "calendario", "alineaciones", "convocatorias", "reglamento", "arbitraje",
                                       "estadisticas"})
-GENERAL_RULES: Final[tuple[tuple[vocab.Category, re.Pattern[str]], ...]] = tuple((c, re.compile(p)) for c, p in (
+_GENERAL_WORDS: Final[tuple[tuple[vocab.Category, str], ...]] = (
     ("premios", r"\b(?:balon de oro|ballon d ?or|the best|bota de oro|golden boot|golden ball|premio\w*|premiad\w*|award\w*|"
                 r"galardon\w*|pichichi|zamora|jugador del (?:mes|ano)|player of the (?:month|year|season)|mejor jugador|best player)\b"),
     ("ceremonias", r"\b(?:ceremoni\w*|gala|sorteo|homenaje\w*|tribute|inaugura\w*|opening ceremony|despedida|farewell)\b"),
     ("polemicas", r"\b(?:polemic\w*|controvers\w*|escandal\w*|scandal\w*|denuncia\w*|racis\w*|insult\w*|multad\w*|fined|"
                   r"investigad\w*|investigation|protesta\w*|crisis)\b"),
-))
+)
+GENERAL_RULES: Final[tuple[tuple[vocab.Category, re.Pattern[str]], ...]] = tuple((c, re.compile(p)) for c, p in _GENERAL_WORDS)
 """v2 (C-06 1.1): the general categories by the words of a folded title; the first rule whose words any title of the story has decides."""
 
 LEVEL_OF: Final[dict[str, vocab.Level]] = {"OFICIAL": "oficial", "CONFIRMADO": "dos_origenes", "DECLARACION": "declaracion",
