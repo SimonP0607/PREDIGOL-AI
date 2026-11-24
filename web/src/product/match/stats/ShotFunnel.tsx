@@ -220,14 +220,15 @@ function ZoneBox({
           <span className="numeric block text-lg font-bold leading-tight">{localInt(inside)}</span>
           <span className="block text-caption text-foreground-soft">
             {t("matchviz.zones.inside")}
-            {inPct === null ? "" : ` · ${localInt(inPct)} %`}
+            {/* the figure and its sign never split across lines (PM-14-11: «56» / «%» at 390 px) */}
+            {inPct === null ? "" : ` · ${localInt(inPct)}\u00a0%`}
           </span>
         </div>
         <div className="pt-2 text-center">
           <span className="numeric block text-lg font-bold leading-tight">{localInt(outside)}</span>
           <span className="block text-caption text-foreground-soft">
             {t("matchviz.zones.outside")}
-            {outPct === null ? "" : ` · ${localInt(outPct)} %`}
+            {outPct === null ? "" : ` · ${localInt(outPct)}\u00a0%`}
           </span>
         </div>
       </div>

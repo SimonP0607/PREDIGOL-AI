@@ -94,7 +94,12 @@ function ZoneTag({ table, row }: { table: SeasonTable; row: SeasonTableRow }) {
     );
   return (
     <span title={zone.note ?? undefined}>
-      <StatusBadge tone={ZONE_TONE[zone.state]} dot={false}>
+      {/* the cell is narrow on a phone: the badge wraps inside it instead of spilling out of the card (PM-14-11) */}
+      <StatusBadge
+        tone={ZONE_TONE[zone.state]}
+        dot={false}
+        className="h-auto min-h-6 max-w-full whitespace-normal rounded-lg py-0.5 leading-tight"
+      >
         {t(`competitions.tables.zone.${zone.kind === "relegation" ? "relegation" : "continental"}`)}
         <span className="sr-only"> · {t(`competitions.tables.zoneState.${zone.state}`)}</span>
       </StatusBadge>
@@ -138,7 +143,7 @@ function Rows({
               </abbr>
             </th>
           ) : null}
-          <th scope="col" className="w-28 pb-1.5 pl-2 font-medium">
+          <th scope="col" className="w-24 pb-1.5 pl-2 font-medium">
             {t("competitions.tables.zoneToday")}
           </th>
         </tr>

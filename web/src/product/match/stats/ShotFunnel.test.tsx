@@ -182,10 +182,10 @@ describe("the cards", () => {
     expect(html).toContain("Zona de remate · 2 zonas");
     expect(html).toContain("No es un mapa de tiros");
     expect(html).toContain("xG según los datos del partido.");
-    expect(html).toContain("dentro · 63 %");
-    expect(html).toContain("fuera · 38 %");
-    expect(html).toContain("dentro · 44 %");
-    expect(html).toContain("fuera · 56 %");
+    expect(html).toContain("dentro · 63\u00a0%");
+    expect(html).toContain("fuera · 38\u00a0%");
+    expect(html).toContain("dentro · 44\u00a0%");
+    expect(html).toContain("fuera · 56\u00a0%");
     expect(html).toContain("Remates bloqueados");
     expect(html).toContain("1,84");
     expect(html).toContain("0,12");
