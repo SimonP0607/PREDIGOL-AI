@@ -27,6 +27,7 @@ import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { Me } from "@/lib/api/v1/types_auth";
 import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
+import { t as wellbeingText } from "@/product/wellbeing/wellbeingText";
 import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
 import { detectTimeZone, formatTime, listTimeZones, zoneAbbrev, zoneName } from "@/lib/time";
 import { PageTitle, errorMessage } from "@/product/shared/States";
@@ -280,7 +281,7 @@ function RegionPanel() {
       </Subsection>
       {/* «Solo fútbol» and the voluntary pause (PM-14-07; FBI_WELLBEING): nothing while the owner has not opened it */}
       {wellbeing.available ? (
-        <Subsection title={t("profile.wellbeing.title")}>
+        <Subsection title={wellbeingText("wellbeing.title")}>
           <WellbeingSettings />
         </Subsection>
       ) : null}

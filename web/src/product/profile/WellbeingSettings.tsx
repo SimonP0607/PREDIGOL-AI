@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LiveApiError, v1 } from "@/lib/api/v1/client";
 import { Switch } from "@/components/ui/switch";
 import { useWellbeing } from "@/lib/auth/AuthProvider";
-import { t } from "@/lib/i18n";
+import { t } from "@/product/wellbeing/wellbeingText";
 import { formatDateTime } from "@/lib/time";
 
 const PAUSES = [1, 7, 30] as const;
@@ -36,8 +36,8 @@ function WellbeingForm() {
     } catch (e) {
       setError(
         e instanceof LiveApiError && e.code === "pause_running"
-          ? t("profile.wellbeing.pauseRunning")
-          : t("profile.wellbeing.failed"),
+          ? t("wellbeing.pauseRunning")
+          : t("wellbeing.failed"),
       );
     } finally {
       setBusy(false);
@@ -46,13 +46,13 @@ function WellbeingForm() {
 
   return (
     <div className="space-y-4" data-testid="wellbeing-settings" aria-busy={busy}>
-      <p className="text-xs text-muted-foreground">{t("profile.wellbeing.intro")}</p>
+      <p className="text-xs text-muted-foreground">{t("wellbeing.intro")}</p>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium" id="wellbeing-mode-label">
-            {t("profile.wellbeing.mode")}
+            {t("wellbeing.mode")}
           </p>
-          <p className="text-xs text-muted-foreground">{t("profile.wellbeing.modeHelp")}</p>
+          <p className="text-xs text-muted-foreground">{t("wellbeing.modeHelp")}</p>
         </div>
         <Switch
           checked={w.footballOnly}
@@ -63,14 +63,14 @@ function WellbeingForm() {
         />
       </div>
       <div className="space-y-2">
-        <p className="text-sm font-medium">{t("profile.wellbeing.pause")}</p>
+        <p className="text-sm font-medium">{t("wellbeing.pause")}</p>
         {paused ? (
           <p className="text-sm" data-testid="wellbeing-paused">
-            {t("profile.wellbeing.pausedUntil", { date: formatDateTime(w.pausedUntil!) })}
-            {w.canLift ? "" : ` ${t("profile.wellbeing.noCut")}`}
+            {t("wellbeing.pausedUntil", { date: formatDateTime(w.pausedUntil!) })}
+            {w.canLift ? "" : ` ${t("wellbeing.noCut")}`}
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">{t("profile.wellbeing.pauseHelp")}</p>
+          <p className="text-xs text-muted-foreground">{t("wellbeing.pauseHelp")}</p>
         )}
         <div className="flex flex-wrap gap-2">
           {PAUSES.map((days) => (
@@ -82,7 +82,7 @@ function WellbeingForm() {
               data-testid={`wellbeing-pause-${days}`}
               className="inline-flex min-h-11 items-center rounded-md border border-border-strong px-3 py-2 text-sm font-medium hover:bg-elevated disabled:opacity-60"
             >
-              {t(paused ? "profile.wellbeing.extend" : "profile.wellbeing.start", { days })}
+              {t(paused ? "wellbeing.extend" : "wellbeing.start", { days })}
             </button>
           ))}
           {paused && w.canLift ? (
@@ -93,7 +93,7 @@ function WellbeingForm() {
               data-testid="wellbeing-lift"
               className="inline-flex min-h-11 items-center rounded-md border border-border-strong px-3 py-2 text-sm font-medium hover:bg-elevated disabled:opacity-60"
             >
-              {t("profile.wellbeing.lift")}
+              {t("wellbeing.lift")}
             </button>
           ) : null}
         </div>

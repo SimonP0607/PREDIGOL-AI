@@ -1,0 +1,19 @@
+{
+  "title": "Football only and pause",
+  "intro": "If you want to follow football without prices, PrediGol can hide them: no odds, no picks and no parlays on any screen or notice. It is your decision.",
+  "mode": "Football only",
+  "modeHelp": "Until you turn it off. You will still see matches, news, teams and statistics.",
+  "pause": "Voluntary pause",
+  "pauseHelp": "The same, until a date you choose. A pause that is running is not shortened.",
+  "start": "Pause {days} days",
+  "extend": "Extend to {days} days",
+  "lift": "End the pause",
+  "pausedUntil": "Paused until {date}.",
+  "noCut": "It cannot be shortened.",
+  "pauseRunning": "A pause that is running cannot be shortened: it lasts until its date.",
+  "failed": "We could not save it. Try again.",
+  "pageTitle": "You chose to see football only",
+  "pageBody": "This screen shows odds, picks or parlays, and you do not see it while your choice lasts. All the football is still here.",
+  "toMatches": "See matches",
+  "toChoice": "Change my choice in Profile"
+}
