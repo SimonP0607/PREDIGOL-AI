@@ -2142,7 +2142,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
-    "player_forecast_shadow", "stats_documents", "availability_refresh",
+    "player_forecast_shadow", "stats_documents", "availability_refresh", "availability_shadow",
     "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow", "selection_eval_shadow",
     "chronicle_update", "chronicle_review_v2", "council_reduced_shadow", "source_credibility_shadow",
 })
