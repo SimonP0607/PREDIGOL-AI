@@ -12,13 +12,20 @@ Two projections of ONE answer, built by the server (``fbi.api.services.selection
 
 Every number comes from what was stored; nothing is recomputed here but the rounding of a percentage (``Probability.of``). No price range,
 no promise of profit: the expected value is the decision's own, with the interval its probability gave.
+
+1.1.0 (C-02 1.1, plan de correcciones UX/UI, AP-K05, AP-K06) - two optional fields for readers, absent from an answer of 1.0.0:
+``reader_reason`` - the reason of the selection in the reader's two languages (``text_es``, ``text_en``), and ``highlight`` - the fact
+or figure that explains it most, with its ``source`` and ``as_of``. Written by the server from what the decision stored, never by a
+model: no model's name, no raw probability (0.473 - only whole percentages and odds), no rumour (only confirmed or probable facts, or
+the decision's own figures). The guard is in the models themselves (``reader_text_problems``): a text that breaks it does not validate.
 """
 
 from __future__ import annotations
 
+import re
 from typing import ClassVar, Final, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from fbi.api.contracts.intelligence.base import (
     CODE_PATTERN,
@@ -30,6 +37,7 @@ from fbi.api.contracts.intelligence.base import (
     Probability,
     Source,
     UtcDatetime,
+    _absent,
     private,
 )
 from fbi.api.contracts.intelligence.vocab import (
@@ -159,11 +167,52 @@ class EvaluationSummary(IntelligenceModel):
     notice_es: Literal["Un acierto no valida el mercado."] = "Un acierto no valida el mercado."
 
 
+RAW_PROBABILITY: Final = re.compile(r"(?<![\d,.])0[.,]\d{2,}(?!\s*%)")
+"""A probability written as a fraction (0.473, 0,47): a reader is only ever shown whole percentages and odds."""
+MODEL_WORDS: Final = re.compile(r"(?i)\b(dixon|coles|poisson|elo|hgb|xgboost|lightgbm|logit|bivariate|shin|"
+                                r"(decision|forecast|scenarios|parlay|ai-gate|player-engine)-v\d+(\.\d+)?|sin_calibrar)\b")
+"""The names of the models, methods and versions behind a figure: they stay in the private projection and the console."""
+RUMOUR_WORDS: Final = re.compile(r"(?i)\b(rumor|rumores|rumour|rumours|se rumorea|rumoured|rumored|según rumores)\b")
+
+
+def reader_text_problems(text: str) -> list[str]:
+    """Why a reader's text of C-02 1.1 cannot be served (empty: it can)."""
+    found = []
+    if RAW_PROBABILITY.search(text):
+        found.append("a raw probability")
+    if MODEL_WORDS.search(text):
+        found.append("the name of a model or method")
+    if RUMOUR_WORDS.search(text):
+        found.append("a rumour")
+    return found
+
+
+class ReaderText(IntelligenceModel):
+    """A text for readers in their two languages (C-02 1.1)."""
+
+    text_es: str = Field(min_length=1, max_length=400)
+    text_en: str = Field(min_length=1, max_length=400)
+
+    @field_validator("text_es", "text_en")
+    @classmethod
+    def _for_readers(cls, value: str) -> str:
+        if problems := reader_text_problems(value):
+            raise ValueError(f"not a reader's text: {', '.join(problems)}")
+        return value
+
+
+class Highlight(ReaderText):
+    """The fact or figure that explains the selection most (C-02 1.1, AP-K06), with where it was read and as of when."""
+
+    source: Source
+    as_of: UtcDatetime
+
+
 class SelectionIntelligence(IntelligenceContract):
     """C-02, public projection: a selection the owner published (or in play, or settled)."""
 
     CONTRACT_ID: ClassVar[str] = "C-02"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     selection: SelectionRef
     public_state: PublicState
@@ -178,6 +227,13 @@ class SelectionIntelligence(IntelligenceContract):
     versions: ItemList[Version]
     sources: ItemList[SourceUsed]
     market_status: MarketStatusRef | Missing
+    reader_reason: ReaderText | Missing | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.1.0: the reason in the reader's two languages; absent from an answer of 1.0.0, sin_datos when the decision "
+                    "stored nothing to say it with.")
+    highlight: Highlight | Missing | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.1.0: the fact or figure that explains the selection most, with its source and as_of; absent from 1.0.0.")
 
 
 class SelectionIntelligencePrivate(SelectionIntelligence):

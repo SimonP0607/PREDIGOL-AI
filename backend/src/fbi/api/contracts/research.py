@@ -9,8 +9,12 @@ from typing import Any, Literal
 from pydantic import Field
 
 from fbi.api.contracts.common import Contract
+from fbi.research.reason_codes import ReasonCode
 
 Role = Literal["CHAMPION", "CHALLENGER", "RESEARCH", "REJECTED"]
+RoleReasonCode = ReasonCode
+"""C-11 1.1 (AP-A04, AP-A05): why a model has its role, as a code the console translates
+(``fbi.research.reason_codes``)."""
 
 
 class ResearchEntry(Contract):
@@ -20,6 +24,10 @@ class ResearchEntry(Contract):
     model_family: str
     role: Role | None
     role_reason: str | None
+    role_reason_code: RoleReasonCode | None = Field(
+        default=None, description="C-11 1.1: role_reason as a code (rechazado_peor_que_mercado, aporta_informacion...); "
+                                  "its figures are in metrics (vs_champion, blend, segments). None for a reason the "
+                                  "list does not know; absent from an older API.")
     segment: str | None
     finished_at: datetime | None
     data_as_of: datetime | None

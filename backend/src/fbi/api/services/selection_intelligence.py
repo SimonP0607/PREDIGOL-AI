@@ -35,9 +35,11 @@ from fbi.api.contracts.intelligence.selection import (
     Dependency,
     EvaluationSummary,
     ExpectedValue,
+    Highlight,
     MarketStatusRef,
     PriceState,
     PriceView,
+    ReaderText,
     Reason,
     SelectionIntelligence,
     SelectionIntelligencePrivate,
@@ -170,6 +172,49 @@ def _reasons_for(d: dict[str, Any]) -> list[Reason]:
     return out
 
 
+def _odds(x: float, lang: str) -> str:
+    text = f"{x:.2f}"
+    return text.replace(".", ",") if lang == "es" else text
+
+
+def _reader_reason(d: dict[str, Any]) -> ReaderText | Missing:
+    """C-02 1.1 (AP-K05): the reason for readers, in both languages, from the decision's own figures - whole percentages and odds
+    only, no model's name. Nothing to say (no market figure, or PrediGol not above it): sin_datos."""
+    p = d["p_cal"] if d["p_cal"] is not None else d["p_model"]
+    if d["p_market"] is None or p is None:
+        return Missing(missing_reason="sin_datos")
+    mine, market = round(float(p) * 100), round(float(d["p_market"]) * 100)
+    if mine <= market:
+        return Missing(missing_reason="sin_datos")
+    es = f"PrediGol estima un {mine} % para esta selección; el mercado, sin su margen, un {market} %."
+    en = f"PrediGol estimates {mine}% for this selection; the market, without its margin, {market}%."
+    if d["ev_cal"] is not None and d["ev_cal"] > 0 and d["odds"] is not None:
+        ev = float(d["ev_cal"]) * 100
+        es += f" A la mejor cuota, {_odds(float(d['odds']), 'es')}, el valor esperado es de {f'{ev:+.1f}'.replace('.', ',')} %."
+        en += f" At the best odds, {_odds(float(d['odds']), 'en')}, the expected value is {ev:+.1f}%."
+    return ReaderText(text_es=es, text_en=en)
+
+
+def _highlight(d: dict[str, Any], p: float) -> Highlight | Missing:
+    """C-02 1.1 (AP-K06): the figure that explains the selection most - the best price against the fair odds of PrediGol's figure,
+    from the bookmakers' prices the decision read, as of when it read them. A fact from the news is never chosen here: a cited fact
+    does not say whether it plays for or against the selection (an owner's question, not decided by the server)."""
+    odds = d["odds"]
+    if odds is None or p <= 0 or float(odds) <= 1:
+        return Missing(missing_reason="sin_datos")
+    fair = round(1 / p, 2)
+    if float(odds) <= fair:
+        return Missing(missing_reason="sin_datos")
+    books = d["n_bookmakers"]
+    name = f"Cuotas de {int(books)} casas de apuestas" if books else "Cuotas de las casas de apuestas"
+    return Highlight(text_es=f"La mejor cuota disponible, {_odds(float(odds), 'es')}, paga más que la cuota justa de la "
+                             f"estimación de PrediGol, {_odds(fair, 'es')}.",
+                     text_en=f"The best available odds, {_odds(float(odds), 'en')}, pay more than the fair odds of PrediGol's "
+                             f"estimate, {_odds(fair, 'en')}.",
+                     source=Source(name=name, url=Missing(missing_reason="sin_datos")),
+                     as_of=d["price_at"] if d["price_at"] is not None else d["known_at"])
+
+
 def _reasons_against(d: dict[str, Any]) -> list[Reason]:
     seen: list[Reason] = []
     for code in d["reasons"] or []:
@@ -285,6 +330,7 @@ def private(conn: Conn, decision_id: int, *, at: datetime | None = None) -> Sele
         depends_on=_items(_depends_on(d, lineup_at)), settlement_rule=_settlement(str(d["market_key"])),
         versions=_items(_versions(history)), sources=_items(sources),
         market_status=MarketStatusRef(market_key=str(d["market_key"]), state=status.state, reason=status.reason),  # type: ignore[arg-type]
+        reader_reason=_reader_reason(d), highlight=_highlight(d, p),
         decision_id=int(d["id"]), layer=str(d["decision_version"]), decision_state=str(d["state"]),
         lifecycle_state=Missing(missing_reason="sin_datos") if not chain else chain[-1].state,  # type: ignore[arg-type]
         lifecycle_reason=Missing(missing_reason="sin_datos") if not chain else chain[-1].reason,
