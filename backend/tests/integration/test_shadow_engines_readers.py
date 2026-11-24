@@ -114,8 +114,9 @@ def test_the_candidates_of_gate_a_are_still_counted_when_only_production_reviewe
 # ── the costs: the reviews of production ──────────────────────────────────────────────────────────────────────────
 
 def figures(world: Reviews) -> dict[str, int]:
-    [row] = rows(world.db, costs.REVIEWS_SQL, since=AT - timedelta(hours=12), until=AT + timedelta(hours=1))
-    return {k: int(v) for k, v in row.items()}
+    since, until = AT - timedelta(hours=12), AT + timedelta(hours=1)
+    [row] = rows(world.db, costs.REVIEWS_SQL, names=["w"], sinces=[since], untils=[until], first=since, last=until)
+    return {k: int(v) for k, v in row.items() if k != "name"}
 
 
 def test_the_reviews_the_costs_count_are_those_of_production_and_so_are_the_matches_they_were_for(world: Reviews) -> None:
@@ -126,7 +127,7 @@ def test_the_reviews_the_costs_count_are_those_of_production_and_so_are_the_matc
     world.put(f1, "combined", at=AT, version="rules-review-v1+review-v1")
     world.put(f1, "combined", selection="Away", at=AT, version="rules-review-v1+none")
     before = figures(world)
-    assert before == {"llm_reviews": 1, "reviews": 2, "approved_with_llm": 1, "fixtures_reviewed": 1}
+    assert before == {"llm_reviews": 1, "reviews": 2, "approved_with_llm": 1}
 
     for engine in SHADOW_ENGINES:
         world.put(f1, engine, at=AT, version="ma-v1+x")
@@ -393,3 +394,14 @@ def test_each_engine_is_evaluated_over_its_own_selections(world: Reviews) -> Non
     since, until = AT - timedelta(days=60), AT
     sizes = {engine: len(shadow.load(world.db, engine=engine, since=since, until=until)) for engine in shadow.ENGINES}
     assert sizes == {"rules": 1, "llm": 0, "combined": 0, "ma-v1": 2, "ma-v1-h": 3, "cs-v1": 0}
+
+
+def test_the_costs_read_every_period_in_one_pass_and_each_period_counts_only_its_own_reviews(world: Reviews) -> None:
+    """BE-091: one query for today, 7 days, 30 days and the month; a review of five days ago is in the last three only."""
+    f = world.fixture(AT + timedelta(hours=6))
+    world.put(f, "combined", at=AT, version="rules-review-v1+review-v1")
+    world.put(f, "combined", selection="Away", at=AT - timedelta(days=5), version="rules-review-v1+review-v1")
+    world.put(f, "combined", selection="Draw", at=AT - timedelta(days=20), version="rules-review-v1+none")
+    got = costs.summary(world.db, at=AT, settings=AiSettings(mode="shadow"))["periods"]
+    assert [got[k]["reviews"] for k in ("today", "7d", "30d")] == [1, 2, 3]
+    assert [got[k]["approved_with_llm"] for k in ("today", "7d", "30d")] == [1, 2, 2]

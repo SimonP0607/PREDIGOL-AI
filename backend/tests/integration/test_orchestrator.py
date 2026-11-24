@@ -560,10 +560,11 @@ def test_none_of_the_readers_of_production_moves_for_what_a_run_wrote(db: psycop
     window = {"since": KICKOFF - timedelta(days=1), "until": KICKOFF + timedelta(days=1), "limit": 100}
 
     def readers() -> dict[str, Any]:
-        [row] = rows(db, costs.REVIEWS_SQL, since=AT - timedelta(hours=12), until=RUN + timedelta(hours=1))
+        since, until = AT - timedelta(hours=12), RUN + timedelta(hours=1)
+        [row] = rows(db, costs.REVIEWS_SQL, names=["w"], sinces=[since], untils=[until], first=since, last=until)
         return {
             "gate_a": gate_a.coverage(db, day, day),
-            "costs": {k: int(v) for k, v in row.items()},
+            "costs": {k: int(v) for k, v in row.items() if k != "name"},
             "research": gate_research.check_invisible(db, day, day),
             "postmortem": sorted(r["id"] for r in rows(db, postmortem.DUE_SQL, version=postmortem.VERSION, **window)),
             "match_review": sorted(r["id"] for r in rows(db, match_review.DUE_SQL, version=match_review.VERSION, **window)),
@@ -571,7 +572,7 @@ def test_none_of_the_readers_of_production_moves_for_what_a_run_wrote(db: psycop
         }
 
     before = readers()
-    assert before["gate_a"].selections == 5 and before["costs"]["fixtures_reviewed"] == 2
+    assert before["gate_a"].selections == 5 and before["costs"] == {"llm_reviews": 0, "reviews": 0, "approved_with_llm": 0}
     assert before["postmortem"] == sorted([w.fixture, other]) and before["match_review"] == sorted([w.fixture, other])
     assert len(before["decision"]) == 5 and {r["engine"] for r in before["decision"]} == {"rules"}
     report = go(db, Gear(db), provider(approves_with_doubt))
