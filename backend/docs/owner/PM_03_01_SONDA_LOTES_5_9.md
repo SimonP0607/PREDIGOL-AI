@@ -199,7 +199,7 @@ Los mismos datos que `probes` de `config/expansion.yaml`, en tablas.
 El lote 4 del Plan AD se aplicó el 20-nov-2026 y se midió el 21 y el 22-nov completos (OPS-014, §6 de `IA_077_COBERTURA_CUATRO_LIGAS.md`):
 dentro del criterio. Con eso, `config/expansion.yaml` lleva el **lote 5** (nivel de migración 9): Superliga (713) y Liga Femenina (712)
 de Colombia, CONMEBOL Recopa (541), OFC Champions League (27), AFC Challenge League (1132) y clasificación de la Copa Africana (36),
-decidido con la sonda `pm-03-01` y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+decidido con la sonda `pm-03-01`, repetida el 24-nov-2026 a las 21:07 UTC para estas 16 (40 peticiones, nada en RAW; `pm0303_sonda_lote6.sh`), y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
 
 Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
 
@@ -222,6 +222,10 @@ Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y
 1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 6`. Debe listar las 16 con `known` y `tracked False`; si dice `REFUSED`, se para.
 2. Seguimiento: la misma orden con `--apply`.
 3. Medir la ventana (o el día UTC completo) siguiente con el criterio de IA-077 (≤ 1.000 peticiones añadidas), antes del lote siguiente.
+
+Repetición del 24-nov (4 días después): las 16 contestaron y los datos del 20-nov se confirman (mismos partidos y mismas banderas; el nivel esperado sin cuotas solo
+cambia en 304 Liga Panameña, que pasa de D a C* porque ya hay alineaciones en la muestra). Hay **16 partidos por jugar en 14 días** (129: 4, 266: 3, 304: 2, 269: 2, 930: 2, 130: 1, 267: 1, 263: 1), así que el
+lote tendrá partidos propios (cuotas, alineaciones y eventos) desde el primer día de medición.
 
 Esperado: ≈ 320 peticiones al día de media y ≈ 2.000 el día de más carga (2,2 GB al año, sobre todo cuotas). Nivel esperado: 263 Liga de Expansión MX alcanza B* (estadísticas, xG, jugadores y árbitro declarados); 129, 130, 266, 267 y 257 quedan en C*; 304, 269 y 930 en D; los siete partidos únicos (517, 810, 1178, 632, 527, 857, 842) en «muestra insuficiente». Vuelta atrás: `--batch 6 --untrack --apply` (no borra nada).
 
