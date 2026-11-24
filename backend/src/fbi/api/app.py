@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
-from fbi.api import errors
+from fbi.api import errors, warm
 from fbi.api.limits import BodyLimit, SlidingWindow
 from fbi.api.routers import (
     account,
@@ -104,7 +104,12 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         configure(settings.runtime.log_level)
-        yield
+        keeper = warm.start()  # the heavy admin reads are computed in the background, not by the first reader (AP-A06)
+        try:
+            yield
+        finally:
+            if keeper is not None:
+                keeper.set()
 
     # A deployment closes the interactive docs and the schema (FBI_API_DOCS=0): they list every route,
     # admin ones included. Locally they stay open.
