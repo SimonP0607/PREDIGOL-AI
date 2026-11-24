@@ -18,16 +18,20 @@ views that read it): ``corners_1h_home``, ``corners_1h_away``, ``corners_2h_home
 
 Otherwise NULL, which means «not known», never zero - the rule of the whole view. The first half is not touched by extra time.
 
-The view is rebuilt from the definition the database holds now (``pg_get_viewdef``) wrapped as a subquery, so no column of the original is retyped
-here and none can be changed by accident. The statement is skipped when the columns already exist (it can be run twice). Additive: no table
-changes, no row is written, ``lock_timeout`` 10 s. Downgrade does nothing: the extra columns are harmless to the code before this one, and
-dropping them would need the view rebuilt without them.
+The view is rebuilt from the definition migration 0092 wrote (its statement is read from that file - an applied migration is never edited, so the
+text cannot change under this one - and wrapped as a subquery), so no column of the original is retyped here and none can be changed by
+accident; nothing is read from the database, which keeps the migration renderable to SQL offline. The statement is idempotent (it can be run
+twice). Additive: no table changes, no row is written, ``lock_timeout`` 10 s. Downgrade drops the view and creates it again exactly as 0092 left
+it (without the four columns), so that 0175's tables, which the new columns read, can be dropped in turn.
 
 Revision ID: 0176
 Revises: 0175
 """
 
 from __future__ import annotations
+
+import re
+from pathlib import Path
 
 from alembic import op
 
@@ -37,6 +41,25 @@ branch_labels = None
 depends_on = None
 
 VIEW = "market.fixture_outcomes"
+ORIGIN = Path(__file__).with_name("0092_market_catalogue.py")
+
+
+def _origin(pattern: str) -> str:
+    """One statement of migration 0092, as it wrote it: the view's definition and its comment."""
+    found = re.search(pattern, ORIGIN.read_text(encoding="utf-8"), re.S)
+    if found is None:  # pragma: no cover - 0092 is never edited
+        raise RuntimeError("migration 0092 no longer holds the statement this one reads")
+    return found.group(1)
+
+
+def base_sql() -> str:
+    """``SELECT ... FROM ...`` of the view as 0092 created it (no ``CREATE VIEW``, no trailing semicolon)."""
+    return _origin(r'CREATE VIEW market\.fixture_outcomes AS\n(.*?)"""\)\n    op\.execute\("""\n        COMMENT ON VIEW market\.fixture_outcomes').strip()
+
+
+def base_comment() -> str:
+    return _origin(r'COMMENT ON VIEW market\.fixture_outcomes IS\n        \'(.*?)\'"""\)\n\n    op\.execute\("""\n        CREATE TABLE market\.catalogue_runs')
+
 
 HALVES = """
 CREATE OR REPLACE VIEW market.fixture_outcomes AS
@@ -57,26 +80,25 @@ SELECT o.*,
          WHERE p.fixture_id = o.fixture_id AND p.source = 'api-football') c ON true
 """
 
+COMMENT = (
+    "One row per finished match: every figure a settlement rule can read (market.settlement_rules.columns). "
+    "Goals are the 90-minute score (core.fixture_results), halves from the half-time score (NULL when it is missing or "
+    "impossible). Statistics are NULL after extra time. Cards by period come from core.fixture_event_kinds (events-v1); the "
+    "match total falls back on the team statistics. Corners by half (PM-05-03) come from core.fixture_team_stats_period and are "
+    "known only when the four figures came and the halves add up to the match total (the second half also not after extra "
+    "time). NULL means not known, never zero. A view: no storage, never stale."
+)
+
 
 def upgrade() -> None:
     op.execute("SET LOCAL lock_timeout = '10s'")
-    conn = op.get_bind()
-    done = conn.exec_driver_sql(
-        "SELECT 1 FROM information_schema.columns WHERE table_schema = 'market' AND table_name = 'fixture_outcomes' "
-        "AND column_name = 'corners_1h_home'").first()
-    if done is not None:
-        return
-    base = conn.exec_driver_sql(f"SELECT pg_get_viewdef('{VIEW}'::regclass, true)").scalar_one()
-    conn.exec_driver_sql(HALVES.replace("{base}", str(base).strip().rstrip(";")))
-    op.execute("""
-        COMMENT ON VIEW market.fixture_outcomes IS
-        'One row per finished match: every figure a settlement rule can read (market.settlement_rules.columns).
-         Goals are the 90-minute score (core.fixture_results), halves from the half-time score (NULL when it is missing or
-         impossible). Statistics are NULL after extra time. Cards by period come from core.fixture_event_kinds (events-v1); the
-         match total falls back on the team statistics. Corners by half (PM-05-03) come from core.fixture_team_stats_period and are
-         known only when the four figures came and the halves add up to the match total (the second half also not after extra
-         time). NULL means not known, never zero. A view: no storage, never stale.'""")
+    op.execute(HALVES.replace("{base}", base_sql()))
+    op.execute(f"COMMENT ON VIEW {VIEW} IS '{COMMENT}'")
 
 
 def downgrade() -> None:
-    """Nothing: the four columns are harmless to the code before this revision (see the module's docstring)."""
+    """The view as 0092 left it: the new columns read 0175's tables, so they cannot stay when those go."""
+    op.execute("SET LOCAL lock_timeout = '10s'")
+    op.execute(f"DROP VIEW IF EXISTS {VIEW}")
+    op.execute(f"CREATE VIEW {VIEW} AS\n{base_sql()}")
+    op.execute(f"COMMENT ON VIEW {VIEW} IS '{base_comment()}'")
