@@ -1,5 +1,4 @@
-"""SQL for the product's own endpoints: picks re-priced now, picks as taken once their match started, best
-prices."""
+"""SQL for the product's own endpoints: picks re-priced now, picks as taken once their match started."""
 
 from __future__ import annotations
 
@@ -10,8 +9,6 @@ from fbi.core.decision_versions import DECISION_CORE
 
 CONSENSUS_METHOD = "shin"
 """The de-vigging the pick engine compares against (fbi.picks.engine.CONSENSUS_METHOD)."""
-
-POPULAR_MARKETS = ("1X2", "OU", "BTTS", "AH", "DC")
 
 _BADGES = """
        f.kickoff_at, f.status_group AS fixture_status, f.home_team_id, f.away_team_id,
@@ -108,21 +105,6 @@ SELECT p.id AS pick_id, p.fixture_id, """ + _BADGES + """,
  ORDER BY f.kickoff_at DESC, f.id, p.ev DESC, p.id
 """
 
-BEST_PRICES = """
-WITH fx AS (
-    SELECT f.id FROM core.fixtures f
-     WHERE f.status_group = 'scheduled' AND f.kickoff_at >= %(now)s AND f.kickoff_at < %(until)s
-), """ + _LATEST_CONSENSUS + """
-SELECT lc.fixture_id, lc.market_key, lc.selection, lc.line, lc.p_fair, lc.best_odds, lc.n_bookmakers, lc.as_of,
-       b.name AS bookmaker, """ + _BADGES + """
-  FROM lc
-  JOIN core.fixtures f ON f.id = lc.fixture_id
-""" + _BADGE_JOINS + """
-  LEFT JOIN market.bookmakers b ON b.id = lc.best_bookmaker_id
- WHERE lc.market_key = ANY(%(markets)s)
- ORDER BY f.kickoff_at, f.id, lc.market_key, lc.line, lc.selection
-"""
-
 INTEL_DECISIONS = """
 SELECT DISTINCT ON (d.fixture_id, d.market_key, d.selection, d.line)
        d.id, d.fixture_id, d.market_key, d.selection, d.line, d.known_at, d.checkpoint, d.state, d.reasons, d.filters,
@@ -151,12 +133,6 @@ def started_picks(conn: Conn, *, now: datetime, since: datetime, include_shadow:
     whenever it kicked off), as it was taken - with the match's state and the result."""
     return fetch_all(conn, STARTED_PICKS, {"now": now, "since": since, "include_shadow": include_shadow,
                                            "fixture": fixture_id})
-
-
-def best_prices(conn: Conn, *, now: datetime, until: datetime, since: datetime,
-                markets: tuple[str, ...] = POPULAR_MARKETS) -> list[Row]:
-    return fetch_all(conn, BEST_PRICES, {"now": now, "until": until, "since": since, "markets": list(markets),
-                                         "method": CONSENSUS_METHOD})
 
 
 def intel_decisions(conn: Conn, *, fixture_ids: list[int], now: datetime) -> list[Row]:

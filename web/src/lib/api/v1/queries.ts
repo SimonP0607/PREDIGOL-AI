@@ -1,6 +1,6 @@
 /** TanStack Query option factories for the live API. */
 import { infiniteQueryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { filterParams, v1, type AuditFamily, type BestOddsQuery, type MatchQuery } from "./client";
+import { filterParams, v1, type AuditFamily, type MatchQuery } from "./client";
 import type { StatsContext, StatsScope } from "./types_stats";
 import type { MyPicksFilter } from "./types_mypicks";
 import type { FeedbackSubject } from "./types_feedback";
@@ -145,11 +145,6 @@ export const live = {
     queryKey: ["v1", "built-parlay", q, preview ?? "qualified"],
     queryFn: () => v1.buildParlay({ ...q, preview }),
     staleTime: 30_000,
-  }),
-  bestOdds: (q: BestOddsQuery, preview: Preview) => ({
-    queryKey: ["v1", "best-odds", q, preview ?? "qualified"],
-    queryFn: () => v1.bestOdds({ ...q, preview }),
-    refetchInterval: 2 * MINUTE,
   }),
 
   // ── the odds explorer (plan Cuotas, BE-011) ─────────────────────────────────
