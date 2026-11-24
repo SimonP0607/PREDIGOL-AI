@@ -7,6 +7,9 @@
 import type { LegMarketKey } from "@/lib/api/v1/types_records";
 import type { MarketProbs } from "@/lib/api/v1/types_stats";
 import { present } from "@/lib/api/v1/types_intelligence";
+import type { MatrixMode } from "@/lib/api/v1/types_auth";
+import type { MatchAvailability } from "@/lib/api/v1/types_availability";
+import { parlayAllowed, parlayRefusal } from "@/product/shared/matrixModules";
 import { fmtLine } from "@/lib/i18n/format";
 import { normLine } from "@/product/records/model";
 import { isCatalogueKey } from "@/product/shared/markets";
@@ -37,7 +40,14 @@ export function settlesWith(ruleKey: string): SettlesWith {
   return "stats";
 }
 
-export function catalogParlayOf(data: MarketProbs | null | undefined): CatalogParlay {
+/**
+ * `matrix` (PM-14-04, FBI_MATRIX_PARLAY): with `on` and C-16 answering, a selection the server takes is taken only if C-16 does not
+ * refuse its whole market; off or show, `allowed` is exactly what C-14 says (the default).
+ */
+export function catalogParlayOf(
+  data: MarketProbs | null | undefined,
+  matrix?: { mode: MatrixMode; availability: MatchAvailability | null },
+): CatalogParlay {
   if (!data) return NO_CATALOG_PARLAY;
   const allowed = new Set<string>();
   const settles = new Map<string, SettlesWith>();
@@ -45,9 +55,16 @@ export function catalogParlayOf(data: MarketProbs | null | undefined): CatalogPa
   for (const m of data.markets.items) {
     if (!isCatalogueKey(m.key)) continue;
     let any = false;
+    const verdictOf =
+      matrix && matrix.mode === "on"
+        ? matrix.availability?.markets.find((x) => x.key === m.key)
+        : undefined;
     for (const s of m.selections) {
-      if (!s.parlay.allowed) {
-        reasons.set(selectionId(m.key, s.selection, s.line), s.parlay.reason);
+      if (!parlayAllowed(s.parlay.allowed, verdictOf, matrix?.mode ?? "off")) {
+        reasons.set(
+          selectionId(m.key, s.selection, s.line),
+          s.parlay.allowed ? (parlayRefusal(verdictOf) ?? s.parlay.reason) : s.parlay.reason,
+        );
         continue;
       }
       allowed.add(selectionId(m.key, s.selection, s.line));

@@ -78,3 +78,23 @@ def test_a_known_discrepancy_is_recorded_once(world, monkeypatch: pytest.MonkeyP
     again = availability_shadow.run(c, at=AT + timedelta(minutes=30), code_version="test")
     assert again.written == 0
     assert c.execute("SELECT count(*) FROM analytics.availability_discrepancies").fetchone() == (len(rows),)
+
+
+def test_the_cards_figure_is_graded_by_the_events_not_by_the_team_yellow_cards(world) -> None:
+    """BE-110: C-13's «cards» counts the cards of the match's events (``cards_lines_ft@v1``). On 24-nov-2026 it was compared with the
+    matrix's ``yellow_cards`` (team statistics) and gave three false discrepancies: events A, team yellow cards D (Premier League, J2, J3)."""
+    c, fid, _ = world
+    cs = one(c, "SELECT competition_season_id FROM core.fixtures WHERE id = %s", (fid,))
+    for datum, level, k in (("events", "A", 40), ("yellow_cards", "D", 0), ("xg", "D", 0)):
+        c.execute("INSERT INTO analytics.coverage_cells (competition_season_id, phase_key, datum, level, measured_level, missed, provisional, "
+                  "n_finished, n_with_data, share, pooled_seasons, rules_version, measured_at) "
+                  "VALUES (%s, 'todas', %s, %s, %s, false, false, 40, %s, %s, 1, 'coverage-levels-v1', %s)",
+                  (cs, datum, level, level, k, Decimal(k) / 40, AT))
+    doc = {"competition_season_id": cs, "coverage": [{"key": "cards", "share": 1.0, "publishable": True},
+                                                    {"key": "xg_for", "share": 0.0, "publishable": False}]}
+    from psycopg.types.json import Jsonb
+    c.execute("INSERT INTO analytics.stat_documents (kind, entity_id, competition_season_id, scope, context, calc_version, sample, doc, "
+              "computed_at) VALUES ('league', %s, %s, 'season', 'all', 'stats-docs-v1', 40, %s, %s)", (cs, cs, Jsonb(doc), AT))
+    c.commit()
+    assert availability_shadow.compare_season(c, fid, cs) == []
+    assert shadow.C13_DATA["cards"] == "events"

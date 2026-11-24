@@ -22,6 +22,8 @@ import { formatKickoff } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
+import { bookWithMatrix, MatrixNotes, useMatrixReading } from "@/product/shared/matrixModules";
+import { catalogTarget } from "@/product/match/marketLink";
 import type { MatchOddsBook, OddsBookMarket, OddsMovement } from "@/lib/api/v1/types_odds_explorer";
 import { familyName, marketTitle } from "../explorer/markets";
 import { selectionLabel, type Sides } from "../explorer/selections";
@@ -146,18 +148,34 @@ function MarketCard({
 function Markets({ fixtureId, sides }: { fixtureId: number; sides: Sides }) {
   const [q, setQ] = useState("");
   const book = useQuery(live.matchOddsBook(fixtureId));
-  const view = useMemo(() => bookView(book.data?.data, q), [book.data, q]);
+  // PM-14-04 (FBI_MATRIX_ODDS): off, nothing changes; show, a note says what C-16 says; on, the markets with no price in force are left out.
+  const matrix = useMatrixReading("odds", fixtureId);
+  const shown = useMemo(
+    () => bookWithMatrix(book.data?.data, matrix.availability, matrix.mode),
+    [book.data, matrix.availability, matrix.mode],
+  );
+  const view = useMemo(() => bookView(shown, q), [shown, q]);
+  const titleOf = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const f of book.data?.data?.families ?? [])
+      for (const m of f.markets) {
+        const key = catalogTarget(m.info.key, m.period)?.key;
+        if (key && !byKey.has(key)) byKey.set(key, marketTitle(m.info));
+      }
+    return (key: string) => byKey.get(key) ?? null;
+  }, [book.data]);
   const names = useMemo(
     () => new Map((book.data?.data?.bookmakers ?? []).map((b) => [b.id, b.name])),
     [book.data],
   );
   if (book.isPending) return <SkeletonBlock className="h-40" />;
   if (book.isError) return <ErrorState error={book.error} onRetry={() => void book.refetch()} />;
-  const data = book.data.data;
+  const data = shown;
   if (!data || data.state === "none" || data.families.length === 0)
     return <p className="text-sm text-muted-foreground">{t("odds.byMatch.sheet.noBook")}</p>;
   return (
     <div className="space-y-3">
+      <MatrixNotes module="odds" fixtureId={fixtureId} subjectOf={(m) => titleOf(m.key)} />
       <label className="relative block">
         <span className="sr-only">{t("odds.byMatch.sheet.search")}</span>
         <Search

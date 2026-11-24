@@ -266,6 +266,10 @@ def _catalogue_leg(conn: psycopg.Connection[Any], leg: LegIn, f: dict[str, Any],
     if not v.allowed:
         return ("invalid_selection" if v.reason in ("interruptor_apagado", "sin_regla", "no_ofrecer", "sin_cobertura")
                 else "quarter_line" if v.reason == "linea_de_cuarto" else "market_not_priced"), None
+    if not mine:
+        # ``verdict`` takes a core market read through its catalogue key (``result_1x2.FT.match``) without counting houses; with no
+        # house pricing the selection there is no best price: refused like any unpriced market (BE-110; it was ``max()`` of nothing, a 500).
+        return "market_not_priced", None
     top = max(mine, key=lambda q: (q.odds, -q.bookmaker_id))
     fair = implied(quotes).get((leg.selection, leg.line))
     return None, {"best_odds": top.odds, "bookmaker": top.bookmaker, "as_of": top.since,
