@@ -223,6 +223,31 @@ batches:
       statistics in either: no player market (decision no. 7). Cost at the same rates: about 47 a day in season
       (1.39 fixtures a day), 72 at most; history (2018-2026, Copa from 2019) about 220 requests once.
 
+  # PM-03-02 (Plan Maestro PM, OPS-015; decision DM-03 of 19 Nov 2026: batches 5-9, coverage levels C and D admitted): Colombia's
+  # competitions and the internationals still missing (section 3 of the plan, annex A). Decided on the read-only probe pm-03-01 of
+  # this file (BE-066, 20 Nov 2026), after batch 4 was tracked (20 Nov 2026 14:25 UTC, run 200930) and measured for the full UTC
+  # day 21 and 22 Nov 2026 (OPS-014: no lane limited, at most 11 responses a day attributable to the batch, criterion of at most 1,000 added requests met). Not tracked by this file: `python -m scripts.expand_leagues --batch 5 --apply`, after the
+  # deployment, is the step that tracks it.
+  - batch: 5
+    tier: 9
+    decided: "2026-11-23"
+    probe: >-
+      PM-03-01 read-only probe, 20 Nov 2026 06:54 UTC (probes.pm-03-01 below: shares, flags and expected level per family);
+      guide docs/owner/PM_03_01_SONDA_LOTES_5_9.md
+    rule: >-
+      decision DM-03 of the Plan Maestro PM: the competitions the owner asked for are tracked at coverage levels C and D too;
+      the availability matrix (coverage-levels-v1, PM-02-03) grades each family from the matches stored, and nothing is shown
+      that its level does not support. Batch 1's data rule (line-ups in 80 %, seven bookmakers) does not apply
+    leagues: [713, 712, 541, 27, 1132, 36]
+    notes: >-
+      Expected without odds (probe pm-03-01): 1132 AFC Challenge League C* (base B, referee C; 8 fixtures ahead); 712 Liga
+      Femenina (women's segment by its name), 27 OFC Champions League and 36 Africa Cup of Nations - Qualification D (36: team
+      and player statistics B but line-ups in 2 of 20; 48 fixtures ahead, season 2027); 713 Superliga and 541 CONMEBOL Recopa
+      MI: one tie a year (two legs or one match), so they stay "muestra insuficiente" (rule 3 pools five editions). 36 is a
+      national-team competition: like batch 2, `python -m scripts.sync_teams --scopes-only` once its teams are stored. No
+      player market in any (decision no. 7). Cost (section 3 of the plan, rates of 10-16 Nov 2026): about 80 requests a day on
+      average and 720 on the busiest day; 0.2 GB a year; history priced by `scripts.migration plan --tiers 9` (0 requests).
+
 # Read-only probes of candidates that are not tracked yet, one entry per run. A probe decides nothing and tracks nothing:
 # it is what a batch is later decided on (its `probe` and `measured`). PM-03-01 (BE-066), 20 Nov 2026: the 60 candidates of
 # batches 5-9 with the procedure of scripts.probe_leagues - calendar of the current season of raw.league_coverage and
