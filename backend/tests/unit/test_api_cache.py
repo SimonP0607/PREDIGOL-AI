@@ -68,3 +68,21 @@ def test_concurrent_readers_wait_for_one_computation(monkeypatch: pytest.MonkeyP
     for t in threads:
         t.join()
     assert len(calls) == 1
+
+
+def test_recompute_replaces_the_kept_answer_and_readers_find_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The keeper (fbi.api.warm) renews an answer before it expires: the next reader gets the new one without computing."""
+    monkeypatch.setenv("FBI_API_CACHE", "1")
+    board, calls = counted(30)
+    first = board(object(), include_shadow=False)
+    renewed = cache.recompute(board, object(), include_shadow=False)
+    assert renewed != first and len(calls) == 2
+    assert board(object(), include_shadow=False) == renewed and len(calls) == 2  # a hit, nothing computed
+
+
+def test_recompute_without_the_cache_only_computes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("FBI_API_CACHE", raising=False)
+    board, calls = counted(30)
+    assert cache.recompute(board, object(), include_shadow=False)[2] == 1 and len(calls) == 1
+    board(object(), include_shadow=False)
+    assert len(calls) == 2  # nothing was kept
