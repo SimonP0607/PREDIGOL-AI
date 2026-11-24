@@ -118,7 +118,13 @@ function TableTab({ id, season }: { id: string; season: number | undefined }) {
   });
   const computed = tables.data?.status === "ok" ? tables.data.data : null;
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+      {competitionTables && tables.isPending ? (
+        // the computed tables arrive after the provider's: their place is kept so the page does not jump (CLS, PM-15-02)
+        <Card className="p-4 sm:p-5">
+          <SkeletonCards count={6} />
+        </Card>
+      ) : null}
       {computed ? (
         <Card className="p-4 sm:p-5">
           <SeasonTablesBlock data={computed}>
