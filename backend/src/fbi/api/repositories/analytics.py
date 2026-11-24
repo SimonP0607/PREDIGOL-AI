@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from fbi.api.repositories import Conn, Row, fetch_all, fetch_one
-from fbi.domain.market_probability import DevigMethod
 
 
 def model_versions(conn: Conn) -> list[Row]:
@@ -69,9 +68,11 @@ def market_baseline(conn: Conn) -> Row:
     """What the live de-vigged consensus holds: its fixtures, the methods in use and the last time.
 
     AP-A02 (plan de correcciones UX): the table has millions of rows, and ``count(DISTINCT fixture_id)`` with ``array_agg(DISTINCT
-    devig_method)`` over all of them ran past the 10 s statement timeout in production, so ``GET /admin/models`` answered 500. The same
-    three figures are read with the indexes the table has: the newest row of each fixture (``(fixture_id, as_of DESC)``, a lookup per
-    fixture, ~1 s) and, for each of the four methods the schema allows (``DevigMethod``, the table's CHECK), whether one row exists.
+    devig_method)`` over all of them ran past the 10 s statement timeout in production, so ``GET /admin/models`` answered 500. The
+    fixtures and the last time are read with the index ``(fixture_id, as_of DESC)``, one lookup per fixture (~1 s). The methods
+    are NOT read with an ``EXISTS`` per method (BE-093: ``devig_method`` is the last column of the primary key, so a method no row
+    holds - ``logarithmic`` is not computed yet - walked the whole table, 15 s in production): they are the methods of the
+    consensus of the fixtures of the last 30 days and the next 7, the ones in use now, a hundred rows of each.
     """
     r = fetch_one(conn, """
         SELECT count(m.as_of) AS fixtures_with_consensus, max(m.as_of) AS last_as_of
@@ -81,10 +82,12 @@ def market_baseline(conn: Conn) -> Row:
     """)
     assert r is not None
     methods = fetch_all(conn, """
-        SELECT x.method FROM unnest(%s::text[]) AS x(method)
-        WHERE EXISTS (SELECT 1 FROM market.market_consensus c WHERE c.devig_method = x.method)
-        ORDER BY x.method
-    """, ([m.value for m in DevigMethod],))
+        SELECT DISTINCT c.devig_method AS method
+        FROM (SELECT id FROM core.fixtures
+               WHERE kickoff_at >= now() - interval '30 days' AND kickoff_at < now() + interval '7 days') f
+        CROSS JOIN LATERAL (SELECT devig_method FROM market.market_consensus WHERE fixture_id = f.id LIMIT 100) c
+        ORDER BY 1
+    """)
     return {**r, "methods": [str(m["method"]) for m in methods]}
 
 
