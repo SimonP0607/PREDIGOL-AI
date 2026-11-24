@@ -7,6 +7,7 @@ from typing import Any
 from fbi.api.contracts.research import LegacyRun, ResearchEntry, ResearchOverview
 from fbi.api.envelope import DataStatus, Envelope, ok, unavailable
 from fbi.api.repositories import Conn, fetch_all, fetch_one
+from fbi.research.reason_codes import reason_code
 
 LATEST_SQL = """
 SELECT split_part(name, ':', 1) AS run, max(finished_at) AS finished_at
@@ -54,7 +55,8 @@ def _summary(kind: str, m: dict[str, Any]) -> dict[str, Any]:
 
 def _entry(r: dict[str, Any]) -> ResearchEntry:
     return ResearchEntry(experiment_id=int(r["id"]), name=r["name"], kind=r["kind"], model_family=r["model_family"],
-                         role=r["role"], role_reason=r["role_reason"], segment=r["segment"],
+                         role=r["role"], role_reason=r["role_reason"], role_reason_code=reason_code(r["role_reason"]),
+                         segment=r["segment"],
                          finished_at=r["finished_at"], data_as_of=r["data_as_of"],
                          metrics=_summary(r["kind"], dict(r["metrics"] or {})))
 

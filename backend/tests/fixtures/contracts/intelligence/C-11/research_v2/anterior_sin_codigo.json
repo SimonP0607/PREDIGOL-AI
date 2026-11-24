@@ -1,0 +1,116 @@
+{
+  "run": "research-v2-2026-20261120T040000Z",
+  "finished_at": "2026-11-20T04:12:00Z",
+  "data_as_of": "2026-11-20T03:00:00Z",
+  "feature_version": "features-v3",
+  "champion": "Pinnacle/closing/shin",
+  "qualified_models": 0,
+  "challengers": 0,
+  "models": [
+    {
+      "experiment_id": 11,
+      "name": "research-v2-2026-20261120T040000Z:dixon_coles",
+      "kind": "backtest",
+      "model_family": "dixon_coles",
+      "role": "REJECTED",
+      "role_reason": "worse than the champion and adds nothing to it: log loss vs Pinnacle/closing/shin: +0.0214 [+0.0151, +0.0279] on 1712 fixtures (worse); blend weight on the test season +0.021 [-0.034, +0.077]. Still usable to price fixtures the market does not.",
+      "segment": null,
+      "finished_at": "2026-11-20T04:12:00Z",
+      "data_as_of": "2026-11-20T03:00:00Z",
+      "metrics": {
+        "n": 1712,
+        "logloss": 0.9934,
+        "ece": 0.0172,
+        "vs_champion": {
+          "n": 1712,
+          "diff": [
+            0.0214,
+            0.0151,
+            0.0279
+          ]
+        },
+        "blend": {
+          "w_test": 0.021,
+          "w_test_lo": -0.034,
+          "w_test_hi": 0.077
+        },
+        "blend_pre_closing": null,
+        "coverage": 0.98
+      }
+    },
+    {
+      "experiment_id": 12,
+      "name": "research-v2-2026-20261120T040000Z:hgb_market",
+      "kind": "backtest",
+      "model_family": "hgb",
+      "role": "RESEARCH",
+      "role_reason": "the evidence cannot tell: log loss vs Pinnacle/closing/shin: +0.0011 [-0.0016, +0.0039] on 1712 fixtures (inconclusive); blend weight on the test season +0.104 [-0.012, +0.221]",
+      "segment": null,
+      "finished_at": "2026-11-20T04:12:00Z",
+      "data_as_of": "2026-11-20T03:00:00Z",
+      "metrics": {
+        "n": 1712,
+        "logloss": 0.9731,
+        "ece": 0.0121,
+        "vs_champion": {
+          "n": 1712,
+          "diff": [
+            0.0011,
+            -0.0016,
+            0.0039
+          ]
+        },
+        "blend": {
+          "w_test": 0.104,
+          "w_test_lo": -0.012,
+          "w_test_hi": 0.221
+        },
+        "blend_pre_closing": null,
+        "coverage": 0.98
+      }
+    }
+  ],
+  "markets": [
+    {
+      "experiment_id": 21,
+      "name": "research-v2-2026-20261120T040000Z:market:Pinnacle/closing/shin",
+      "kind": "market",
+      "model_family": "market",
+      "role": "CHAMPION",
+      "role_reason": "lowest log loss of the de-vigged market baselines, 0.97202 on the 1712 fixtures every one of them priced",
+      "segment": null,
+      "finished_at": "2026-11-20T04:12:00Z",
+      "data_as_of": "2026-11-20T03:00:00Z",
+      "metrics": {
+        "logloss": 0.97202,
+        "n": 1712,
+        "own_sample": null,
+        "mean_overround": 1.027
+      }
+    }
+  ],
+  "prospective": [
+    {
+      "experiment_id": 31,
+      "name": "research-v2-2026-20261120T040000Z:prospective:forecast-v1",
+      "kind": "prospective",
+      "model_family": "forecast-v1",
+      "role": "RESEARCH",
+      "role_reason": "38 matches with a forecast and a closing price on 4 days: fewer than 50 matches or 5 days, not judged",
+      "segment": "all",
+      "finished_at": "2026-11-20T04:12:00Z",
+      "data_as_of": "2026-11-20T03:00:00Z",
+      "metrics": {
+        "played": 41,
+        "priced": 38,
+        "segments": [],
+        "segment_roles": {
+          "all": "RESEARCH"
+        }
+      }
+    }
+  ],
+  "audit": null,
+  "legacy": [],
+  "label": "RESEARCH_V2"
+}

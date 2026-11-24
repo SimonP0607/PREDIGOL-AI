@@ -721,7 +721,7 @@ def c5_tactics(inp: Inputs, events: Sequence[ev.Event], check: Mapping[str, Any]
 
 def main_line(market: str, quotes: Sequence[Quote]) -> Decimal | None:
     """The line a market is read at: Over/Under 2.5 when it is quoted; otherwise the line the most books quote, and among those the one
-    whose prices are closest to even (the rule of the odds board, ``fbi.api.services.product.main_line``). Markets with one line have it."""
+    whose prices are closest to even (the rule the odds board followed; today ``fbi.odds.book.main_line``). Markets with one line have it."""
     by_line: dict[Decimal, list[Quote]] = {}
     for q in quotes:
         by_line.setdefault(q.line, []).append(q)

@@ -1,5 +1,5 @@
 /**
- * Types for the product endpoints: /home, /picks, /parlays/{kind}, /odds/best.
+ * Types for the product endpoints: /home, /picks, /parlays/{kind}.
  * Mirrors fbi.api.contracts.product. Where a block is empty its `reason` is a CODE
  * (no_qualified_picks, no_value_now, ...) that the UI translates.
  */
@@ -271,15 +271,6 @@ export interface BestHighlight {
   /** The highlighted selection's own line: an Asian handicap's away side at -h, the opposite of its market's line. */
   line: Dec;
   price: BestPrice;
-}
-
-export interface BestOddsBoard {
-  window_hours: number;
-  markets: string[];
-  fixtures: BestOddsFixture[];
-  highlights: BestHighlight[];
-  value: PickCard[];
-  source: ProductSource;
 }
 
 /** A match that ended in the last 24 hours (plan de Inicio, 3.1). */

@@ -118,7 +118,7 @@ def test_repeated_failures_are_throttled_but_never_block_the_right_password_befo
 def test_a_user_reaches_the_product_and_gets_403_on_every_admin_route(app_client: TestClient) -> None:
     login(app_client, USER_EMAIL, USER_PW)
     for path in ("/api/v1/home", "/api/v1/picks", "/api/v1/parlays/daily", "/api/v1/parlays/multiday",
-                 "/api/v1/odds/best", "/api/v1/live", "/api/v1/matches", "/api/v1/odds"):
+                 "/api/v1/live", "/api/v1/matches", "/api/v1/odds"):
         assert app_client.get(path).status_code == 200, path
     from fbi.api.app import create_app
 
@@ -134,8 +134,7 @@ def test_a_user_reaches_the_product_and_gets_403_on_every_admin_route(app_client
 
 def test_the_shadow_preview_is_refused_to_a_user_and_labelled_for_the_owner(app_client: TestClient) -> None:
     login(app_client, USER_EMAIL, USER_PW)
-    for path in ("/api/v1/home?preview=shadow", "/api/v1/picks?preview=shadow", "/api/v1/parlays/daily?preview=shadow",
-                 "/api/v1/odds/best?preview=shadow"):
+    for path in ("/api/v1/home?preview=shadow", "/api/v1/picks?preview=shadow", "/api/v1/parlays/daily?preview=shadow"):
         assert app_client.get(path).status_code == 403, path
     user_view = app_client.get("/api/v1/picks").json()["data"]
     assert user_view["source"] == "qualified"

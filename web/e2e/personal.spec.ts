@@ -346,9 +346,9 @@ test("a match's Mercados put the reader's most consulted first, say the rule, an
     const w = watch(page, { expect401: true, expectStatus: [403] });
     await signIn(page, email);
     const best = await getJson<{
-      data: { fixtures: Array<{ fixture_id: number; kickoff_at: string }> };
-    }>(page.request, "/api/v1/odds/best?hours=72&market=1X2");
-    const fixture = best.body.data.fixtures.find(
+      data: { rows: Array<{ fixture_id: number; kickoff_at: string }> };
+    }>(page.request, "/api/v1/odds/board?market=result.1x2&hours=72&limit=50");
+    const fixture = best.body.data.rows.find(
       (f) => Date.parse(f.kickoff_at) > Date.now() + 30 * 60_000,
     );
     expect(fixture, "seed_football.py puts upcoming matches with prices in QA").toBeTruthy();
