@@ -1,0 +1,165 @@
+{
+  "contract": "C-06",
+  "contract_version": "1.0.0",
+  "projection": "public",
+  "freshness": {
+    "generated_at": "2026-11-21T19:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "view": "portada",
+  "front": {
+    "lead_story": {
+      "missing_reason": "sin_datos"
+    },
+    "breaking": {
+      "items": [
+        {
+          "id": "st-ej-rumor-fichaje",
+          "headline_es": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_es": {
+            "missing_reason": "sin_datos"
+          },
+          "category": "fichajes",
+          "level": "rumor",
+          "warnings": [],
+          "sources_count": 1,
+          "latest_at": "2026-11-21T09:55:00Z",
+          "sources": [
+            {
+              "name": "Portal Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T09:55:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T10:00:00Z",
+              "url": "https://portal.ejemplo.invalid/rumor-fichaje"
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770002,
+              "name": "Club Ejemplo Sur",
+              "role": "mencionado",
+              "method": "alias",
+              "confidence": 0.7
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          }
+        }
+      ]
+    },
+    "mine": {
+      "items": [],
+      "missing_reason": "sin_favoritos"
+    },
+    "featured": {
+      "items": [
+        {
+          "id": "st-ej-sancion-sur",
+          "headline_es": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_es": {
+            "missing_reason": "sin_datos"
+          },
+          "category": "bajas_y_sanciones",
+          "level": "un_medio",
+          "warnings": [],
+          "sources_count": 1,
+          "latest_at": "2026-11-21T13:50:00Z",
+          "sources": [
+            {
+              "name": "Radio Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T13:50:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T14:00:00Z",
+              "url": "https://radio.ejemplo.invalid/deportes/lateral-sur"
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770002,
+              "name": "Club Ejemplo Sur",
+              "role": "protagonista",
+              "method": "proveedor",
+              "confidence": 1.0
+            },
+            {
+              "type": "player",
+              "id": 880020,
+              "name": "L. Ejemplo",
+              "role": "protagonista",
+              "method": "alias",
+              "confidence": 0.92
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          }
+        },
+        {
+          "id": "st-ej-rumor-fichaje",
+          "headline_es": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_es": {
+            "missing_reason": "sin_datos"
+          },
+          "category": "fichajes",
+          "level": "rumor",
+          "warnings": [],
+          "sources_count": 1,
+          "latest_at": "2026-11-21T09:55:00Z",
+          "sources": [
+            {
+              "name": "Portal Ejemplo",
+              "author": {
+                "missing_reason": "pendiente_derechos"
+              },
+              "published_at": "2026-11-21T09:55:00Z",
+              "published_day_only": false,
+              "known_at": "2026-11-21T10:00:00Z",
+              "url": "https://portal.ejemplo.invalid/rumor-fichaje"
+            }
+          ],
+          "entities": [
+            {
+              "type": "team",
+              "id": 770002,
+              "name": "Club Ejemplo Sur",
+              "role": "mencionado",
+              "method": "alias",
+              "confidence": 0.7
+            }
+          ],
+          "image": {
+            "kind": "monograma"
+          }
+        }
+      ]
+    },
+    "counts": [
+      {
+        "category": "fichajes",
+        "n": 1
+      },
+      {
+        "category": "bajas_y_sanciones",
+        "n": 1
+      }
+    ],
+    "window_hours": 72,
+    "order_version": "front-v1"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "contract": "C-06",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "public",
   "freshness": {
     "generated_at": "2026-11-21T19:00:00Z",
@@ -51,6 +51,12 @@
           ],
           "image": {
             "kind": "monograma"
+          },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
           }
         }
       ]
@@ -106,6 +112,12 @@
           ],
           "image": {
             "kind": "monograma"
+          },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
           }
         },
         {
@@ -145,6 +157,12 @@
           ],
           "image": {
             "kind": "monograma"
+          },
+          "headline_en": {
+            "missing_reason": "sin_datos"
+          },
+          "summary_en": {
+            "missing_reason": "sin_datos"
           }
         }
       ]

@@ -54,6 +54,8 @@ Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su lí
 | C-06 | `noticia_retirada` | Retirada a petición: `retirado_por_derechos` y nada de su contenido en las dos proyecciones |
 | C-06 | `busqueda` | «Ejémplo Sur» con la categoría `bajas_y_sanciones`: facetas contadas antes del filtro, un resultado |
 | C-06 | `partido` | Las historias del partido y de sus equipos dentro de su ventana |
+| C-06 1.1.0 | `general` | Una noticia sin partido (`premios`: el premio de un jugador) y la de un club, encontradas por `player`, con el titular propio en inglés (`headline_en`) |
+| C-06 1.1.0 | `partido_sin_busqueda` | Un partido nunca buscado en la web: `searched_at` `sin_datos` y `sources_checked` 0; en `partido`, la hora de la última búsqueda y 14 páginas leídas. Los ejemplos de 1.0.0 siguen sin cambiar en `C-06/anteriores/1.0.0/` |
 | C-07 Fuentes del análisis | `publicada` | E3 de un análisis publicado: una baja oficial `en_contra` del over (su efecto por selección, solo privado), un contexto y un rumor `no_usada`; la privada añade el hecho rechazado por homónimo y las dos evaluaciones |
 | C-07 | `sin_evaluaciones` | Ninguna evaluación aún: todo `sin_datos` |
 | C-04 Parlays con estado | `ninguno` | Nada cumple la regla: el parlay del producto (`parlay-v5`) y el de la sombra (`parlay-v6`, `sin_candidatos`) llegan con `status: "ninguno"` y `NINGUNO_CUMPLE`, sin tramos; la pública solo trae el del producto |

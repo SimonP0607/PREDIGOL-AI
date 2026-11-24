@@ -12,7 +12,7 @@ FoundVia = Literal["rss", "sitemap", "search", "official", "manual"]
 StoreLevel = Literal["facts", "link"]
 PublishLevel = Literal["summary", "link", "none"]
 Category = Literal["fichajes", "bajas_y_sanciones", "declaraciones", "resultados_y_proximos", "selecciones", "colombia",
-                   "internacional", "competiciones"]
+                   "internacional", "competiciones", "premios", "ceremonias", "polemicas", "actualidad"]
 Level = Literal["oficial", "dos_origenes", "declaracion", "un_medio", "rumor"]
 Status = Literal["activa", "en_moderacion", "retirada"]
 GroupMethod = Literal["url", "huella", "similitud", "entidades", "idiomas", "manual"]
@@ -29,8 +29,8 @@ STORE_LEVELS: Final = ("facts", "link")
 """What of a source may be kept (``source_policy.can_store``) - without ``none``: a source that may keep nothing is never stored."""
 PUBLISH_LEVELS: Final = ("summary", "link", "none")
 CATEGORIES: Final = ("fichajes", "bajas_y_sanciones", "declaraciones", "resultados_y_proximos", "selecciones", "colombia",
-                     "internacional", "competiciones")
-"""The front page's categories (AD-G03)."""
+                     "internacional", "competiciones", "premios", "ceremonias", "polemicas", "actualidad")
+"""The front page's categories (AD-G03; the last four from C-06 1.1 and migration 0174)."""
 LEVELS: Final = ("oficial", "dos_origenes", "declaracion", "un_medio", "rumor")
 """The confirmation ladder (AD-C07), from the highest."""
 CLAIM_TYPES: Final = registry.CLAIM_TYPES

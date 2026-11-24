@@ -1,13 +1,16 @@
-"""The category, language, country and level of a story (IA-100, plan piece AD-G03): ``classify-v1``. By code, from the type of claim, the
+"""The category, language, country and level of a story (IA-100, plan piece AD-G03): ``classify-v2``. By code, from the type of claim, the
 entities and the directory - no model (none is needed: the rules cover every story, and a rule can be read and checked). Pure.
 
 CATEGORY - one of the front page's (``vocab.CATEGORIES``), the first rule that applies:
 
 1. the TOPIC: ``fichajes`` -> Fichajes; ``lesiones`` and ``sanciones`` -> Bajas y sanciones; ``declaraciones`` -> Declaraciones;
-2. a national team among its teams -> Selecciones;
-3. ``resultados``, ``calendario``, ``alineaciones``, ``convocatorias``, ``reglamento``, ``arbitraje``, ``estadisticas`` -> Competiciones.
+2. (v2, C-06 1.1) the words of its titles (``GENERAL_RULES``): an award -> Premios; a ceremony, gala or draw -> Ceremonias; a
+   controversy, a complaint or a fine -> Polémicas;
+3. a national team among its teams -> Selecciones;
+4. ``resultados``, ``calendario``, ``alineaciones``, ``convocatorias``, ``reglamento``, ``arbitraje``, ``estadisticas`` -> Competiciones.
    «Resultados y próximos partidos» is NEVER given to a story of the press: that block comes from API-Football's own data (AD-G06/G07);
-4. otherwise by its country: Colombia -> Colombia; any other -> Internacional.
+5. (v2) no team and no player named -> Actualidad (general news);
+6. otherwise by its country: Colombia -> Colombia; any other -> Internacional.
 
 LANGUAGE - the most frequent language of its items (the feed's or the page's); without one, the language whose common words its titles
 have most (es, en, pt, fr, it, de); without that, the first language of its sources in the directory; at worst ``es`` (the directory's
@@ -26,6 +29,7 @@ A story of type ``rumores`` is a rumour, always."""
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -38,7 +42,8 @@ from fbi.core.fingerprint import folded
 from fbi.news import grouping, vocab
 from fbi.people.identity.names import alias_key, names_compatible
 
-VERSION: Final = "classify-v1"
+VERSION: Final = "classify-v2"
+_WORD: Final = re.compile(r"[0-9a-z]+")
 COLOMBIA: Final = "Colombia"
 INTERNATIONAL: Final = "Internacional"
 DEFAULT_LANG: Final = "es"
@@ -47,6 +52,15 @@ TOPIC: Final[dict[str, vocab.Category]] = {"fichajes": "fichajes", "lesiones": "
                                            "declaraciones": "declaraciones"}
 COMPETITION_TYPES: Final = frozenset({"resultados", "calendario", "alineaciones", "convocatorias", "reglamento", "arbitraje",
                                       "estadisticas"})
+GENERAL_RULES: Final[tuple[tuple[vocab.Category, re.Pattern[str]], ...]] = tuple((c, re.compile(p)) for c, p in (
+    ("premios", r"\b(?:balon de oro|ballon d ?or|the best|bota de oro|golden boot|golden ball|premio\w*|premiad\w*|award\w*|"
+                r"galardon\w*|pichichi|zamora|jugador del (?:mes|ano)|player of the (?:month|year|season)|mejor jugador|best player)\b"),
+    ("ceremonias", r"\b(?:ceremoni\w*|gala|sorteo|homenaje\w*|tribute|inaugura\w*|opening ceremony|despedida|farewell)\b"),
+    ("polemicas", r"\b(?:polemic\w*|controvers\w*|escandal\w*|scandal\w*|denuncia\w*|racis\w*|insult\w*|multad\w*|fined|"
+                  r"investigad\w*|investigation|protesta\w*|crisis)\b"),
+))
+"""v2 (C-06 1.1): the general categories by the words of a folded title; the first rule whose words any title of the story has decides."""
+
 LEVEL_OF: Final[dict[str, vocab.Level]] = {"OFICIAL": "oficial", "CONFIRMADO": "dos_origenes", "DECLARACION": "declaracion",
                                            "REPORTE": "un_medio", "RUMOR": "rumor"}
 
@@ -108,13 +122,27 @@ def country(items: Sequence[grouping.ItemSignal], teams: Mapping[int, TeamFacts]
     return next(iter(agreed))[:60] if len(agreed) == 1 else INTERNATIONAL
 
 
+def general_category(titles: Sequence[str | None]) -> vocab.Category | None:
+    """Premios, Ceremonias or Polémicas by the words of the titles (``GENERAL_RULES``), or None."""
+    texts = [" ".join(_WORD.findall(folded(t or ""))) for t in titles if t]
+    for cat, pattern in GENERAL_RULES:
+        if any(pattern.search(text) for text in texts):
+            return cat
+    return None
+
+
 def category(kind: str, items: Sequence[grouping.ItemSignal], teams: Mapping[int, TeamFacts], where: str) -> vocab.Category:
     if kind in TOPIC:
         return TOPIC[kind]
+    general = general_category([i.title for i in items])
+    if general is not None:
+        return general
     if any(teams[t].is_national for i in items for t in i.teams if t in teams):
         return "selecciones"
     if kind in COMPETITION_TYPES:
         return "competiciones"
+    if not any(i.teams or i.players for i in items):
+        return "actualidad"
     return "colombia" if where == COLOMBIA else "internacional"
 
 
