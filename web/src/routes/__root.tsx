@@ -10,7 +10,7 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { RefreshCw, ShieldAlert, WifiOff } from "lucide-react";
 
 import appCss from "../styles.css?url";
@@ -42,7 +42,6 @@ import { isLegalPath } from "@/product/legal/links";
 import { isAccountPath } from "@/product/auth/accountPaths";
 import { isLimitedPath } from "@/product/membership/membership";
 import { isPriceAddress } from "@/components/layout/nav";
-import { WellbeingPage } from "@/product/wellbeing/WellbeingPage";
 import { LimitedAccess } from "@/product/membership/LimitedAccess";
 import { noteLocation, noteNoticeLanding, screenOf, startSession, track } from "@/lib/track";
 import { eventCategory, withoutNoticeMark } from "@/lib/push";
@@ -341,6 +340,11 @@ function Forbidden() {
  * Who sees what. The server decides access for every request; this decides only where
  * the reader is sent and which shell frames the page.
  */
+// The page of a reader who sees no prices is rare: its own fragment, not the start-up (bundle budget).
+const WellbeingPage = lazy(() =>
+  import("@/product/wellbeing/WellbeingPage").then((m) => ({ default: m.WellbeingPage })),
+);
+
 function Gate() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -495,7 +499,9 @@ function Gate() {
     return (
       <Fragment key={key}>
         <UserShell>
-          <WellbeingPage />
+          <Suspense fallback={null}>
+            <WellbeingPage />
+          </Suspense>
         </UserShell>
       </Fragment>
     );
