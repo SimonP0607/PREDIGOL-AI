@@ -5,7 +5,7 @@
  * asks the API who it is (/auth/me). Permissions here decide what is PRESENTED; the
  * API enforces them independently on every request.
  */
-import { setDisplay } from "@/lib/display";
+import { setDisplay, setPricesOff } from "@/lib/display";
 import {
   createContext,
   useCallback,
@@ -61,6 +61,8 @@ interface AuthValue {
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
+/** The context itself, for tests that draw a component as a signed-in reader without the whole provider. */
+export const AuthContextForTests = AuthContext;
 const PREVIEW_KEY = "predigol.previewAsUser";
 const SHADOW_KEY = "predigol.shadowPreview";
 
@@ -190,6 +192,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timeZone = user && isValidTimeZone(user.timezone) ? user.timezone : detectTimeZone();
     // how the reader wants PrediGol shown (decision 8): set before anything below is drawn, as the language is
     setDisplay(user?.display);
+    // «solo fútbol» or a pause (PM-14-07): no price is written while it runs
+    setPricesOff(user?.wellbeing?.active === true);
     return {
       status,
       user,

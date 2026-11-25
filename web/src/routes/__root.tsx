@@ -470,7 +470,7 @@ function Gate() {
 
   // A remount on a language or time-zone change re-renders every formatted string.
   // the pages are drawn again when the language, the zone or the way of writing prices and hours changes (decision 8)
-  const key = `${auth.locale}|${auth.timeZone}|${displayKey(auth.user?.display ? { ...DEFAULT_DISPLAY, ...auth.user.display } : DEFAULT_DISPLAY)}`;
+  const key = `${auth.locale}|${auth.timeZone}|${displayKey(auth.user?.display ? { ...DEFAULT_DISPLAY, ...auth.user.display } : DEFAULT_DISPLAY, auth.user?.wellbeing?.active === true)}`;
   // The current consents are owed (plan UX, A4; the server refuses the product with 403 consent_required): the
   // boxes, whatever the address - except the texts themselves and the profile, where the reader can still take a
   // copy of their data or ask for its deletion without accepting.
