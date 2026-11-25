@@ -272,6 +272,28 @@ batches:
       2026): about 320 requests a day on average and 2,000 on the busiest day; 2.2 GB a year, mostly odds; history priced by
       `scripts.migration plan --tiers 10` (0 requests).
 
+  # PM-03-04 (Plan Maestro PM, OPS-020; decision DM-03 of 19 Nov 2026: batches 5-9, coverage levels C and D admitted): the European second divisions, cups and super cups still missing (Austria, Belgium, Denmark, Portugal and Scotland; section 3 of the plan, annex A).
+  # Decided on the read-only probe pm-03-01 of this file (BE-066, 20 Nov 2026); it is tracked only after batch 6 is tracked and measured (window of hours after the batch 6 track: at least one fixtures_sync cycle and played or in-play matches, at most 1,000 added requests (IA-077)).
+  # Not tracked by this file: `python -m scripts.expand_leagues --batch 7 --apply`, after the deployment, is the step that tracks it.
+  - batch: 7
+    tier: 11
+    decided: "2026-11-25"
+    probe: >-
+      PM-03-01 read-only probe, 20 Nov 2026 06:54 UTC (probes.pm-03-01 below: shares, flags and expected level per family);
+      guide docs/owner/PM_03_01_SONDA_LOTES_5_9.md
+    rule: >-
+      decision DM-03 of the Plan Maestro PM: the competitions the owner asked for are tracked at coverage levels C and D too;
+      the availability matrix (coverage-levels-v1, PM-02-03) grades each family from the matches stored, and nothing is shown
+      that its level does not support. Batch 1's data rule (line-ups in 80 %, seven bookmakers) does not apply
+    leagues: [220, 147, 519, 120, 121, 550, 181, 182, 185]
+    notes: >-
+      Expected without odds (probe pm-03-01): 220 Cup (Austria), 147 Cup (Belgium), 120 1. Division (Denmark), 121 DBU
+      Pokalen and 185 League Cup (Scotland) C* (base B; 120 has a referee in 100 %; 185 has a ceiling of A or B); 181 FA Cup
+      and 182 Challenge Cup of Scotland D (no line-ups declared); 519 Super Cup (Belgium, no fixtures in the current season)
+      and 550 Super Cup (Portugal, one match) "muestra insuficiente". No player market in any (decision no. 7). Cost
+      (section 3 of the plan, rates of 10-16 Nov 2026): about 140 requests a day on average and 1,300 on the busiest day;
+      0.3 GB a year; history priced by `scripts.migration plan --tiers 11` (0 requests).
+
 # Read-only probes of candidates that are not tracked yet, one entry per run. A probe decides nothing and tracks nothing:
 # it is what a batch is later decided on (its `probe` and `measured`). PM-03-01 (BE-066), 20 Nov 2026: the 60 candidates of
 # batches 5-9 with the procedure of scripts.probe_leagues - calendar of the current season of raw.league_coverage and
