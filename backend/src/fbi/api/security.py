@@ -31,10 +31,13 @@ from fastapi import Depends, Request, Response
 from fbi.api.deps import get_db
 from fbi.api.errors import ApiError
 from fbi.api.limits import SlidingWindow
+from fbi.api.switches import wellbeing_on
+from fbi.api.wellbeing_routes import blocked
 from fbi.auth.roles import Permission
 from fbi.auth.service import STAGE_REFUSALS, Principal, principal_from_token
 from fbi.auth.settings import session_settings
-from fbi.customer import consents, membership
+from fbi.core.clock import now
+from fbi.customer import consents, membership, wellbeing
 
 DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -168,6 +171,20 @@ def membership_required(request: Request, conn: Db, principal: Annotated[Princip
     message = ("this account has no access yet" if m.state == "none"
                else "this membership has ended: renew to use the product")
     raise ApiError(403, code, message)
+
+
+def wellbeing_required(request: Request, conn: Db, principal: Annotated[Principal, Depends(current_principal)]) -> None:
+    """«Solo fútbol» and the voluntary pause (plan PM, PM-14-07; ``FBI_WELLBEING``, off by default): a reader who chose to see no
+    price, pick or parlay gets 403 ``wellbeing_active`` on every call that IS one (``fbi.api.wellbeing_routes.BLOCKED``, the single
+    table); the football routes still answer and the web hides what it draws from them. Off, or for a reader who did not choose, it
+    reads nothing but the switch (and, on a blocked call, one row by primary key)."""
+    if not wellbeing_on():
+        return
+    path = request.url.path.removeprefix("/api/v1")
+    if not blocked(request.method, path):
+        return
+    if wellbeing.read(conn, principal.user_id).active(now()):
+        raise ApiError(403, "wellbeing_active", "you chose to see no prices, picks or parlays: this is one")
 
 
 require_app = require(Permission.APP)

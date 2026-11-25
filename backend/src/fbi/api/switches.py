@@ -425,3 +425,14 @@ def parlay_markets_v2_on() -> bool:
 def player_markets_on() -> bool:
     """Whether readers get the players' markets of a match (``FBI_PLAYER_MARKETS``, off by default)."""
     return user_switch(PLAYER_MARKETS, default=False)
+
+
+WELLBEING: Final = "FBI_WELLBEING"
+"""The reader's «solo fútbol» mode and voluntary pause (plan PM, PM-14-07): OFF while the line is absent - nothing is read, nothing is
+hidden, ``/me/wellbeing`` answers 404 - and ``=1`` lets a reader choose to see no price, pick or parlay anywhere (the routes that carry
+one answer 403 ``wellbeing_active`` for them, the notices that mention one are not sent, and the web hides what draws one)."""
+
+
+def wellbeing_on() -> bool:
+    """Whether readers can choose «solo fútbol» or a pause (``FBI_WELLBEING``, off by default)."""
+    return user_switch(WELLBEING, default=False)

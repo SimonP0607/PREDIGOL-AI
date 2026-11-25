@@ -295,6 +295,31 @@ export function useMatrixMode(module: MatrixModule): MatrixMode {
   return u.matrix_modules?.[module] ?? "off";
 }
 
+/**
+ * What the reader chose about seeing prices (plan PM, PM-14-07; FBI_WELLBEING): `active` while «solo fútbol» or a pause runs. Safe
+ * outside the provider (a component drawn alone in a test): nothing chosen, nothing hidden.
+ */
+export function useWellbeing(): {
+  available: boolean;
+  active: boolean;
+  footballOnly: boolean;
+  pausedUntil: string | null;
+  canLift: boolean;
+} {
+  const w = useContext(AuthContext)?.user?.wellbeing;
+  return {
+    available: w?.available === true,
+    active: w?.active === true,
+    footballOnly: w?.football_only === true,
+    pausedUntil: w?.paused_until ?? null,
+    canLift: w?.pause_can_be_lifted === true,
+  };
+}
+
+/** True while this reader sees no price, pick or parlay: every component that draws one asks this and draws nothing. */
+export function useNoPrices(): boolean {
+  return useContext(AuthContext)?.user?.wellbeing?.active === true;
+}
 /** Whether the owner's console of the provider's requests is on (plan PM, PM-04-05; FBI_USAGE_CONSOLE). Off outside the provider. */
 export function useUsageConsoleOn(): boolean {
   return useContext(AuthContext)?.user?.usage_console === true;
