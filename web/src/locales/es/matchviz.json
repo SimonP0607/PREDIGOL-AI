@@ -113,5 +113,21 @@
     "method": "Barra: probabilidad de PrediGol, solo en mercados comprobados y con su sello. Marca │: media de las casas sin su margen. Punto ●: la selección liquidada con su regla en los últimos partidos, con su intervalo de Wilson.",
     "tableCaption": "Probabilidades de {market}, selección por selección",
     "selection": "Selección"
+  },
+  "periods": {
+    "title": "Estadísticas por mitad",
+    "subtitle": "El partido, el primer tiempo y el segundo tiempo",
+    "subject": "Estadísticas de {home} y {away} por mitad",
+    "choose": "Periodo del partido",
+    "total": "Partido",
+    "h1": "1.er tiempo",
+    "h2": "2.º tiempo",
+    "source": "estadísticas por mitad del proveedor",
+    "method": "Cada cifra es la que el proveedor entrega para ese tiempo, sin sumar ni repartir nada por nuestra cuenta. Solo se muestran las estadísticas que esta competición entrega por mitad en casi todos sus partidos (al menos el 90 % de los pedidos, con un mínimo de cinco). Una cifra que el proveedor no mandó se muestra como «—», nunca como cero.",
+    "note": "Cifras de cada tiempo tal como las entrega el proveedor.",
+    "noMatch": "La suma de los dos tiempos no coincide con el total del partido en alguna cifra: el proveedor entrega ambas cosas por separado y no las cuadramos.",
+    "subjectNone": "las estadísticas por mitad",
+    "subjectPending": "Estadísticas por mitad de este partido",
+    "aria": "{label}, {period}: {home} {homeValue} y {away} {awayValue}"
   }
 }

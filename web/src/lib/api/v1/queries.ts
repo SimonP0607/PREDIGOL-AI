@@ -438,6 +438,11 @@ export const live = {
     queryFn: () => v1.matchAvailability(id),
     staleTime: MINUTE,
   }),
+  matchPeriodStats: (id: string) => ({
+    queryKey: ["v1", "match-period-stats", id],
+    queryFn: () => v1.matchPeriodStats(id),
+    staleTime: MINUTE,
+  }),
   /** Recomputed once a night (08:00 UTC): ten minutes is as fresh as it gets. */
   adminAvailability: {
     queryKey: ["v1", "admin", "availability", "matrix"],

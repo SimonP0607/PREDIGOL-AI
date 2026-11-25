@@ -543,6 +543,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | BE-111 | Descarga de los picks publicados (Plan Maestro PM, PM-14-08): `GET /transparency/export` (CSV de picks, CSV de calibración o JSON de ambos) con las mismas filas y el mismo orden que la tabla de Transparencia, la calibración de las probabilidades dichas con su intervalo de Wilson del 95 % y la tasa de acierto con su intervalo desde 25 picks resueltos. Detrás de `FBI_TRANSPARENCY_EXPORT` (apagado) y de la apertura de Transparencia (el dueño la previsualiza con `preview=shadow`); 404 si no. Nunca un pick no publicado, ni ROI. Sin migración | en curso | #557 | PM-14-08 |
 | BE-112 | Migración 0176, sola y aditiva (Plan Maestro PM, PM-14-07): la tabla `customer.wellbeing` (por lector: `football_only` y `paused_until`; nada más) con su bloque en `deploy/vps/db/grants.sql` (la API lee y escribe; el worker nunca la lee), `lock_timeout` de 10 s y una bajada que no borra elecciones. Ninguna fila escrita, ninguna tabla tocada; nada la lee hasta BE-113 | en curso | #563 | PM-14-07 |
 | BE-113 | «Solo fútbol» y pausa voluntaria, backend (Plan Maestro PM, PM-14-07), tras `FBI_WELLBEING` (apagado): `GET/PUT /me/wellbeing`, `Me.wellbeing`, un único punto de control de lo que es un precio (`fbi/api/wellbeing_routes.py`: 31 llamadas bloqueadas con 403 `wellbeing_active`, las de fútbol con precios entre sus campos listadas aparte y el resto abiertas; una prueba recorre todo el OpenAPI y falla por cualquier llamada sin decidir), los avisos que mencionan un pick o un parlay no se envían a quien no ve precios (resultados de picks y resumen semanal), el dato sale en la copia de datos y se borra al anonimizar. Una pausa en marcha no se acorta (`PAUSE_CAN_BE_LIFTED`, decisión del dueño) | en curso | el PR de C (por abrir tras BE-112) | PM-14-07 |
+| FE-010 | Estadísticas por mitad en el Match Center (PM-10-03, OP-06; la ruta y la web en un solo PR): la ruta `GET /matches/{id}/period-stats` (404 mientras `FBI_MATCH_HALVES` está apagado, que es lo normal) entrega el partido, el 1.er tiempo y el 2.º tiempo de las estadísticas que la competición del partido tiene «construidas» (≥90 % de ≥5 partidos pedidos: BE-098), con la cifra que el proveedor no mandó en null, y dice por qué no hay nada (`sin_estadisticas_por_mitad`, `partido_sin_mitades`). En la web, `PeriodStats` en Estadísticas de un partido terminado (con `FBI_MATCH_HALVES` y el bloque de estadísticas de equipo en nivel B o mejor según C-16): conmutador Partido · 1.er tiempo · 2.º tiempo sobre `StatBars`, dentro de `EvidenceChart` (E1, su frase, su método y la misma cifra en tabla), «información no disponible» de UX-173 para la competición que no las entrega (una línea, sin tarjeta) y el partido al que aún no llegaron (tarjeta de espera); nunca un cero. El interruptor viaja en `/auth/me` (`match_halves`). Sin migración ni peticiones al proveedor | desplegado con la cadena del servidor; apagado | este PR | PM-10-03 |
 
 ## Otras áreas
 
@@ -570,7 +571,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-023 · SEG-003 · UX-245 · BE-114 · FE-010 · OPS-023 · DOC-015
+CI-023 · SEG-003 · UX-245 · BE-114 · FE-011 · OPS-023 · DOC-015
 
 IA-167
 
