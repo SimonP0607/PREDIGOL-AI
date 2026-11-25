@@ -137,3 +137,14 @@ def test_a_statistic_is_built_at_ninety_percent_and_five_matches_never_lower() -
     assert rules.built(110, {"corners": 99}, "corners"), "exactly 90 %: no float rounding decides it"
     d = rules.decide(20, {"corners": 18, "fouls": 17})
     assert d["corners"].build and not d["fouls"].build and d["corners"].share == 0.9
+
+
+def test_the_match_halves_switch_is_off_unless_the_line_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.api import switches
+
+    monkeypatch.delenv("FBI_MATCH_HALVES", raising=False)
+    assert switches.match_halves_on() is False
+    monkeypatch.setenv("FBI_MATCH_HALVES", "1")
+    assert switches.match_halves_on() is True
+    monkeypatch.setenv("FBI_MATCH_HALVES", "maybe")
+    assert switches.match_halves_on() is False
