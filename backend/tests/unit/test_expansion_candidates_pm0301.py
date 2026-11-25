@@ -57,7 +57,7 @@ def test_the_sixty_are_candidates_with_their_planned_batch_name_and_country() ->
 def test_only_the_written_batches_are_tracked_by_the_file() -> None:
     """Each batch is written by its own task (PM-03-02 batch 5, ... PM-03-06 batch 9) after the previous one was measured."""
     batches = expansion_batches(EXPANSION_FILE)
-    written = {5, 6, 7}
+    written = {5, 6, 7, 8}
     assert [int(b["batch"]) for b in batches] == [1, 2, 3, 4, *sorted(written)]
     in_batches = {int(lid) for b in batches for lid in b["leagues"]}
     assert not in_batches & {lid for b, v in PLANNED.items() if b not in written for lid in v}

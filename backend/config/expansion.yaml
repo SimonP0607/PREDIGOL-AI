@@ -294,6 +294,31 @@ batches:
       (section 3 of the plan, rates of 10-16 Nov 2026): about 140 requests a day on average and 1,300 on the busiest day;
       0.3 GB a year; history priced by `scripts.migration plan --tiers 11` (0 requests).
 
+  # PM-03-05 (Plan Maestro PM, OPS-021; decision DM-03 of 19 Nov 2026: batches 5-9, coverage levels C and D admitted): the competitions of Asia, Africa and Oceania still missing (Australia, Egypt, India, Japan, Qatar, Saudi Arabia, South Korea and the United Arab Emirates; section 3 of the plan, annex A).
+  # Decided on the read-only probe pm-03-01 of this file (BE-066, 20 Nov 2026); it is tracked only after batch 7 is tracked and measured (window of hours after the batch 7 track: at least one fixtures_sync cycle and played or in-play matches, at most 1,000 added requests (IA-077)).
+  # Not tracked by this file: `python -m scripts.expand_leagues --batch 8 --apply`, after the deployment, is the step that tracks it.
+  - batch: 8
+    tier: 12
+    decided: "2026-11-25"
+    probe: >-
+      PM-03-01 read-only probe, 20 Nov 2026 06:54 UTC (probes.pm-03-01 below: shares, flags and expected level per family);
+      guide docs/owner/PM_03_01_SONDA_LOTES_5_9.md
+    rule: >-
+      decision DM-03 of the Plan Maestro PM: the competitions the owner asked for are tracked at coverage levels C and D too;
+      the availability matrix (coverage-levels-v1, PM-02-03) grades each family from the matches stored, and nothing is shown
+      that its level does not support. Batch 1's data rule (line-ups in 80 %, seven bookmakers) does not apply
+    leagues: [874, 1202, 539, 887, 895, 324, 545, 101, 102, 306, 677, 824, 825, 308, 826, 293, 294, 302, 303, 560, 896]
+    notes: >-
+      Expected without odds (probe pm-03-01): 874 Australia Cup, 324 I-League, 545 AIFF Super Cup, 101 J-League Cup, 102
+      Emperor Cup, 308 Saudi Division 1, 293 K League 2 and 560 Presidents Cup C* (base B); 895 Egyptian League Cup, 824
+      Emir Cup and 302 UAE League Cup C or D; 1202 Australian Championship, 887 Egypt Second League, 306 Qatar Second
+      Division, 677 QSL Cup, 294 Korean FA Cup and 303 UAE Division 1 D (line-ups mostly not declared); the one-off super
+      cups and cups (539, 825, 826, 896) "muestra insuficiente". 21 competitions of Asia and Africa kick off at night in
+      UTC: the busiest hours must not fall in the backup window (03:30-05:00 UTC), and no activation is run there. No player
+      market in any (decision no. 7). Cost (section 3 of the plan, rates of 10-16 Nov 2026): about 350 requests a day on
+      average and 2,050 on the busiest day; 1.6 GB a year; history priced by `scripts.migration plan --tiers 12` (0
+      requests).
+
 # Read-only probes of candidates that are not tracked yet, one entry per run. A probe decides nothing and tracks nothing:
 # it is what a batch is later decided on (its `probe` and `measured`). PM-03-01 (BE-066), 20 Nov 2026: the 60 candidates of
 # batches 5-9 with the procedure of scripts.probe_leagues - calendar of the current season of raw.league_coverage and
