@@ -7,12 +7,10 @@
  * off. The slip itself keeps one leg per match: adding a second selection of a match replaces the first
  * (records/model.ts), so nothing here has to.
  */
-import type { BestHighlight, BestMarket, BestOddsFixture } from "@/lib/api/v1/types_product";
 import { toNumber } from "@/lib/i18n/format";
 import { hasStarted, isQuarterLine, normLine, type SlipLeg } from "@/product/records/model";
 import type { Pickable } from "@/product/records/pickable";
 import { isCatalogueKey, MARKETS, type MarketKey } from "@/product/shared/markets";
-import { selectionLine, type PriceSlot } from "./board";
 
 /** A leg as it is handed to the slip (the slip gives it its key). */
 export type NewLeg = Omit<SlipLeg, "key">;
@@ -48,47 +46,6 @@ export function parlayBlock(sel: ParlayCandidate, now: number = Date.now()): Par
     return "started";
   }
   return null;
-}
-
-/**
- * The leg a board price adds: the best price of that selection, at its own line - the market's, except an Asian
- * handicap's away side, at the opposite of the home line the row carries (`selectionLine`).
- */
-export function slotLeg(
-  fixture: Pick<BestOddsFixture, "fixture_id" | "kickoff_at" | "home" | "away">,
-  market: Pick<BestMarket, "market_key" | "line">,
-  slot: PriceSlot,
-): NewLeg | null {
-  if (!slot.price || !isParlayMarket(market.market_key)) return null;
-  return {
-    fixture_id: fixture.fixture_id,
-    market_key: market.market_key,
-    selection: slot.selection,
-    line: normLine(selectionLine(market.market_key, slot.selection, market.line)),
-    home: fixture.home.name,
-    away: fixture.away.name,
-    kickoff_at: fixture.kickoff_at,
-    odds: slot.price.best_odds,
-    bookmaker: slot.price.bookmaker,
-    p_model: null,
-  };
-}
-
-/** The leg a "best price against the market" card adds, at the line the highlight names (its selection's own). */
-export function highlightLeg(h: BestHighlight): NewLeg | null {
-  if (!isParlayMarket(h.market_key)) return null;
-  return {
-    fixture_id: h.fixture_id,
-    market_key: h.market_key,
-    selection: h.price.selection,
-    line: normLine(h.line),
-    home: h.home.name,
-    away: h.away.name,
-    kickoff_at: h.kickoff_at,
-    odds: h.price.best_odds,
-    bookmaker: h.price.bookmaker,
-    p_model: null,
-  };
 }
 
 /** The leg a shown price adds to the slip; null without a price. */

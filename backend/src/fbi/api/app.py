@@ -48,6 +48,7 @@ from fbi.api.routers import (
     news_moderation,
     odds_explorer,
     payment_requests,
+    period_stats,
     personal,
     postmatch,
     product,
@@ -254,7 +255,7 @@ def create_app() -> FastAPI:
     for r in (product.router, records.router, football.router, market.router, center.router,
               ai_layer.router, forecast.router, match_calendar.router, knowledge.router, postmatch.router,
               reading.router, today.router, news.router, transparency.router, push.alerts_router, explain.router,
-              odds_explorer.router, stats.router, availability.router):
+              odds_explorer.router, stats.router, availability.router, period_stats.router):
         app.include_router(r, prefix="/api/v1", dependencies=product_tier)
     admin_tier = [Depends(same_site_only), Depends(require_admin), Depends(observe_principal)]
     for r in (system.admin_router, football.admin_router, market.admin_router,

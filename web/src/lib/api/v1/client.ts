@@ -18,6 +18,7 @@ import type {
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { MarketProbs, StatsContext, StatsProfile, StatsScope } from "./types_stats";
 import type { Availability, AvailabilityPrivate } from "./types_availability";
+import type { MatchPeriodStats } from "./types_period_stats";
 import type { SearchV2 } from "./types_search";
 import type { ProviderUsage } from "./types_provider_usage";
 import type { EvaluationBoard } from "./types_evaluation_board";
@@ -831,6 +832,9 @@ export const v1 = {
   /** C-16 (plan PM): the seven states of a match's blocks and markets. 404 while FBI_AVAILABILITY is off. */
   matchAvailability: (id: number | string) =>
     getJson<Envelope<Availability>>(`/matches/${id}/availability`),
+  /** PM-10-03: the statistics of a match by half. 404 while FBI_MATCH_HALVES is off. */
+  matchPeriodStats: (id: number | string) =>
+    getJson<Envelope<MatchPeriodStats>>(`/matches/${id}/period-stats`),
   /** C-16, private: the matrix of every graded competition and the last week of changes and shadow discrepancies. */
   adminAvailabilityMatrix: () =>
     getJson<Envelope<AvailabilityPrivate>>("/admin/availability/matrix"),

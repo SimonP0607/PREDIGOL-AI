@@ -227,52 +227,6 @@ export interface Parlay {
   generated_at: Iso;
 }
 
-export interface BestPrice {
-  selection: string;
-  best_odds: Dec;
-  bookmaker: string | null;
-  p_fair: Dec;
-  fair_odds: Dec;
-  /** best_odds * p_fair - 1. */
-  price_edge: Dec;
-  /** More than 25% above fair: very likely one book's stale or mistaken quote. Never highlighted. */
-  outlier?: boolean;
-  n_bookmakers: number;
-  as_of: Iso;
-}
-
-export interface BestMarket {
-  market_key: string;
-  /**
-   * The line of the market's prices. An Asian handicap's is the HOME side's handicap h: its two prices are one bet, Home at
-   * h and Away at -h (each side is quoted at its own line: `selectionLine` in product/odds/board.ts).
-   */
-  line: Dec;
-  selections: BestPrice[];
-}
-
-export interface BestOddsFixture {
-  fixture_id: number;
-  kickoff_at: Iso;
-  competition: CompetitionBadge;
-  home: TeamBadge;
-  away: TeamBadge;
-  markets: BestMarket[];
-  as_of: Iso;
-}
-
-export interface BestHighlight {
-  fixture_id: number;
-  kickoff_at: Iso;
-  competition: CompetitionBadge;
-  home: TeamBadge;
-  away: TeamBadge;
-  market_key: string;
-  /** The highlighted selection's own line: an Asian handicap's away side at -h, the opposite of its market's line. */
-  line: Dec;
-  price: BestPrice;
-}
-
 /** A match that ended in the last 24 hours (plan de Inicio, 3.1). */
 export interface HomeResult {
   fixture_id: number;

@@ -129,6 +129,8 @@ export interface Me {
   home_unified?: boolean;
   /** A match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6) (FBI_MARKETS_V3, off by default). */
   markets_v3?: boolean;
+  /** A match's statistics by half in the Match Center (plan PM, PM-10-03) (FBI_MATCH_HALVES, off by default). */
+  match_halves?: boolean;
   /** «Lo más interesante de hoy» on days without picks (plan de correcciones UX, AP-K04, decision D2) (FBI_DAY_HIGHLIGHTS, off by default). */
   day_highlights?: boolean;
   /** «Mis casas»: the bookmakers the reader plays at, in Perfil, Mercados and Cuotas (plan de correcciones UX, AP-P10, decision D5) (FBI_MY_BOOKS, off by default). */

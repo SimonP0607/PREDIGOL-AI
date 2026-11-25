@@ -160,6 +160,7 @@ class Me(Contract):
     what_if: bool = Field(default=False, description="The calculator «¿Qué pasa si…?» of a competition's tables (plan PM, "
                                                      "PM-09-03; FBI_WHAT_IF, off until the owner signs DM-14).")
     home_unified: bool = Field(default=False, description="One Inicio for everyone, with the «Tus favoritos» strip (plan de correcciones UX, AP-I01, decision D1) (FBI_HOME_UNIFIED, off by default).")
+    match_halves: bool = Field(default=False, description="A match's statistics by half in the Match Center (plan PM, PM-10-03) (FBI_MATCH_HALVES, off by default).")
     markets_v3: bool = Field(default=False, description="A match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6) (FBI_MARKETS_V3, off by default).")
     day_highlights: bool = Field(default=False, description="«Lo más interesante de hoy» on days without picks (plan de correcciones UX, AP-K04, decision D2) (FBI_DAY_HIGHLIGHTS, off by default).")
     my_books: bool = Field(default=False, description="«Mis casas»: the bookmakers the reader plays at, in Perfil, Mercados and Cuotas (plan de correcciones UX, AP-P10, decision D5) (FBI_MY_BOOKS, off by default).")
