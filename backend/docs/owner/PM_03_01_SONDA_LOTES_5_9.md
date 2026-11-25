@@ -241,3 +241,15 @@ Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y
 
 Esperado: ≈ 140 peticiones al día de media y ≈ 1.300 el día de más carga (0,3 GB al año). Nivel esperado: 220, 147, 120, 121 y 185 en C*; 181 y 182 en D (sin alineaciones declaradas); 519 y 550 en «muestra insuficiente». Vuelta atrás: `--batch 7 --untrack --apply` (no borra nada).
 
+## 11. Lote 8 escrito (OPS-021, PM-03-05, 2026-11-25)
+
+Condición del alta: el lote 7 se sigue (OPS-020) y se mide por ventana de horas: al menos un ciclo de `fixtures_sync` tras su alta y partidos suyos jugados o en curso, con ≤ 1.000 peticiones añadidas (criterio de IA-077); si aún no hubo ni ciclo ni partido, el alta de este lote espera ese ciclo (horas, no días). Con ese criterio, `config/expansion.yaml` lleva el **lote 8** (nivel de migración 12): Asia, África y Oceanía (Australia, Egipto, India, Japón, Catar, Arabia Saudita, Corea del Sur y Emiratos) — 21 competiciones (874, 1202, 539, 887, 895, 324, 545, 101, 102, 306, 677, 824, 825, 308, 826, 293, 294, 302, 303, 560, 896), decidido con la sonda `pm-03-01`, repetida (si el alta lo pide) justo antes de seguirlo y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+
+Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
+
+1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 8`. Debe listar las 21 con `known` y `tracked False`; si dice `REFUSED`, se para.
+2. Seguimiento: la misma orden con `--apply`.
+3. Medir la ventana (o el día UTC completo) siguiente con el criterio de IA-077 (≤ 1.000 peticiones añadidas), antes del lote siguiente.
+
+Esperado: ≈ 350 peticiones al día de media y ≈ 2.050 el día de más carga (1,6 GB al año). Nivel esperado: nueve en C* (base B), tres o cuatro en C o D, seis en D por falta de alineaciones, cuatro en «muestra insuficiente»; ninguna activación en 03:30-05:00 UTC. Vuelta atrás: `--batch 8 --untrack --apply` (no borra nada).
+
