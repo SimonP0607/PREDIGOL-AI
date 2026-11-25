@@ -50,7 +50,7 @@ OPEN_PREFIXES: Final[tuple[str, ...]] = (
 )
 """Prefixes of the calls that carry no price: the account, the law, support, news, the football's own facts (teams, players,
 competitions). A new ``/me/...`` or ``/matches/...`` call is in none of them until somebody puts it here, in ``MIXED`` or in ``BLOCKED``."""
-OPEN_MATCH_PARTS: Final[frozenset[str]] = frozenset({"calendar", "availability", "news", "news/v2", "profile", "sources"})
+OPEN_MATCH_PARTS: Final[frozenset[str]] = frozenset({"calendar", "availability", "news", "news/v2", "period-stats", "profile", "sources"})
 
 
 def _regex(entry: str) -> re.Pattern[str]:
