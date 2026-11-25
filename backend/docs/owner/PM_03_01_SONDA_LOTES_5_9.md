@@ -253,3 +253,15 @@ Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y
 
 Esperado: ≈ 350 peticiones al día de media y ≈ 2.050 el día de más carga (1,6 GB al año). Nivel esperado: nueve en C* (base B), tres o cuatro en C o D, seis en D por falta de alineaciones, cuatro en «muestra insuficiente»; ninguna activación en 03:30-05:00 UTC. Vuelta atrás: `--batch 8 --untrack --apply` (no borra nada).
 
+## 12. Lote 9 escrito (OPS-022, PM-03-06, 2026-11-25)
+
+Condición del alta: el lote 8 se sigue (OPS-021) y se mide por ventana de horas: al menos un ciclo de `fixtures_sync` tras su alta y partidos suyos jugados o en curso, con ≤ 1.000 peticiones añadidas (criterio de IA-077); si aún no hubo ni ciclo ni partido, el alta de este lote espera ese ciclo (horas, no días). Con ese criterio, `config/expansion.yaml` lleva el **lote 9** (nivel de migración 13): pirámide inglesa de los niveles 5 a 7 y FA Trophy — 8 competiciones (43, 47, 50, 51, 58, 59, 60, 931), decidido con la sonda `pm-03-01`, repetida (si el alta lo pide) justo antes de seguirlo y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+
+Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
+
+1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 9`. Debe listar las 8 con `known` y `tracked False`; si dice `REFUSED`, se para.
+2. Seguimiento: la misma orden con `--apply`.
+3. Medir la ventana (o el día UTC completo) siguiente con el criterio de IA-077 (≤ 1.000 peticiones añadidas), antes del lote siguiente.
+
+Esperado: ≈ 480 peticiones al día de media y ≈ 3.500 un sábado (4,7 GB al año si se guardan todas las cuotas). Nivel esperado: 43 National League en C*; las otras siete (47, 50, 51, 58, 59, 60 y 931) en D por falta de alineaciones y estadísticas. Vuelta atrás: `--batch 9 --untrack --apply` (no borra nada).
+
