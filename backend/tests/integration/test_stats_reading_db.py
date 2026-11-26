@@ -106,3 +106,48 @@ def test_the_cuts_by_venue_and_the_halves_are_read_from_the_stored_documents(db:
             assert c.halves.sample == block["matches_with_data"]
         assert c.rival_strength.reason == cuts.NOT_IN_DOCUMENTS
     assert seen == 8
+
+
+def test_the_controls_on_real_documents_cutoff_stale_and_small_sample(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """RP-6.4: the same documents, the three controls, and the provoked leak that must fail."""
+    from fbi.stats import controls
+
+    cs, ids = _written(db, seed)
+    written = T0 + timedelta(days=120)
+    team = ids[0]
+    doc = rd.read(db, kind="team", entity_id=team, competition_season_id=cs, scope="season", as_of=written + timedelta(hours=1))
+    assert doc.status == "ok"
+    ok = controls.check(db, doc, as_of=written + timedelta(hours=1), min_sample=1)
+    assert ok.codes in ((), (controls.STALE,)), "the league of the test may have played after the document was written"
+    # the cut-off before the document: refused, nothing else said
+    early = rd.read(db, kind="team", entity_id=team, competition_season_id=cs, scope="season", as_of=written - timedelta(minutes=1))
+    assert controls.check(db, early, as_of=written - timedelta(minutes=1), min_sample=1).codes == (controls.AFTER_CUTOFF,)
+    # a threshold above the sample of the document: said
+    big = controls.check(db, doc, as_of=written + timedelta(hours=1), min_sample=doc.sample + 1)
+    assert controls.SMALL_SAMPLE in big.codes
+    # a match finished AFTER the document was computed makes it stale
+    db.execute("UPDATE core.fixtures SET status_group = 'finished', kickoff_at = %s WHERE id = (SELECT id FROM core.fixtures "
+               "WHERE competition_season_id = %s AND (home_team_id = %s OR away_team_id = %s) LIMIT 1)",
+               (written - timedelta(days=1), cs, team, team))
+    assert controls.last_match_at(db, doc, as_of=written + timedelta(hours=1)) == written - timedelta(days=1)
+    assert controls.STALE not in controls.check(db, doc, as_of=written + timedelta(hours=1), min_sample=1).codes
+    db.execute("UPDATE core.fixtures SET kickoff_at = %s WHERE status_group = 'finished' AND competition_season_id = %s "
+               "AND (home_team_id = %s OR away_team_id = %s)", (written + timedelta(minutes=30), cs, team, team))
+    assert controls.STALE in controls.check(db, doc, as_of=written + timedelta(hours=1), min_sample=1).codes
+    # every figure the document cites carries a date the cut-off can check; a leak provoked on purpose fails
+    cites = [doc.citation(r.key) for r in doc.readings]
+    assert controls.assert_no_leak(cites, as_of=written + timedelta(hours=1)) > 0
+    with pytest.raises(controls.LeakError):
+        controls.assert_no_leak(cites, as_of=written - timedelta(minutes=1))
+
+
+def test_the_report_of_the_controls_reads_the_documents_and_finds_no_leak(db: psycopg.Connection[Any], seed: Seed) -> None:
+    from fbi.stats import controls_report
+
+    _written(db, seed)
+    written = T0 + timedelta(days=120)
+    got = controls_report.report(db, at=written + timedelta(hours=1), min_sample=1, replay_days=3650)
+    assert got["replay"]["facts_with_a_leak"] == 0
+    assert got["replay"]["moments"] > 0 and got["replay"]["refused_after_cutoff"] <= got["replay"]["moments"]
+    assert set(got["upcoming"]["controls"]) == set(__import__("fbi.stats.controls", fromlist=["CODES"]).CODES)
+    assert got["upcoming"]["documents_with_a_leak"] == 0
