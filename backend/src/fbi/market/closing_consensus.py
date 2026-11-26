@@ -35,6 +35,7 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
+from fbi.core.decision_versions import DECISION_CORE
 from fbi.market import closing_reference, closing_value, consensus
 
 VERSION: Final = "closing-consensus-v1"
@@ -81,11 +82,11 @@ SELECT d.id, d.fixture_id, d.odds, c.p_fair, c.n_bookmakers, c.minutes_to_ko
   JOIN market.near_close_consensus c ON c.fixture_id = d.fixture_id AND c.market_key = d.market_key AND c.selection = d.selection
    AND c.line = d.line AND c.devig_method = 'shin'
   LEFT JOIN intel.decision_real_close r ON r.decision_id = d.id
- WHERE r.decision_id IS NULL AND d.odds IS NOT NULL
+ WHERE r.decision_id IS NULL AND d.odds IS NOT NULL AND d.decision_version = %(decision_version)s
  ORDER BY d.id
  LIMIT %(limit)s
 """
-"""The decisions that have an outcome and a real close and no ``clv_real`` yet (a decision with no real close is simply not in it)."""
+"""The pipeline's decisions (``decision-v1``: the families' are research in shadow) that have an outcome and a real close and no ``clv_real`` yet (a decision with no real close is simply not in it)."""
 
 SETTLE_INSERT_SQL: Final = (
     "INSERT INTO intel.decision_real_close (decision_id, fixture_id, real_p_fair, real_minutes_to_ko, n_bookmakers, clv_real, reference, version, "
@@ -188,7 +189,7 @@ def run(conn: psycopg.Connection[Any], *, at: datetime, days: int = 3, limit: in
 def settle(conn: psycopg.Connection[Any], *, at: datetime, limit: int = BATCH) -> int:
     """``clv_real`` of every settled decision that has a real close and none stored yet."""
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(SETTLE_SQL, {"limit": limit})
+        cur.execute(SETTLE_SQL, {"limit": limit, "decision_version": DECISION_CORE})
         todo = cur.fetchall()
     n = 0
     with conn.cursor() as cur:
@@ -232,7 +233,8 @@ PAIRS_SQL: Final = """
 SELECT count(*) AS decisions, avg(o.clv)::float8 AS clv_prior, avg(r.clv_real)::float8 AS clv_real,
        avg(abs(r.clv_real - o.clv))::float8 AS mean_abs_difference
   FROM intel.decision_real_close r JOIN intel.decision_outcomes o ON o.decision_id = r.decision_id
- WHERE o.settled_at >= %(since)s AND o.settled_at < %(until)s AND o.clv IS NOT NULL
+  JOIN intel.decisions d ON d.id = o.decision_id
+ WHERE d.decision_version = %(decision_version)s AND o.settled_at >= %(since)s AND o.settled_at < %(until)s AND o.clv IS NOT NULL
 """
 
 
@@ -241,7 +243,7 @@ def measure(conn: psycopg.Connection[Any], *, since: datetime, until: datetime) 
     window = {"since": since, "until": until}
     with conn.cursor(row_factory=dict_row) as cur:
         a = cur.execute(MEASURE_SQL, {**window, "target": TARGET_MINUTES, "window": WINDOW_MINUTES}).fetchone() or {}
-        b = cur.execute(PAIRS_SQL, window).fetchone() or {}
+        b = cur.execute(PAIRS_SQL, {**window, "decision_version": DECISION_CORE}).fetchone() or {}
     with_close = int(a.get("with_close") or 0)
     share = None if not with_close else int(a["within_target"]) / with_close
     return {

@@ -6,7 +6,7 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 
 | Candidato | Destino | Archivos | Sin pruebas | Escriben | Rutas | Trabajos | Web | Scripts |
 |---|---|---|---|---|---|---|---|---|
-| decision-v1 (referencia estable) (`decision_v1`) | conservar | 121 | 69 | 0 | 10 | 3 | 1 | 9 |
+| decision-v1 (referencia estable) (`decision_v1`) | conservar | 122 | 70 | 0 | 10 | 3 | 1 | 9 |
 | decision-v2 en sombra (`decision_v2`) | consolidar | 98 | 56 | 1 | 8 | 6 | 0 | 1 |
 | decisiones de familias (decision-fam-v1) (`decision_families`) | consolidar | 69 | 36 | 2 | 7 | 1 | 5 | 1 |
 | ciclo de evaluación E1 a E4 (`eval_cycle`) | consolidar | 21 | 14 | 1 | 4 | 2 | 0 | 0 |
@@ -29,7 +29,7 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 
 ## decision-v1 (referencia estable) (`decision_v1`) — conservar
 
-Paquetes: `ai` (2), `api` (10), `apps` (1), `core` (2), `council` (1), `decision` (8), `evalcycle` (5), `evalpass` (1), `evaluation` (1), `familydecisions` (1), `forecasting` (1), `ingestion` (1), `intel` (4), `knowledge` (1), `lifecycle` (3), `narrator` (1), `observability` (1), `picks` (1), `playermarkets` (1), `plugins` (2), `portfolio` (4), `research` (1), `scripts` (9), `shadowjobs` (2), `tracking` (1), `valuation` (3), `web` (1).
+Paquetes: `ai` (2), `api` (10), `apps` (1), `core` (2), `council` (1), `decision` (8), `evalcycle` (5), `evalpass` (1), `evaluation` (1), `familydecisions` (1), `forecasting` (1), `ingestion` (1), `intel` (4), `knowledge` (1), `lifecycle` (3), `market` (1), `narrator` (1), `observability` (1), `picks` (1), `playermarkets` (1), `plugins` (2), `portfolio` (4), `research` (1), `scripts` (9), `shadowjobs` (2), `tracking` (1), `valuation` (3), `web` (1).
 
 Nadie la escribe por nombre de tabla en este mapa (puede ser una versión o un interruptor, no una tabla).
 

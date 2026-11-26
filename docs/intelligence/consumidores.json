@@ -163,7 +163,7 @@
    "sin_pruebas": 36
   },
   "decision_v1": {
-   "archivos": 121,
+   "archivos": 122,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/compare_probabilities.py",
@@ -216,6 +216,7 @@
     "backend/src/fbi/lifecycle/__init__.py",
     "backend/src/fbi/lifecycle/derive.py",
     "backend/src/fbi/lifecycle/store.py",
+    "backend/src/fbi/market/closing_consensus.py",
     "backend/src/fbi/narrator/facts.py",
     "backend/src/fbi/observability/drift.py",
     "backend/src/fbi/picks/pipeline.py",
@@ -254,6 +255,7 @@
     "intel": 4,
     "knowledge": 1,
     "lifecycle": 3,
+    "market": 1,
     "narrator": 1,
     "observability": 1,
     "picks": 1,
@@ -268,14 +270,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 46,
+    "módulo": 47,
     "prueba": 52,
     "ruta": 10,
     "script": 9,
     "trabajo": 3,
     "web": 1
    },
-   "sin_pruebas": 69
+   "sin_pruebas": 70
   },
   "decision_v2": {
    "archivos": 98,

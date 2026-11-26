@@ -70,14 +70,14 @@ def test_both_jobs_accept_the_steps_and_the_names_the_worker_uses_are_steps_of_t
     cycle.run_decide(Conn(), at=at)  # type: ignore[arg-type]
     cycle.run_nightly(Conn(), at=at)  # type: ignore[arg-type]
     assert names(ran["decide"]) == ["decide", "select"]
-    assert names(ran["nightly"]) == ["outcomes", "postmortems", "memory", "calibration", "leakage_audit", "leakage_audit_v10", "hypotheses", "report"]
+    assert names(ran["nightly"]) == ["outcomes", "real_close", "postmortems", "memory", "calibration", "leakage_audit", "leakage_audit_v10", "hypotheses", "report"]
 
     ran.clear()
     cycle.run_decide(Conn(), at=at, after={"select": [_step("families")]})  # type: ignore[arg-type]
     family_steps = {"outcomes": [_step("family_outcomes")], "postmortems": [_step("family_postmortems")], "memory": [_step("family_memory")]}
     cycle.run_nightly(Conn(), at=at, after=family_steps)  # type: ignore[arg-type]
     assert names(ran["decide"]) == ["decide", "select", "families"]
-    assert names(ran["nightly"])[:6] == ["outcomes", "family_outcomes", "postmortems", "family_postmortems", "memory", "family_memory"], (
+    assert names(ran["nightly"])[:7] == ["outcomes", "family_outcomes", "real_close", "postmortems", "family_postmortems", "memory", "family_memory"], (
         "each family step right after the step of the core layer it follows: the settlement before the post-mortem that reads it, and that one "
         "before the memory that sums it")
 
