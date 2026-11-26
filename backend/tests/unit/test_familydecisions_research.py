@@ -51,7 +51,7 @@ def test_every_family_that_decides_says_what_it_needs_and_what_could_explain_it(
         assert set(keys) <= set(research.NEEDS) and len(set(keys)) == len(keys) and "context" in keys, family
     for family, hypotheses in research.HYPOTHESES.items():
         assert hypotheses and set(hypotheses) <= set(factors.BY_KEY) and len(set(hypotheses)) == len(hypotheses), family
-    assert research.DESCRIPTIVE == factors.DESCRIPTIVE and factors.STATUSES == (factors.DESCRIPTIVE, factors.VALIDATED)
+    assert research.DESCRIPTIVE == factors.DESCRIPTIVE and factors.STATUSES == (factors.DESCRIPTIVE, factors.TESTED_NO_EFFECT, factors.TESTED_EFFECT, factors.VALIDATED)
 
 
 def test_a_family_wants_the_referee_exactly_when_its_model_reads_him() -> None:
