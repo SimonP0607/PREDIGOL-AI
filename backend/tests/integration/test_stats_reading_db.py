@@ -83,3 +83,26 @@ def test_the_trends_read_equal_the_trends_c13_serves_and_become_facts(db: psycop
     assert len(facts) + len(left) == len(doc.trends)
     assert all(x.document_id == doc.document_id and x.league_pct is not None for x in facts)
     assert sf.peers(db, competition_season_id=cs, scope="season", context="all", keys=keys, as_of=T0, min_sample=1) == {}, "nothing before it was written"
+
+
+def test_the_cuts_by_venue_and_the_halves_are_read_from_the_stored_documents(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """RP-6.3 against a real database: home and away are the documents of those contexts with their own sample, the halves are the document's
+    own block, and the cut by rival strength says it is not in the documents."""
+    from fbi.stats import cuts
+
+    cs, ids = _written(db, seed)
+    at = T0 + timedelta(days=120, hours=1)
+    seen = 0
+    for team in ids[:4]:
+        c = cuts.read_team_cuts(db, team_id=team, competition_season_id=cs, scope="season", as_of=at)
+        for cut, context in ((c.home, "home"), (c.away, "away")):
+            doc = rd.read(db, kind="team", entity_id=team, competition_season_id=cs, scope="season", context=context, as_of=at)
+            assert (cut.sample, cut.document_id) == (doc.sample, doc.document_id)
+            assert cut.state == cuts.state_of(doc.sample, cuts.MIN_MATCHES)
+            seen += 1
+        whole = rd.read(db, kind="team", entity_id=team, competition_season_id=cs, scope="season", context="all", as_of=at)
+        block = whole.body.get("halves")
+        if isinstance(block, dict) and "missing_reason" not in block:
+            assert c.halves.sample == block["matches_with_data"]
+        assert c.rival_strength.reason == cuts.NOT_IN_DOCUMENTS
+    assert seen == 8
