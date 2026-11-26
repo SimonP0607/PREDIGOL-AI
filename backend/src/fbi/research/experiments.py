@@ -33,11 +33,12 @@ from fbi.backtesting.evaluate import PRIMARY_BASELINE, ModelEvaluation, SessionE
 from fbi.backtesting.persist import FEATURE_LINEAGE, comparison_json, config_json, scores_json
 from fbi.backtesting.session import SEEDS, SessionResult
 from fbi.backtesting.walkforward import outcome_index
+from fbi.research.dirs import writable
 from fbi.research.gate import evaluate_gate, status_for
 from fbi.research.roles import Role, model_role
 
 REPO = Path(__file__).resolve().parents[3]
-EXPERIMENT_DIR = REPO / "data" / "experiments"
+EXPERIMENT_DIR = writable("experiments", REPO / "data" / "experiments")
 MANIFEST_ALGORITHM = "sha256"
 
 
