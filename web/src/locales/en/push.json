@@ -121,6 +121,12 @@
       "account": "Account"
     },
     "readAll": "Mark as read",
+    "group": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "week": "This week",
+      "earlier": "Earlier"
+    },
     "unreadMark": "unread",
     "more": "See more notices",
     "empty": "You have no notices yet",

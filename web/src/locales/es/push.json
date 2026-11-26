@@ -121,6 +121,12 @@
       "account": "Cuenta"
     },
     "readAll": "Marcar leídos",
+    "group": {
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "week": "Esta semana",
+      "earlier": "Antes"
+    },
     "unreadMark": "sin leer",
     "more": "Ver más avisos",
     "empty": "Todavía no tienes avisos",
