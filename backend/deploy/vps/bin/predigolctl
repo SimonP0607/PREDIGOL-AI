@@ -21,6 +21,7 @@
 #   predigolctl config-baseline [--status]   take (or just look at) the baseline of the alert "the configuration changed" (bin/config-baseline.sh): deploy and
 #                                  rollback take it when they finish; take it by hand as the LAST step of any change to an env file, the Caddyfile or sshd
 #   predigolctl maint              the owner's daily maintenance: partitions ahead, retention (scripts/db_maintenance)
+#   predigolctl research [--dry-run|--force|--allow-match-hours]   the weekly research V2 outside the worker, one at a time, under a memory and time ceiling (bin/research-run.sh)
 #   predigolctl import FOLDER      ONCE, on a fresh server: the old machine's export (deploy/cutover/export.sh)
 #   predigolctl psql               a read-only psql session
 #   predigolctl pgstat status|enable|top [N]|reset   the queries that cost the most (pg_stat_statements; bin/pgstat.sh)
@@ -165,6 +166,7 @@ case "${1:-}" in
   sentry-drill) shift; ops python -m scripts.sentry_drill "$@" ;;
   config-baseline) shift; exec "$BIN/config-baseline.sh" "$@" ;;
   maint) shift; exec "$BIN/maint.sh" "$@" ;;
+  research) shift; exec "$BIN/research-run.sh" "$@" ;;
   bench) shift; exec "$BIN/bench.sh" "$@" ;;
   loadtest) shift; exec "$BIN/loadtest.sh" "$@" ;;
   cloudflare) shift; exec "$BIN/cloudflare-ips.sh" "$@" ;;
