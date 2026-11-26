@@ -16,7 +16,8 @@ import { t } from "@/lib/i18n";
 import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { EmptyState, ErrorState, PageTitle, SkeletonCards } from "@/product/shared/States";
-import { groupByDay, INBOX_UNREAD_KEY, noticeTarget } from "./inbox";
+import { INBOX_UNREAD_KEY, noticeTarget } from "./inbox";
+import { groupByDay } from "./inboxDays";
 
 const FILTERS: readonly InboxFilter[] = ["all", "picks", "matches", "account"];
 
