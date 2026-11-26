@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Final
 
+from fbi.forecasting import figure_base
 from fbi.intel.calibration import CalibrationState, Calibrator
 from fbi.models.scoring import MARKET_ROWS
 
@@ -109,6 +110,8 @@ class MarketForecast:
     basis: str
     calibrator_id: int | None
     input_hash: str
+    base: figure_base.Base = figure_base.UNCALIBRATED_BASE
+    """What the stated figure rests on and the calibrator's weights (``figure_base``); not part of ``input_hash``: the calibrator id already is."""
 
     @property
     def family(self) -> str:
@@ -198,7 +201,8 @@ def forecast_market(fixture_id: int, market_key: str, line: Decimal, models: dic
                     sorted((s, by_sel[s].feature_set_hash) for s in selections), calibrator_id, basis,
                     sorted((o.selection, None if o.p_market is None else round(o.p_market, 6)) for o in outcomes)])
     return MarketForecast(fixture_id, market_key, line, name, first.model_version_id, first.data_cutoff_ts, outcomes,
-                          calibration, basis, calibrator_id, digest)
+                          calibration, basis, calibrator_id, digest,
+                          figure_base.of_champion(champion, applied=calibration == CALIBRATED))
 
 
 def most_likely(outcomes: Iterable[Outcome]) -> str | None:

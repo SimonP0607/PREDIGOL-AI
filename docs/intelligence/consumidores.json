@@ -668,7 +668,7 @@
    "sin_pruebas": 19
   },
   "forecast_v1": {
-   "archivos": 68,
+   "archivos": 69,
    "consumidores": [
     "backend/scripts/compare_probabilities.py",
     "backend/scripts/ia_decision_v2.py",
@@ -725,7 +725,7 @@
    },
    "por_clase": {
     "módulo": 18,
-    "prueba": 33,
+    "prueba": 34,
     "ruta": 10,
     "script": 7
    },

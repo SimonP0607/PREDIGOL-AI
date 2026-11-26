@@ -11,7 +11,7 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 | decisiones de familias (decision-fam-v1) (`decision_families`) | consolidar | 69 | 36 | 2 | 7 | 1 | 5 | 1 |
 | ciclo de evaluación E1 a E4 (`eval_cycle`) | consolidar | 21 | 14 | 1 | 4 | 2 | 0 | 0 |
 | ciclo de estados de la selección (`lifecycle`) | consolidar | 23 | 15 | 1 | 4 | 1 | 0 | 1 |
-| forecast-v1 (cifra por modelo) (`forecast_v1`) | consolidar | 68 | 35 | 1 | 10 | 0 | 0 | 7 |
+| forecast-v1 (cifra por modelo) (`forecast_v1`) | consolidar | 69 | 35 | 1 | 10 | 0 | 0 | 7 |
 | forecast-v2 (cifra única) (`forecast_v2`) | conservar | 36 | 21 | 0 | 5 | 0 | 0 | 3 |
 | circuito de noticias: news.items (`news_items`) | consolidar | 31 | 20 | 2 | 2 | 1 | 1 | 2 |
 | almacén de evidencia: ai.evidence (`evidence`) | conservar | 176 | 104 | 2 | 17 | 2 | 1 | 5 |

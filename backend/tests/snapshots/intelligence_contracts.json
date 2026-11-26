@@ -55510,7 +55510,7 @@
    ]
   },
   "C-14": {
-   "version": "1.1.0",
+   "version": "1.2.0",
    "public": [
     "$ :: object",
     "$.away",
@@ -55712,6 +55712,13 @@
     "$.markets.items[].selections[].bookmaker",
     "$.markets.items[].selections[].bookmaker !always",
     "$.markets.items[].selections[].bookmaker :: string",
+    "$.markets.items[].selections[].figure_base",
+    "$.markets.items[].selections[].figure_base :: one of null, string",
+    "$.markets.items[].selections[].figure_base|null :: null",
+    "$.markets.items[].selections[].figure_base|string :: string",
+    "$.markets.items[].selections[].figure_base|string = \"calibrated_no_market\"",
+    "$.markets.items[].selections[].figure_base|string = \"calibrated_with_market\"",
+    "$.markets.items[].selections[].figure_base|string = \"raw\"",
     "$.markets.items[].selections[].history",
     "$.markets.items[].selections[].history !always",
     "$.markets.items[].selections[].history :: one of HistoryMark, Missing",
@@ -56303,6 +56310,13 @@
     "$.markets.items[].selections[].bookmaker",
     "$.markets.items[].selections[].bookmaker !always",
     "$.markets.items[].selections[].bookmaker :: string",
+    "$.markets.items[].selections[].figure_base",
+    "$.markets.items[].selections[].figure_base :: one of null, string",
+    "$.markets.items[].selections[].figure_base|null :: null",
+    "$.markets.items[].selections[].figure_base|string :: string",
+    "$.markets.items[].selections[].figure_base|string = \"calibrated_no_market\"",
+    "$.markets.items[].selections[].figure_base|string = \"calibrated_with_market\"",
+    "$.markets.items[].selections[].figure_base|string = \"raw\"",
     "$.markets.items[].selections[].history",
     "$.markets.items[].selections[].history !always",
     "$.markets.items[].selections[].history :: one of HistoryMark, Missing",
@@ -56772,6 +56786,13 @@
     "$.markets.items[].selections[].selection",
     "$.markets.items[].selections[].selection !always",
     "$.markets.items[].selections[].selection :: string",
+    "$.markets.items[].selections[].shadow_base",
+    "$.markets.items[].selections[].shadow_base :: one of null, string",
+    "$.markets.items[].selections[].shadow_base|null :: null",
+    "$.markets.items[].selections[].shadow_base|string :: string",
+    "$.markets.items[].selections[].shadow_base|string = \"calibrated_no_market\"",
+    "$.markets.items[].selections[].shadow_base|string = \"calibrated_with_market\"",
+    "$.markets.items[].selections[].shadow_base|string = \"raw\"",
     "$.markets.items[].state",
     "$.markets.items[].state !always",
     "$.markets.items[].state :: string",
@@ -60387,6 +60408,10 @@
   {
    "date": "2026-11-26",
    "reason": "IA-191: C-07 1.1.0 (categoría opcional del hecho) y C-01 2.1.0 que lo incorpora"
+  },
+  {
+   "date": "2026-11-26",
+   "reason": "IA-193: C-14 1.2.0 añade figure_base y shadow_base (RP-2.1)"
   }
  ]
 }

@@ -48,6 +48,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Final
 
+from fbi.forecasting import figure_base
 from fbi.forecasting import score_matrix as sm
 from fbi.forecasting.market_view import (
     BASIS_CHAMPION,
@@ -131,6 +132,8 @@ class Figure:
     set_hash: str
     """The fingerprint of the inputs of the market set the figure belongs to."""
     version: str = VERSION
+    base: figure_base.Base = figure_base.UNCALIBRATED_BASE
+    """What the stated figure rests on and the calibrator's weights (``fbi.forecasting.figure_base``)."""
 
     @property
     def label(self) -> Label:
@@ -151,7 +154,7 @@ class Figure:
                 "model_version_id": self.model_version_id, "cutoff": self.cutoff.isoformat(), "seal": self.label,
                 "calibration": self.calibration, "basis": self.basis, "calibrator_id": self.calibrator_id,
                 "price_as_of": None if self.price_as_of is None else self.price_as_of.isoformat(), "source": self.source,
-                "version": self.version, "reading_id": self.reading_id}
+                "version": self.version, "reading_id": self.reading_id, "base": self.base.as_json()}
 
 
 def reading_id(version: str, fixture_id: int, key: PriceKey, set_hash: str) -> str:
@@ -233,7 +236,8 @@ def _figures_of(f: MarketForecast) -> list[Figure]:
     used = [o.market_as_of for o in f.outcomes if o.market_as_of is not None]
     as_of = min(used) if f.calibration == CALIBRATED and used else None
     return [Figure(f.fixture_id, f.market_key, o.selection, line_of(f.line), o.p, o.push, o.lo, o.hi, o.p_model, f.model, f.model_version_id,
-                   f.data_cutoff_ts, f.calibration, f.basis, f.calibrator_id, as_of, SOURCE_STORED, f.input_hash) for o in f.outcomes]
+                   f.data_cutoff_ts, f.calibration, f.basis, f.calibrator_id, as_of, SOURCE_STORED, f.input_hash, base=f.base)
+            for o in f.outcomes]
 
 
 def _result_events(x: MarketForecast) -> list[Figure]:
@@ -257,7 +261,7 @@ def _result_events(x: MarketForecast) -> list[Figure]:
         ("AH", "Home", quarter, h + d / 2, d / 2, hm + dm / 2, dm / 2), ("AH", "Away", -quarter, a, d / 2, am, dm / 2),
     ]
     return [Figure(x.fixture_id, m, s, line_of(line), win, push, None, None, raw, x.model, x.model_version_id, x.data_cutoff_ts,
-                   x.calibration, x.basis, x.calibrator_id, as_of, SOURCE_RESULT, tag)
+                   x.calibration, x.basis, x.calibrator_id, as_of, SOURCE_RESULT, tag, base=x.base)
             for m, s, line, win, push, raw, _ in events]
 
 
@@ -349,12 +353,14 @@ def _line_set(fixture_id: int, market: str, line: Decimal, numbers: Numbers, mat
     assert src is not None
     numbers_out, basis, calibrator_id, as_of = _calibrated(market, name, sides, cal, prices)
     calibration = CALIBRATED if basis == BASIS_CHAMPION else UNCALIBRATED
+    base = figure_base.of_champion(cal.champions.get((market, name)), applied=calibration == CALIBRATED)
     used = [prices.get(key_of(market, s.selection, s.line)) for s in sides] if calibration == CALIBRATED else []
     digest = _hash([VERSION, fixture_id, market, str(line), name, src.model_version_id, src.data_cutoff_ts, source, src.feature_set_hash,
                     calibrator_id, basis, sorted((s.selection, str(s.line), round(s.win, 6), round(s.push, 6)) for s in sides),
                     sorted((str(u[1]), round(u[0], 6)) for u in used if u is not None)])
     return [Figure(fixture_id, market, s.selection, line_of(s.line), p, s.push, lo, hi, s.win, name, src.model_version_id, src.data_cutoff_ts,
-                   calibration, basis, calibrator_id, as_of, source, digest) for s, (p, lo, hi) in zip(sides, numbers_out, strict=True)]
+                   calibration, basis, calibrator_id, as_of, source, digest, base=base)
+            for s, (p, lo, hi) in zip(sides, numbers_out, strict=True)]
 
 
 def _lines_of(market: str, numbers: Numbers, extra: Iterable[PriceKey]) -> set[Decimal]:

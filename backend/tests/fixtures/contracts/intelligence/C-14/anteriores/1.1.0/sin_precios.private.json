@@ -1,0 +1,25 @@
+{
+  "contract": "C-14",
+  "contract_version": "1.1.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2034-03-01T12:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "fixture_id": 2,
+  "kickoff_at": "2034-03-02T20:00:00Z",
+  "home": {
+    "id": 10,
+    "name": "Equipo Local"
+  },
+  "away": {
+    "id": 11,
+    "name": "Equipo Visitante"
+  },
+  "catalog_version": "market-states-v1",
+  "markets": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  }
+}

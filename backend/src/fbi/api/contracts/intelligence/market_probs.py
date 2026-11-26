@@ -29,10 +29,11 @@ from fbi.api.contracts.intelligence.base import (
     Missing,
     Probability,
     UtcDatetime,
+    _absent,
     private,
 )
 from fbi.api.contracts.intelligence.stats_profile import Ref
-from fbi.api.contracts.intelligence.vocab import MarketState
+from fbi.api.contracts.intelligence.vocab import FigureBase, MarketState
 
 ParlayReason = Literal["ok", "interruptor_apagado", "sin_regla", "no_ofrecer", "menos_de_3_casas", "linea_de_cuarto",
                        "empezado", "sin_cobertura"]
@@ -92,11 +93,18 @@ class SelectionMarks(IntelligenceModel):
     implied: Implied | Missing
     history: HistoryMark | Missing
     parlay: ParlayFlag
+    figure_base: FigureBase | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.2: what the figure in ``model`` rests on (raw, calibrated_no_market or calibrated_with_market); absent when there is no "
+                    "``model`` or the row was written before the label (RP-2.1).")
 
 
 class SelectionMarksPrivate(SelectionMarks):
     model_shadow: Probability | Missing = private(description="The figure of the model still in calibration (family-v1 ...), "
                                                               "for the owner's evaluation only.")
+    shadow_base: FigureBase | None = private(
+        default=None, exclude_if=_absent,
+        description="1.2: what the figure in ``model_shadow`` rests on, for the owner's evaluation only.")
 
 
 class MarketMarks(IntelligenceModel):
@@ -128,7 +136,7 @@ class MarketMarksPrivate(MarketMarks):
 
 class MarketProbs(IntelligenceContract):
     CONTRACT_ID: ClassVar[str] = "C-14"
-    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.2.0"
 
     fixture_id: int
     kickoff_at: UtcDatetime
