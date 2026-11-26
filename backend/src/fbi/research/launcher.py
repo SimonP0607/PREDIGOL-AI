@@ -60,11 +60,13 @@ class Job:
     memory_mb: int
     timeout_s: int
     gate: str | None = None
-    """``research_v2``: the job asks the research loop whether a run is due (and whether research is frozen) before it spends anything."""
+    """``research_v2``: the job asks the research loop whether a run is due (and whether research is frozen) before it spends anything.
+    ``experiments_due``: the job asks the conditions of the plan's experiments (``fbi.research.exp_conditions``) whether any is due, and writes nothing if none is."""
 
 
 JOBS: Final[Mapping[str, Job]] = {
     "research_v2": Job("research_v2", ("-m", "scripts.research_v2", "--apply"), memory_mb=2048, timeout_s=7200, gate="research_v2"),
+    "experiments_due": Job("experiments_due", ("-m", "scripts.exp_run", "--due"), memory_mb=1536, timeout_s=3600, gate="experiments_due"),
 }
 
 
@@ -273,4 +275,15 @@ def research_gate(conn: psycopg.Connection[Any], at: datetime, job: Job) -> str 
     return None if due else "same model code, last run under four weeks old"
 
 
-__all__ = ["JOBS", "JOB_TYPE", "LOCK_KEY", "Job", "Outcome", "launch", "match_hours", "research_gate", "rss_mb", "supervise", "try_lock"]
+def experiments_gate(conn: psycopg.Connection[Any], at: datetime, job: Job) -> str | None:
+    """Why no experiment of the plan is due (frozen for audit, or none has reached its condition), or None when at least one is."""
+    from fbi.research import exp_conditions
+    from fbi.research.loop import frozen
+
+    why = frozen()
+    if why:
+        return f"research is frozen: {why}"[:200]
+    return None if exp_conditions.due_now(conn, at=at) else "no experiment of the plan is due"
+
+
+__all__ = ["JOBS", "JOB_TYPE", "LOCK_KEY", "Job", "Outcome", "experiments_gate", "launch", "match_hours", "research_gate", "rss_mb", "supervise", "try_lock"]

@@ -12,7 +12,7 @@ from fbi.research import launcher
 
 
 def test_only_listed_jobs_exist_and_their_ceilings_are_set() -> None:
-    assert set(launcher.JOBS) == {"research_v2"}
+    assert set(launcher.JOBS) == {"research_v2", "experiments_due"}
     j = launcher.JOBS["research_v2"]
     assert j.argv[:2] == ("-m", "scripts.research_v2") and "--apply" in j.argv and j.memory_mb <= 2048 and j.timeout_s > 0
 

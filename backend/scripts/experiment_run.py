@@ -46,7 +46,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     def connect() -> psycopg.Connection[Any]:
         return psycopg.connect(dsn, options="-c TimeZone=UTC")
 
-    gate = launcher.research_gate if launcher.JOBS[args.job].gate == "research_v2" else None
+    gate = {"research_v2": launcher.research_gate, "experiments_due": launcher.experiments_gate}.get(launcher.JOBS[args.job].gate or "")
     out = launcher.launch(args.job, connect=connect, at=now(), memory_mb=args.memory_mb, timeout_s=args.timeout_s,
                           allow_match_hours=args.allow_match_hours, force=args.force, dry_run=args.dry_run, gate=gate)
     sys.stdout.write(f"{args.job}: {out.status} - {out.reason} (peak {out.peak_mb} MB, {out.seconds:.0f} s)\n")
