@@ -126,34 +126,35 @@ ranked AS MATERIALIZED (
       FROM best b JOIN core.players p ON p.id = b.entity_id
      ORDER BY b.is_prefix DESC, b.popularity DESC, p.name
 ),
+recent AS MATERIALIZED (
+    SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id
+      FROM core.fixtures f
+      JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
+      JOIN core.competitions co ON co.id = cs.competition_id
+     WHERE co.is_tracked AND f.kickoff_at > now() - make_interval(days => %(days)s)
+),
 valid AS (
-    SELECT r.* FROM ranked r
-     WHERE EXISTS (SELECT 1 FROM core.fixture_lineup_players lp
-                     JOIN core.fixtures f ON f.id = lp.fixture_id
-                     JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-                     JOIN core.competitions co ON co.id = cs.competition_id
-                    WHERE lp.provider_player_id = r.provider_player_id AND co.is_tracked
-                      AND f.kickoff_at > now() - make_interval(days => %(days)s))
+    SELECT r.id, r.name, r.position, r.is_prefix, r.popularity, latest.team_id
+      FROM ranked r
+      CROSS JOIN LATERAL (
+            SELECT CASE lp.team_side WHEN 'home' THEN rc.home_team_id ELSE rc.away_team_id END AS team_id
+              FROM core.fixture_lineup_players lp
+              JOIN recent rc ON rc.id = lp.fixture_id
+             WHERE lp.provider_player_id = r.provider_player_id
+             ORDER BY rc.kickoff_at DESC LIMIT 1) latest
      LIMIT %(limit)s
 )
-SELECT v.id, v.name, v.position, latest.team
-  FROM valid v
-  CROSS JOIN LATERAL (
-        SELECT t.name AS team
-          FROM core.fixture_lineup_players lp
-          JOIN core.fixtures f ON f.id = lp.fixture_id
-          JOIN core.competition_seasons cs ON cs.id = f.competition_season_id
-          JOIN core.competitions co ON co.id = cs.competition_id
-          JOIN core.teams t ON t.id = CASE lp.team_side WHEN 'home' THEN f.home_team_id ELSE f.away_team_id END
-         WHERE lp.provider_player_id = v.provider_player_id AND co.is_tracked
-           AND f.kickoff_at > now() - make_interval(days => %(days)s)
-         ORDER BY f.kickoff_at DESC LIMIT 1) latest
+SELECT v.id, v.name, v.position, t.name AS team
+  FROM valid v JOIN core.teams t ON t.id = v.team_id
  ORDER BY v.is_prefix DESC, v.popularity DESC, v.name
 """
 """The players by the search index (AD-I01) when it is loaded: the names by prefix and then popularity, only the ones that appeared
 in a line-up of a league PrediGol follows (the same rule that lets a reader keep them: ``FOLLOWABLE_PLAYERS_SQL``), with the team
 of their latest line-up. The line-up check stops at the first match and runs only until the page is full: 80-330 ms in production
-where it took 10 s for ``mar`` (BE-090). A player who debuted since the last refresh of the index shows once it is refreshed."""
+where it took 10 s for ``mar`` (BE-090). BE-096: the fixtures of the window (the leagues PrediGol follows, the last ``days``) are read once
+and each line-up is matched to them in memory - before, each player's whole career of line-ups went to the fixtures table one random
+read at a time and the team of the latest one was computed again after the check (0.7-2.7 s the first time, 1.3 s for ``ronaldo`` against 0.22 s
+now, measured on the production database). A player who debuted since the last refresh of the index shows once it is refreshed."""
 
 INDEX_READY_SQL = """
 SELECT c.relispopulated FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
