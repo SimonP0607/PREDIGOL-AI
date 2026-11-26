@@ -26,7 +26,8 @@ FIELDS: Final = ("interruptor", "corre", "salida", "desde", "filas", "lee", "com
 
 
 def load(path: Path = DATA) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+    doc: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return doc
 
 
 def problems(doc: dict[str, Any]) -> list[str]:
