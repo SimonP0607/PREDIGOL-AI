@@ -7,8 +7,8 @@ from datetime import UTC, datetime, timedelta
 import numpy as np
 
 from fbi.families import dependence
+from fbi.families import exp_e7 as e7
 from fbi.proposals import from_verdicts
-from fbi.research import exp_e7 as e7
 
 T0 = datetime(2026, 1, 5, 15, tzinfo=UTC)
 

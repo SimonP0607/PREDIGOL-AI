@@ -10,7 +10,8 @@ import psycopg
 import pytest
 from scripts import exp_run
 
-from fbi.research import exp_conditions, exp_e7
+from fbi.families import exp_e7
+from fbi.research import exp_conditions
 
 pytestmark = pytest.mark.integration
 

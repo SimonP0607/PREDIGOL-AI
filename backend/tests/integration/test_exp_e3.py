@@ -57,5 +57,5 @@ def test_the_experiment_registers_from_the_launcher_script_and_is_not_due_before
         assert (state.due, state.code, state.required) == (False, "sample", 1500)
         assert exp_e3.count(db, date(2026, 11, 26)) == 0
     finally:
-        exp_conditions.unregister("EXP-E3")
-        exp_conditions.unregister("EXP-E1")
+        for key in ("EXP-E1", "EXP-E3", "EXP-E7"):
+            exp_conditions.unregister(key)

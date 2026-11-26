@@ -79,4 +79,5 @@ def test_the_experiment_is_registered_by_the_launcher_script_and_is_not_due_befo
         assert (state.due, state.code, state.required) == (False, "sample", 1000)
         assert verdicts.latest(db) == []
     finally:
-        exp_conditions.unregister("EXP-E1")
+        for key in ("EXP-E1", "EXP-E3", "EXP-E7"):
+            exp_conditions.unregister(key)

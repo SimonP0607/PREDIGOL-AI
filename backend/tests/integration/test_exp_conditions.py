@@ -44,7 +44,8 @@ def box() -> Iterator[Box]:
     b = Box()
     ec.register("EXP-E1", count=b.count, run=b.run)
     yield b
-    ec.unregister("EXP-E1")
+    for key in ("EXP-E1", "EXP-E3", "EXP-E7"):  # the launcher's gate registers the plugins it finds: leave nothing behind
+        ec.unregister(key)
 
 
 def put(db: psycopg.Connection[Any], *, verdict: str, n: int, at: datetime, code: str = CODE, fp: str | None = None) -> None:
@@ -139,3 +140,14 @@ def test_the_status_command_lists_each_experiment_with_why(db: psycopg.Connectio
     box.sample = 400
     text = "\n".join(exp_run.status_lines(ec.survey(db, at=NOW, model_code=CODE)))
     assert "EXP-E1" in text and "muestra 400/1000" in text and "EXP-E8" in text and "no_counter" in text
+
+
+def test_the_launcher_gate_finds_the_plugins_by_itself_and_none_of_them_is_due_before_its_sample(db: psycopg.Connection[Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("fbi.research.loop.frozen", lambda: None)
+    try:
+        assert set(ec.registered()) == set()
+        assert launcher.experiments_gate(db, NOW, launcher.JOBS["experiments_due"]) == "no experiment of the plan is due"
+        assert set(ec.registered()) == {"EXP-E1", "EXP-E3", "EXP-E7"}, "the gate registered what the plan's pieces say about themselves"
+    finally:
+        for key in ("EXP-E1", "EXP-E3", "EXP-E7"):
+            ec.unregister(key)

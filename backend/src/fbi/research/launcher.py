@@ -283,6 +283,7 @@ def experiments_gate(conn: psycopg.Connection[Any], at: datetime, job: Job) -> s
     why = frozen()
     if why:
         return f"research is frozen: {why}"[:200]
+    exp_conditions.load_plugins()
     return None if exp_conditions.due_now(conn, at=at) else "no experiment of the plan is due"
 
 

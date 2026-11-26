@@ -26,17 +26,11 @@ from fbi.research import exp_conditions as ec
 from fbi.research import verdicts
 from fbi.research.exp_protocol import EXPERIMENTS
 
-PLUGINS: tuple[str, ...] = ("fbi.research.exp_e1", "fbi.research.exp_e3", "fbi.research.exp_e7")
-"""Modules that register experiments (each has a ``register()`` that calls ``exp_conditions.register``), imported and registered before anything is asked. The
-pieces RP-9.1 to RP-9.7 add themselves here, one each."""
 READ_ONLY = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=120000"
 
 
 def load_plugins() -> None:
-    import importlib
-
-    for name in PLUGINS:
-        importlib.import_module(name).register()
+    ec.load_plugins()
 
 
 def status_lines(states: Sequence[ec.Due]) -> list[str]:

@@ -69,6 +69,21 @@ def register(experiment: str, *, count: Counter, required: int | None = None, ru
     return spec
 
 
+PLUGINS: Final[tuple[str, ...]] = ("fbi.research.exp_e1", "fbi.research.exp_e3", "fbi.families.exp_e7")
+"""The modules that say how an experiment counts and runs (each has a ``register()`` that calls ``register``). The pieces RP-9.1 to RP-9.7 add themselves here, one each;
+they are imported by name when asked (``load_plugins``), so this module imports none of them."""
+
+
+def load_plugins() -> None:
+    """Import and register every plugin that is not registered yet: what the launcher's gate and ``scripts.exp_run`` do before asking anything."""
+    import importlib
+
+    for name in PLUGINS:
+        module = importlib.import_module(name)
+        if module.KEY not in _SPECS:
+            module.register()
+
+
 def unregister(experiment: str) -> None:
     _SPECS.pop(experiment, None)
 
@@ -144,4 +159,4 @@ def run(conn: psycopg.Connection[Any], experiment: str, *, at: datetime, due: Du
                            recorded_by=recorded_by)
 
 
-__all__ = ["FOUR_WEEKS", "VERSION", "Due", "NotRegisteredError", "Spec", "check", "due_now", "register", "registered", "run", "survey", "unregister"]
+__all__ = ["FOUR_WEEKS", "PLUGINS", "VERSION", "Due", "NotRegisteredError", "Spec", "check", "due_now", "load_plugins", "register", "registered", "run", "survey", "unregister"]

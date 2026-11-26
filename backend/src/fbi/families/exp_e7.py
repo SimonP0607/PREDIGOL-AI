@@ -129,9 +129,7 @@ def table(rows: Sequence[dependence.Row], *, replicates: int = dependence.REPLIC
 
 def count(conn: psycopg.Connection[Any], since: date) -> int:
     """The matches the meter can read: finished matches of the followed competitions with goals and corners known (a light count; the cards are checked by the run)."""
-    where = f"o.is_tracked AND {history.complete_condition('goals_ft')} AND {history.complete_condition('corners_ft')}"
-    row = conn.execute(f"SELECT count(*) FROM market.fixture_outcomes o WHERE {where}").fetchone()
-    return 0 if row is None else int(row[0])
+    return history.count_complete(conn, ("goals_ft", "corners_ft"))
 
 
 def run(conn: psycopg.Connection[Any], at: datetime) -> tuple[Judgement, dict[str, Any]]:
