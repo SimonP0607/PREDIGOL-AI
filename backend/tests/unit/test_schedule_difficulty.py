@@ -83,3 +83,30 @@ def test_no_route_page_or_packet_reads_it() -> None:
     src = Path(sd.__file__).resolve().parents[1]
     readers = [p for p in src.rglob("*.py") if "schedule_difficulty" in p.read_text(encoding="utf-8") and p.name != "schedule_difficulty.py"]
     assert readers == [], readers
+
+
+# ── RP-6.4: the note of an uneven recent calendar ─────────────────────────────────────────────────────
+
+def _measured(index: float, margin: float) -> sd.Difficulty:
+    return sd.Difficulty(n=5, index=index, margin95=margin, home_index=None, away_index=None, n_home=2, n_away=3, unrated=0, state="medido")
+
+
+def test_a_recent_calendar_is_uneven_only_when_the_interval_leaves_the_league_mean_out() -> None:
+    assert sd.calendar_note(_measured(1560.0, 20.0), 1500.0).state == "desigual_dificil"
+    assert sd.calendar_note(_measured(1440.0, 20.0), 1500.0).state == "desigual_facil"
+    for index in (1520.0, 1500.0, 1480.0):  # the edge of the interval (20) and inside it
+        assert sd.calendar_note(_measured(index, 20.0), 1500.0).state == "equilibrado", index
+    assert sd.calendar_note(_measured(1520.5, 20.0), 1500.0).state == "desigual_dificil", "just past the edge"
+    note = sd.calendar_note(_measured(1560.0, 20.0), 1500.0)
+    assert note.gap == pytest.approx(60.0) and note.text_es and "más duro" in note.text_es
+    assert sd.calendar_note(_measured(1440.0, 20.0), 1500.0).text_es and "más fácil" in str(sd.calendar_note(_measured(1440.0, 20.0), 1500.0).text_es)
+    assert sd.calendar_note(_measured(1500.0, 20.0), 1500.0).text_es is None
+
+
+def test_an_uncertain_or_missing_index_never_gives_a_verdict() -> None:
+    uncertain = sd.Difficulty(n=5, index=1600.0, margin95=None, home_index=None, away_index=None, n_home=2, n_away=3, unrated=1, state="incierto")
+    note = sd.calendar_note(uncertain, 1500.0)
+    assert note.state == "incierto" and note.text_es is None and note.gap == pytest.approx(100.0)
+    empty = sd.Difficulty(0, None, None, None, None, 0, 0, 0, "sin_partidos")
+    assert sd.calendar_note(empty, 1500.0).state == "sin_datos"
+    assert sd.calendar_note(_measured(1600.0, 10.0), None).state == "sin_datos"
