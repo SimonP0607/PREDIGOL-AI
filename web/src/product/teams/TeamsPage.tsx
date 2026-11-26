@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { formatKickoff } from "@/lib/time";
 import { Card, EmptyState, PageTitle, SkeletonCards } from "@/product/shared/States";
 import { REGIONS, regionOf, type Region } from "@/product/competitions/region";
+import { t as tc } from "@/product/competitions/text";
 import { LeagueRow } from "./CompetitionTeams";
 import { countryName, isNation, teamLabel } from "./model";
 
@@ -283,7 +284,7 @@ export function TeamsPage() {
               >
                 <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
                   <span className="min-w-0 flex-1 text-sm font-semibold">
-                    {t(`competitions.region.${region}`)}
+                    {tc(`competitions.directory.region.${region}`)}
                   </span>
                   <span className="numeric text-caption text-subtle-foreground">
                     {t("profiles.teams.countries", { n: countries.length })}
