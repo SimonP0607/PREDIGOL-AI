@@ -171,6 +171,17 @@ SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, f.is_neutral
  LIMIT %(n)s
 """
 
+PAST_SQL: Final = """
+SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, f.is_neutral
+  FROM core.fixtures f
+ WHERE (f.home_team_id = %(team)s OR f.away_team_id = %(team)s)
+   AND f.kickoff_at < %(at)s AND f.kickoff_at >= %(lo)s AND f.status_group = 'finished'
+ ORDER BY f.kickoff_at DESC, f.id DESC
+ LIMIT %(n)s
+"""
+"""The team's last finished matches before the moment asked (RP-6.4: the calendar it has just played)."""
+PAST_HORIZON: Final = timedelta(days=120)
+
 RATINGS_SQL: Final = """
 SELECT team_id, rating_after, n
   FROM (SELECT team_id, rating_after, kickoff_at,
@@ -228,18 +239,62 @@ class TeamDifficulty:
                 "sources": list(TABLES), "shadow": True}
 
 
-def team_difficulty(conn: psycopg.Connection[Any], team_id: int, *, at: datetime, n: int = N) -> TeamDifficulty:
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(COMING_SQL, {"team": team_id, "at": at, "hi": at + HORIZON, "n": n})
-        coming = cur.fetchall()
-    opponents = [int(m["away_team_id"]) if int(m["home_team_id"]) == team_id else int(m["home_team_id"]) for m in coming]
+def _rivals(conn: psycopg.Connection[Any], team_id: int, matches: Sequence[Mapping[str, Any]], *, at: datetime) -> TeamDifficulty:
+    opponents = [int(m["away_team_id"]) if int(m["home_team_id"]) == team_id else int(m["home_team_id"]) for m in matches]
     run, rt = ratings(conn, sorted(set(opponents)), at=at)
     rivals = []
-    for m, opp in zip(coming, opponents, strict=True):
+    for m, opp in zip(matches, opponents, strict=True):
         venue: Venue = "neutral" if m["is_neutral"] else ("home" if int(m["home_team_id"]) == team_id else "away")
         rivals.append(Rival(fixture_id=int(m["id"]), kickoff=m["kickoff_at"], opponent_id=opp, venue=venue, rating=rt.latest.get(opp),
                             rated=rt.rated.get(opp, 0), sigma=rt.sigma.get(opp)))
     return TeamDifficulty(team_id=team_id, at=at, elo_run=run, rivals=rivals, difficulty=difficulty(rivals))
+
+
+def team_difficulty(conn: psycopg.Connection[Any], team_id: int, *, at: datetime, n: int = N) -> TeamDifficulty:
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(COMING_SQL, {"team": team_id, "at": at, "hi": at + HORIZON, "n": n})
+        coming = cur.fetchall()
+    return _rivals(conn, team_id, coming, at=at)
+
+
+def recent_difficulty(conn: psycopg.Connection[Any], team_id: int, *, at: datetime, n: int = N) -> TeamDifficulty:
+    """The same index over the ``n`` matches the team has just PLAYED (RP-6.4): the strength of the rivals its recent figures were made
+    against, each rival's rating as of the moment asked (never a later one). It describes the past; it forecasts nothing."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(PAST_SQL, {"team": team_id, "at": at, "lo": at - PAST_HORIZON, "n": n})
+        played = cur.fetchall()
+    return _rivals(conn, team_id, played, at=at)
+
+
+CalendarState = Literal["desigual_dificil", "desigual_facil", "equilibrado", "incierto", "sin_datos"]
+
+
+@dataclass(frozen=True, slots=True)
+class CalendarNote:
+    """Whether the recent calendar was uneven against the league: the note a figure of recent form carries (RP-6.4)."""
+
+    state: CalendarState
+    gap: float | None
+    """The index minus the mean rating of the league, in Elo points (positive: the rivals were above the average)."""
+    margin95: float | None
+    text_es: str | None
+
+
+def calendar_note(recent: Difficulty, league_mean_rating: float | None) -> CalendarNote:
+    """Uneven when the 95 % interval of the index leaves the league's mean out - no threshold of its own: the interval is the uncertainty of
+    the ratings the index is made of. Uncertain index (a rival on few matches, no sigma, an unrated rival) says ``incierto``, never a verdict."""
+    if recent.index is None or league_mean_rating is None:
+        return CalendarNote("sin_datos", None, None, None)
+    gap = recent.index - league_mean_rating
+    if recent.state != "medido" or recent.margin95 is None:
+        return CalendarNote("incierto", gap, recent.margin95, None)
+    if gap - recent.margin95 > 0:
+        return CalendarNote("desigual_dificil", gap, recent.margin95,
+                            "El calendario reciente fue más duro que la media de la liga: sus cifras recientes se midieron contra rivales más fuertes.")
+    if gap + recent.margin95 < 0:
+        return CalendarNote("desigual_facil", gap, recent.margin95,
+                            "El calendario reciente fue más fácil que la media de la liga: sus cifras recientes se midieron contra rivales más flojos.")
+    return CalendarNote("equilibrado", gap, recent.margin95, None)
 
 
 def league_mean(conn: psycopg.Connection[Any], competition_season_id: int, *, at: datetime) -> tuple[int, float | None]:
