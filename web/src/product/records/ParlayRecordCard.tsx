@@ -7,7 +7,7 @@
  * `compact` is Home (one line per leg); `full` is the Parlays page.
  */
 import { Link } from "@tanstack/react-router";
-import { Clock, ListX, Search } from "lucide-react";
+import { ChevronDown, Clock, ListX, Search } from "lucide-react";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -74,11 +74,16 @@ function CompactLeg({ leg }: { leg: ParlayRecordLeg }) {
   );
 }
 
+/** A parlay that has reached its end: its legs fold away (the summary already says how it ended). */
+export function isSettled(status: string): boolean {
+  return ["WON", "LOST", "VOID", "PARTIAL_VOID"].includes(status);
+}
+
 const STAT_LABEL = "text-label leading-tight text-subtle-foreground";
 
-function Summary({ parlay }: { parlay: ParlayRecord }) {
+function Summary({ parlay, top = false }: { parlay: ParlayRecord; top?: boolean }) {
   const p = toNumber(parlay.p_all_low);
-  const settled = ["WON", "LOST", "VOID", "PARTIAL_VOID"].includes(parlay.status);
+  const settled = isSettled(parlay.status);
   const legs = countLegs(parlay.legs);
   const standing = [
     legs.won > 0 ? t("records.parlay.legsWon", { count: legs.won }) : null,
@@ -90,7 +95,10 @@ function Summary({ parlay }: { parlay: ParlayRecord }) {
     <div
       // the combined price as a tile set into the card (the system's sheet 4), not a band across it. AP-K02: the three
       // figures go by the card's own width, not the screen's: three columns from 26 rem, one under the other below it.
-      className="mx-4 mb-4 mt-1 rounded-field border border-gold/30 bg-black/20 px-3.5 py-3.5 sm:mx-5"
+      className={cn(
+        "mx-4 rounded-field border border-gold/30 bg-black/20 px-3.5 py-3.5 sm:mx-5",
+        top ? "mb-3 mt-3" : "mb-4 mt-1",
+      )}
       data-testid="parlay-summary"
     >
       <dl className="grid grid-cols-1 gap-x-4 gap-y-3 @[26rem]:grid-cols-3 @[26rem]:gap-y-1">
@@ -201,6 +209,43 @@ function DayHeading({ at, count }: { at: string; count: number }) {
   );
 }
 
+/**
+ * The selections of the Parlays page folded into a native disclosure (UX-252, decision C-04): the summary above says the
+ * price, the joint probability and the result; each selection keeps its reason. Open while the parlay is still running or
+ * waiting, folded once it ended. A multi-day parlay folds one disclosure per day.
+ */
+function Fold({
+  title,
+  count,
+  open,
+  testId,
+  children,
+}: {
+  title: ReactNode;
+  count: number;
+  open: boolean;
+  testId: string;
+  children: ReactNode;
+}) {
+  return (
+    <details open={open} data-testid={testId} className="group/fold border-t border-gold/20">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 hover:bg-elevated/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="text-sm font-semibold">{title}</span>
+        <span className="flex items-center gap-2">
+          <span className="numeric text-caption text-subtle-foreground">
+            {t("parlays.legs", { count })}
+          </span>
+          <ChevronDown
+            aria-hidden
+            className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open/fold:rotate-180"
+          />
+        </span>
+      </summary>
+      {children}
+    </details>
+  );
+}
+
 export function ParlayRecordCard({
   kind,
   parlay,
@@ -257,34 +302,75 @@ export function ParlayRecordCard({
         </div>
       </header>
       {built ? (
-        <>
-          <ol
-            aria-label={t("parlays.legsList")}
-            className="mt-3 flex-1 divide-y divide-gold/20 border-t border-gold/20"
-          >
-            {(kind === "multiday"
-              ? groupByDay(parlay.legs)
-              : [{ day: "", at: "", legs: parlay.legs }]
-            ).flatMap((group) => [
-              kind === "multiday" ? (
-                <DayHeading key={`day-${group.day}`} at={group.at} count={group.legs.length} />
-              ) : null,
-              ...group.legs.map((leg) =>
-                variant === "compact" ? (
-                  <CompactLeg key={leg.leg_no} leg={leg} />
-                ) : (
-                  <LegRow
-                    key={leg.leg_no}
-                    leg={viewOfRecord(leg)}
-                    status={leg.status}
-                    state={<RecordState status={leg.status} match={leg.match} />}
-                  />
-                ),
-              ),
-            ])}
-          </ol>
-          <Summary parlay={parlay} />
-        </>
+        variant === "full" ? (
+          <>
+            <Summary parlay={parlay} top />
+            {kind === "multiday" ? (
+              groupByDay(parlay.legs).map((group) => (
+                <Fold
+                  key={`day-${group.day}`}
+                  testId="parlay-day"
+                  title={<h3>{formatDate(group.at)}</h3>}
+                  count={group.legs.length}
+                  open={!isSettled(parlay.status)}
+                >
+                  <ol
+                    aria-label={t("parlays.legsList")}
+                    className="divide-y divide-gold/20 border-t border-gold/20"
+                  >
+                    {group.legs.map((leg) => (
+                      <LegRow
+                        key={leg.leg_no}
+                        leg={viewOfRecord(leg)}
+                        status={leg.status}
+                        state={<RecordState status={leg.status} match={leg.match} />}
+                      />
+                    ))}
+                  </ol>
+                </Fold>
+              ))
+            ) : (
+              <Fold
+                testId="parlay-legs-fold"
+                title={t("parlays.selections")}
+                count={parlay.legs.length}
+                open={!isSettled(parlay.status)}
+              >
+                <ol
+                  aria-label={t("parlays.legsList")}
+                  className="divide-y divide-gold/20 border-t border-gold/20"
+                >
+                  {parlay.legs.map((leg) => (
+                    <LegRow
+                      key={leg.leg_no}
+                      leg={viewOfRecord(leg)}
+                      status={leg.status}
+                      state={<RecordState status={leg.status} match={leg.match} />}
+                    />
+                  ))}
+                </ol>
+              </Fold>
+            )}
+          </>
+        ) : (
+          <>
+            <ol
+              aria-label={t("parlays.legsList")}
+              className="mt-3 flex-1 divide-y divide-gold/20 border-t border-gold/20"
+            >
+              {(kind === "multiday"
+                ? groupByDay(parlay.legs)
+                : [{ day: "", at: "", legs: parlay.legs }]
+              ).flatMap((group) => [
+                kind === "multiday" ? (
+                  <DayHeading key={`day-${group.day}`} at={group.at} count={group.legs.length} />
+                ) : null,
+                ...group.legs.map((leg) => <CompactLeg key={leg.leg_no} leg={leg} />),
+              ])}
+            </ol>
+            <Summary parlay={parlay} />
+          </>
+        )
       ) : (
         <NoParlay state={state} min={parlay?.min_legs ?? (kind === "daily" ? 2 : 3)} />
       )}
