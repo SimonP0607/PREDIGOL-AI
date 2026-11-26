@@ -1,0 +1,279 @@
+{
+  "contract": "C-14",
+  "contract_version": "1.2.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2034-03-01T12:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "fixture_id": 1,
+  "kickoff_at": "2034-03-02T20:00:00Z",
+  "home": {
+    "id": 10,
+    "name": "Equipo Local"
+  },
+  "away": {
+    "id": 11,
+    "name": "Equipo Visitante"
+  },
+  "catalog_version": "market-states-v1",
+  "markets": {
+    "items": [
+      {
+        "key": "result_1x2.FT.match",
+        "unit": "1X2",
+        "category": "result",
+        "kind": "one_x_two",
+        "period": "FT",
+        "subject": "match",
+        "state": "evaluable",
+        "state_reason": "completo",
+        "rule_key": "goals_ft@v1",
+        "model_origin": "forecast-v1",
+        "distribution": {
+          "missing_reason": "sin_datos"
+        },
+        "selections": [
+          {
+            "selection": "Home",
+            "line": 0.0,
+            "best_odds": 2.15,
+            "bookmaker": "Casa A",
+            "model": {
+              "value": 0.48,
+              "pct": 48,
+              "interval_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "calibration": "sin_calibrar",
+              "as_of": "2034-03-01T12:00:00Z",
+              "evaluation": {
+                "missing_reason": "sin_datos"
+              },
+              "evaluation_version": {
+                "missing_reason": "sin_datos"
+              },
+              "origin": "forecast-v1"
+            },
+            "implied": {
+              "value": 0.45,
+              "pct": 45,
+              "books": 7,
+              "as_of": "2034-03-01T12:00:00Z",
+              "method": "proporcional_media_casas"
+            },
+            "history": {
+              "hits": 12,
+              "n": 20,
+              "pct": 60,
+              "wilson_low": 39,
+              "wilson_high": 78,
+              "window": "u10_contexto",
+              "rule_key": "goals_ft@v1"
+            },
+            "parlay": {
+              "allowed": true,
+              "reason": "ok"
+            },
+            "model_shadow": {
+              "missing_reason": "sin_datos"
+            },
+            "figure_base": "calibrated_with_market"
+          },
+          {
+            "selection": "Draw",
+            "line": 0.0,
+            "best_odds": 3.4,
+            "bookmaker": "Casa A",
+            "model": {
+              "value": 0.27,
+              "pct": 27,
+              "interval_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "calibration": "sin_calibrar",
+              "as_of": "2034-03-01T12:00:00Z",
+              "evaluation": {
+                "missing_reason": "sin_datos"
+              },
+              "evaluation_version": {
+                "missing_reason": "sin_datos"
+              },
+              "origin": "forecast-v1"
+            },
+            "implied": {
+              "value": 0.29,
+              "pct": 29,
+              "books": 7,
+              "as_of": "2034-03-01T12:00:00Z",
+              "method": "proporcional_media_casas"
+            },
+            "history": {
+              "hits": 4,
+              "n": 20,
+              "pct": 20,
+              "wilson_low": 8,
+              "wilson_high": 42,
+              "window": "u10_contexto",
+              "rule_key": "goals_ft@v1"
+            },
+            "parlay": {
+              "allowed": true,
+              "reason": "ok"
+            },
+            "model_shadow": {
+              "missing_reason": "sin_datos"
+            }
+          },
+          {
+            "selection": "Away",
+            "line": 0.0,
+            "best_odds": 3.6,
+            "bookmaker": "Casa A",
+            "model": {
+              "value": 0.25,
+              "pct": 25,
+              "interval_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "calibration": "sin_calibrar",
+              "as_of": "2034-03-01T12:00:00Z",
+              "evaluation": {
+                "missing_reason": "sin_datos"
+              },
+              "evaluation_version": {
+                "missing_reason": "sin_datos"
+              },
+              "origin": "forecast-v1"
+            },
+            "implied": {
+              "value": 0.26,
+              "pct": 26,
+              "books": 7,
+              "as_of": "2034-03-01T12:00:00Z",
+              "method": "proporcional_media_casas"
+            },
+            "history": {
+              "hits": 4,
+              "n": 20,
+              "pct": 20,
+              "wilson_low": 8,
+              "wilson_high": 42,
+              "window": "u10_contexto",
+              "rule_key": "goals_ft@v1"
+            },
+            "parlay": {
+              "allowed": true,
+              "reason": "ok"
+            },
+            "model_shadow": {
+              "missing_reason": "sin_datos"
+            }
+          }
+        ],
+        "distribution_shadow": {
+          "missing_reason": "sin_datos"
+        }
+      },
+      {
+        "key": "corners_over_under.FT.match",
+        "unit": "CORNERS_OU",
+        "category": "corners",
+        "kind": "over_under",
+        "period": "FT",
+        "subject": "match",
+        "state": "en_calibracion",
+        "state_reason": "sin_calibrador_validado",
+        "rule_key": "corners_ft@v1",
+        "model_origin": "family-v1",
+        "distribution": {
+          "missing_reason": "sin_datos"
+        },
+        "selections": [
+          {
+            "selection": "Over",
+            "line": 9.5,
+            "best_odds": 1.95,
+            "bookmaker": "Casa A",
+            "model": {
+              "missing_reason": "sin_datos"
+            },
+            "implied": {
+              "value": 0.5,
+              "pct": 50,
+              "books": 7,
+              "as_of": "2034-03-01T12:00:00Z",
+              "method": "proporcional_media_casas"
+            },
+            "history": {
+              "missing_reason": "sin_datos"
+            },
+            "parlay": {
+              "allowed": false,
+              "reason": "interruptor_apagado"
+            },
+            "model_shadow": {
+              "value": 0.46,
+              "pct": 46,
+              "interval_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "calibration": "sin_calibrar",
+              "as_of": "2034-03-01T12:00:00Z",
+              "evaluation": {
+                "missing_reason": "sin_datos"
+              },
+              "evaluation_version": {
+                "missing_reason": "sin_datos"
+              },
+              "origin": "family-v1"
+            }
+          },
+          {
+            "selection": "Under",
+            "line": 9.5,
+            "best_odds": 1.85,
+            "bookmaker": "Casa A",
+            "model": {
+              "missing_reason": "sin_datos"
+            },
+            "implied": {
+              "value": 0.5,
+              "pct": 50,
+              "books": 7,
+              "as_of": "2034-03-01T12:00:00Z",
+              "method": "proporcional_media_casas"
+            },
+            "history": {
+              "missing_reason": "sin_datos"
+            },
+            "parlay": {
+              "allowed": false,
+              "reason": "interruptor_apagado"
+            },
+            "model_shadow": {
+              "value": 0.54,
+              "pct": 54,
+              "interval_pct": {
+                "missing_reason": "sin_datos"
+              },
+              "calibration": "sin_calibrar",
+              "as_of": "2034-03-01T12:00:00Z",
+              "evaluation": {
+                "missing_reason": "sin_datos"
+              },
+              "evaluation_version": {
+                "missing_reason": "sin_datos"
+              },
+              "origin": "family-v1"
+            }
+          }
+        ],
+        "distribution_shadow": {
+          "missing_reason": "sin_datos"
+        }
+      }
+    ]
+  }
+}
