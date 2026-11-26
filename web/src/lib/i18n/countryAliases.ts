@@ -3,7 +3,7 @@
  *
  * The provider names its teams in English only, and the three searches (the favourites' picker, Equipos, the global search)
  * match what is typed against those names: «España» found «Real Espana», «Spain» found the national team. The readers'
- * search no longer needs this (C-10 1.1 carries the Spanish names, UX-242); it stays for the lists that do not read the
+ * search no longer needs this (C-10 1.1 carries the Spanish names, UX-246); it stays for the lists that do not read the
  * search index (the earlier `GET /search`, Equipos, the favourites' picker): the web asks a second time: when what is typed is the start of a
  * country's name in the reader's language, the provider's English name goes out as one more term, and the answers are
  * merged without repeats, the country's own national team first.
