@@ -15,13 +15,19 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol
+from typing import Any, Final, Literal, Protocol
 
 ErrorCode = Literal["timeout", "unavailable", "rate_limited", "refused", "invalid_output", "not_configured",
                     "limit_reached"]
 """``limit_reached``: the workspace's spend limit or the account's tier cap is spent (HTTP 400 "workspace API usage
 limits", or 429 ``enforced_spend_limit_reached``). Asking again cannot help until the limit is lifted or the month turns:
 the layer treats it as EXHAUSTED (``fbi.ai.budget_v3``)."""
+
+
+CUT_PREFIX: Final = "cut_at_max_tokens: "
+"""What an unreadable answer says first when the API stopped it at ``max_tokens`` (RP-1.3): the cap was reached, so the answer is cut -
+a defect of the request's room (the model's thinking counts in it), not of the model's output. A reader that wants to count them
+looks for this prefix in the error."""
 
 
 class ProviderError(RuntimeError):

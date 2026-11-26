@@ -35,7 +35,12 @@ from fbi.chronicle.verify import ChronicleOut, Dropped, Verdict, verify
 VERSION: Final = "chronicle-v4"
 PROMPT_VERSION: Final = "chronicle-v4"
 SCHEMA_NAME: Final = "submit_chronicle"
-MAX_TOKENS: Final = 4000
+MAX_TOKENS: Final = 12000
+"""The cap of one answer, in OUTPUT tokens - and the model's adaptive thinking is billed as output and counted in it (``fbi.ai.usage.TIER_EFFORT``).
+Measured on 26 Nov 2026 over the 1,589 model-written chronicles of 14 days: 1,108 stopped at the old 4,000 with ~3,300 spent THINKING and ~690
+visible (the JSON cut); the 481 that fitted had ~2,000 thinking and ~1,500 visible, both languages together. So the cut was never the two
+languages: it was the room left for the visible text. 12,000 leaves the thinking its room (the batch price of the small model makes the extra a
+fraction of a cent) and ``MAX_TOKENS`` is part of ``WriterInput.hash`` so what a smaller cap cut is asked again once."""
 CLAIM_MAX: Final = 600
 
 
@@ -153,8 +158,8 @@ class WriterInput:
 
     @property
     def hash(self) -> str:
-        """The identity of what the chronicle is written from: the version, the plan's hash and the claims."""
-        return hashlib.sha256(json.dumps({"v": VERSION, "plan": self.plan.hash, "classes": claims.table_hash(),
+        """The identity of what the chronicle is written from: the version, the plan's hash, the claims and the cap of the answer."""
+        return hashlib.sha256(json.dumps({"v": VERSION, "plan": self.plan.hash, "classes": claims.table_hash(), "cap": MAX_TOKENS,
                                           "claims": dict(sorted(self.claims.items()))}, sort_keys=True,
                                          ensure_ascii=False).encode()).hexdigest()
 
@@ -162,7 +167,7 @@ class WriterInput:
 def request(inp: WriterInput) -> JsonRequest:
     """The request: the system block (the same for every match, cached), the plan as the user message."""
     return JsonRequest(SYSTEM, json.dumps(inp.body(), ensure_ascii=False, sort_keys=True, default=str), SCHEMA, SCHEMA_NAME,
-                       max_tokens=MAX_TOKENS, timeout_s=90.0, cache=True)
+                       max_tokens=MAX_TOKENS, timeout_s=180.0, cache=True)
 
 
 Caller = Callable[[JsonRequest, WriterInput], CallOutcome]

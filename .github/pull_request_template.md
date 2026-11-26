@@ -44,3 +44,10 @@ Rellena todas las secciones; lo que no aplique, escribe «No aplica».
 - Código: `ÁREA-NNN`
 - Relacionados:
 - Fila añadida en `docs/proyecto/REGISTRO_CODIGOS.md`: [ ] sí  [ ] no aplica
+
+## Lienzo de diseño
+
+<!-- Si el PR cambia lo que el usuario ve (web, consola, correos), la lámina del lienzo «Noche de partido» debe reflejarlo: https://claude.ai/artifact/VaMzRVeN6ij2n4Won7pmQ6 . Procedimiento: docs del proyecto, «SINCRONIZACION_LIENZO_APP». -->
+
+- [ ] Lámina del lienzo actualizada — enlace correspondiente: 
+- [ ] No aplica: no cambia nada visible
