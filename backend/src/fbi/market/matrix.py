@@ -32,6 +32,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from fbi.core.decision_versions import DECISION_CORE
+from fbi.market import rule_text
 from fbi.market.catalogue import DEFINITIONS_SQL, market_key_for, spec_from_row
 from fbi.market.rules import NO_DATA, OK, OUTCOMES_VIEW, RULES, RULES_BY_MEASURE, Rule, explain
 from fbi.odds.quote_taxonomy import PROVIDER, SCOPE, TAXONOMY_VERSION, BetSpec
@@ -442,7 +443,7 @@ def coverage_doc(facts: Facts) -> dict[str, Any]:
             "totals": {"finished": facts.finished_window, "priced": len({f for s in any_price.values() for f in s})}}
 
 
-def summary_doc(facts: Facts, rows: list[dict[str, Any]]) -> dict[str, Any]:
+def summary_doc(facts: Facts, rows: list[dict[str, Any]], conventions: dict[str, Any] | None = None) -> dict[str, Any]:
     cards = facts.cards
     with_events = int(cards.get("with_events") or 0)
     compared = int(cards.get("compared") or 0)
@@ -455,7 +456,8 @@ def summary_doc(facts: Facts, rows: list[dict[str, Any]]) -> dict[str, Any]:
         "cards": {"matches_with_events": with_events, "matches_with_a_dismissal": int(cards.get("with_dismissal") or 0),
                   "convention_sensitive_pct": round(int(cards.get("with_dismissal") or 0) / with_events, 4) if with_events else None,
                   "events_vs_statistics_compared": compared,
-                  "events_equal_statistics_pct": round(int(cards.get("consistent") or 0) / compared, 4) if compared else None},
+                  "events_equal_statistics_pct": round(int(cards.get("consistent") or 0) / compared, 4) if compared else None,
+                  "conventions": conventions},
     }
 
 
@@ -465,8 +467,10 @@ def generate(conn: psycopg.Connection[Any], *, at: datetime | None = None, price
     at = at or datetime.now(UTC)
     facts = collect(conn, at=at, price_days=price_days, outcome_days=outcome_days)
     rows = build_rows(facts)
+    # RP-10.4: how often the other conventions of the cards would grade differently (one grouped, read-only query)
+    conventions = rule_text.conventions(conn, since=at - timedelta(days=outcome_days), until=at)
     return {"at": _iso(at), "matrix_version": MATRIX_VERSION, "taxonomy_version": TAXONOMY_VERSION, "window_days": facts.price_days,
-            "rows": rows, "coverage": coverage_doc(facts), "summary": summary_doc(facts, rows),
+            "rows": rows, "coverage": coverage_doc(facts), "summary": summary_doc(facts, rows, conventions),
             "duration_ms": int((time.monotonic() - t0) * 1000)}
 
 

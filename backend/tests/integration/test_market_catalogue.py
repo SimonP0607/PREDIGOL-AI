@@ -282,3 +282,28 @@ def test_a_matrix_is_stored_and_read_back_whole(catalogued: psycopg.Connection[A
     assert last["matrix_version"] == matrix.MATRIX_VERSION and len(last["rows"]) == len(matrix.ROWS)
     assert [r["key"] for r in last["rows"]] == [r.key for r in matrix.ROWS]
     assert last["summary"]["definitions"] == generated["summary"]["definitions"]
+
+
+# ── RP-10.4: how often the other conventions of the cards would grade differently ─────────────────────────────
+
+def test_the_discrepancy_between_conventions_is_counted_on_the_matches_with_events(db: psycopg.Connection[Any], world: dict[str, int]) -> None:
+    from fbi.market import rule_text
+
+    with db.cursor(row_factory=dict_row) as cur:
+        cur.execute("SELECT cards_lines_ft_home + cards_lines_ft_away AS t, yellow_ft_home + yellow_ft_away AS y, "
+                    "red_ft_home + red_ft_away AS r FROM market.fixture_outcomes WHERE fixture_id = ANY(%s) AND cards_source = 'events'",
+                    (list(world.values()),))
+        events = cur.fetchall()
+    assert len(events) >= 2, "the plain match and the one with dismissals have classified events"
+    got = rule_text.conventions(db, since=KICKOFF - timedelta(days=1), until=KICKOFF + timedelta(days=1))
+    assert got["matches"] == len(events)
+    only_yellows = got["conventions"]["solo_amarillas"]
+    assert only_yellows["total_differs"] == sum(1 for e in events if e["y"] != e["t"])
+    assert only_yellows["total_differs"] >= 1, "a match with a dismissal is counted differently by a house that counts yellows only"
+    assert got["conventions"]["roja_doble"]["total_differs"] == sum(1 for e in events if e["r"] > 0)
+
+
+def test_the_matrix_carries_the_discrepancy_in_its_summary(catalogued: psycopg.Connection[Any], world: dict[str, int]) -> None:
+    generated = matrix.generate(catalogued, at=AT)
+    conv = generated["summary"]["cards"]["conventions"]
+    assert conv["version"] == "rule-text-v1" and set(conv["conventions"]) == {"solo_amarillas", "roja_doble"}
