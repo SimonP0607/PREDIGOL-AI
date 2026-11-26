@@ -47,6 +47,7 @@ NAMES_THE_TABLE = {
                                   "`forecast-v1` set before kick-off against the result, over the weekly batch or a READ ONLY command; a "
                                   "measure, and the verdict it stores only gates state 5 of C-16 (behind its own switch) - never an input of "
                                   "a pick or a decision",
+    "scripts/consumers_map.py": "RP-0.3 (IA-167): looks for the NAME of the table in the code to say who reads it; it reads source files, never the table, and nothing it prints feeds a pick or a decision",
     "scripts/compare_probabilities.py": "PICKS F3 (BE-021): puts the page's forecast beside the board's and Intelligence's probability, selection by selection, over a READ ONLY connection; "
                                         "a measure of whether the two agree, printed for a person - never an input of a pick or a decision",
 }
