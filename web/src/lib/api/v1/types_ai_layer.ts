@@ -819,8 +819,8 @@ export interface EvolutionError {
   fixture_id: number;
   match: string;
   kickoff_at: Iso;
-  /** Regulation score [home, away]. */
-  score: number[] | null;
+  /** Regulation score: «2-1» as the server sends it (older answers sent [home, away]). */
+  score: string | number[] | null;
   market: string | null;
   selection: string | null;
   line: string | null;

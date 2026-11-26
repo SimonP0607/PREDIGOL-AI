@@ -14,3 +14,10 @@ export function dueReason(d: {
     vars["before"] = t("ai.evolution.noneRecorded");
   return translateOr(`ai.evolution.dueReasons.${d.v2_due_code}`, d.v2_due, vars);
 }
+
+/** The regulation score as «2–1»: the server sends «2-1» (text) and older answers sent [2, 1]; either reads the same. */
+export function scoreText(score: string | readonly number[] | null | undefined): string {
+  if (Array.isArray(score)) return score.join("–");
+  if (typeof score === "string") return score.replace(/\s*-\s*/, "–");
+  return "";
+}

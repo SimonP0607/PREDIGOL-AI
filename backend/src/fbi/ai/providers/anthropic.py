@@ -40,6 +40,7 @@ import httpx
 
 from fbi.ai.providers import structured
 from fbi.ai.providers.base import (
+    CUT_PREFIX,
     JsonRequest,
     LlmResult,
     LlmUsage,
@@ -205,21 +206,22 @@ def read_message(out: dict[str, Any], request: JsonRequest, model: str, *, nativ
     or a ``ProviderError`` that still carries what was billed."""
     u = out.get("usage")
     usage = read_usage(u if isinstance(u, dict) else {}, long_ttl_asked=long_ttl_asked)
+    cut = CUT_PREFIX if out.get("stop_reason") == "max_tokens" else ""
     if native:
         if out.get("stop_reason") == "refusal":
             raise ProviderError("refused", "the model refused to answer", usage=usage)
         text = "".join(str(c.get("text") or "") for c in out.get("content") or [] if c.get("type") == "text")
         if not text.strip():
-            raise ProviderError("invalid_output", "the model did not submit the answer", usage=usage)
+            raise ProviderError("invalid_output", f"{cut}the model did not submit the answer", usage=usage)
         try:
             data = parse_json_object(text)
         except ProviderError as exc:
-            raise ProviderError("invalid_output", str(exc), usage=usage) from None
+            raise ProviderError("invalid_output", f"{cut}{exc}", usage=usage) from None
     else:
         uses = [c for c in out.get("content") or [] if c.get("type") == "tool_use"
                 and c.get("name") == request.schema_name]
         if not uses or not isinstance(uses[0].get("input"), dict):
-            raise ProviderError("invalid_output", "the model did not submit the answer", usage=usage)
+            raise ProviderError("invalid_output", f"{cut}the model did not submit the answer", usage=usage)
         data = dict(uses[0]["input"])
     extra: dict[str, Any] = {"stop_reason": out.get("stop_reason"), "thinking_tokens": usage.thinking_tokens}
     if request.shared:  # said only when it is so: an answer to the usual layout carries what it always carried
