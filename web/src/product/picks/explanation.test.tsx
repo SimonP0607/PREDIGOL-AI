@@ -25,6 +25,8 @@ import {
   howText,
   marketLines,
   riskLines,
+  serverHighlight,
+  serverReason,
 } from "./explanation";
 import { PickExplanationView, WhyPickButton } from "./WhyPick";
 
@@ -314,6 +316,67 @@ describe("the explanation's sheet", () => {
       explanation({ day: { ...day, user_status: "RECOMMENDED", context_pending: true } }),
     );
     expect(same).not.toContain('data-testid="why-day-status"');
+  });
+
+  test("C-02 1.1: the server's reason leads the conclusion and its highlight shows with source and hour; without them nothing changes", () => {
+    setLocale("es");
+    const plain = explanation();
+    expect(serverReason(plain)).toBeNull();
+    expect(serverHighlight(plain)).toBeNull();
+    expect(view(plain)).not.toContain('data-testid="why-highlight"');
+
+    const server = explanation({
+      intelligence: {
+        reader_reason: {
+          text_es:
+            "PrediGol estima un 44 % para esta selección; el mercado, sin su margen, un 39 %.",
+          text_en:
+            "PrediGol estimates 44% for this selection; the market, without its margin, 39%.",
+        },
+        highlight: {
+          text_es:
+            "La mejor cuota disponible, 2,50, paga más que la cuota justa de la estimación, 2,30.",
+          text_en:
+            "The best available price, 2.50, pays more than the fair price of the estimate, 2.30.",
+          source: { name: "Cuotas de 6 casas de apuestas" },
+          as_of: "2026-11-24T18:00:00Z",
+        },
+      },
+    });
+    expect(serverReason(server)).toContain("PrediGol estima un 44 %");
+    const html = view(server);
+    expect(html).toContain("PrediGol estima un 44 %");
+    expect(html).not.toContain(conclusionText(server));
+    expect(html).toContain('data-testid="why-highlight"');
+    expect(html).toContain("Lo que más pesa");
+    expect(html).toContain("Cuotas de 6 casas de apuestas");
+    setLocale("en");
+    expect(serverReason(server)).toContain("PrediGol estimates 44%");
+    expect(serverHighlight(server)?.text).toContain("The best available price");
+    setLocale("es");
+  });
+
+  test("C-02 1.1: a reason that is missing, or a rumour, is never drawn: the figures' own conclusion stays", () => {
+    setLocale("es");
+    const missing = explanation({
+      intelligence: {
+        reader_reason: { missing_reason: "sin_datos" },
+        highlight: { missing_reason: "sin_datos" },
+      },
+    });
+    expect(serverReason(missing)).toBeNull();
+    expect(serverHighlight(missing)).toBeNull();
+    expect(view(missing)).toContain(conclusionText(missing));
+    const rumour = explanation({
+      intelligence: {
+        reader_reason: {
+          text_es: "Según un rumor, el delantero no juega.",
+          text_en: "A rumour says he will not play.",
+        },
+      },
+    });
+    expect(serverReason(rumour)).toBeNull();
+    expect(view(rumour)).toContain(conclusionText(rumour));
   });
 
   test("the button is the sheet's own trigger: it says it opens a dialog and asks nothing until it does", () => {

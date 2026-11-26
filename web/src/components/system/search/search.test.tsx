@@ -11,6 +11,7 @@ import type { SearchV2 } from "@/lib/api/v1/types_search";
 import {
   cleanQuery,
   entriesOfV2,
+  leadOf,
   groupHits,
   hitKickoff,
   hitLink,
@@ -111,6 +112,49 @@ describe("the search v2 (C-10, AP-B07)", () => {
     // a match reads its kick-off the way the list always did
     const fixture = entries.find((e) => e.type === "fixture")!;
     expect(hitKickoff(fixture.sublabel)).toBe("2026-11-23T20:00:00Z");
+  });
+
+  test("C-10 1.1: «España» is the national team itself, which leads; «Real Espana» stays below it", () => {
+    const answer = v2();
+    answer.query = "España";
+    answer.normalized = "espana";
+    answer.groups.teams = group([
+      {
+        kind: "team",
+        id: 8624,
+        label: "Real Espana",
+        sublabel: "Honduras",
+        alias_type: "official",
+      },
+    ]);
+    answer.groups.national_teams = group([
+      {
+        kind: "national_team",
+        id: 3367,
+        label: "Spain",
+        sublabel: "Spain",
+        matched: "España",
+        alias_type: "localized",
+      },
+      {
+        kind: "national_team",
+        id: 8391,
+        label: "Spain U17",
+        sublabel: "Spain",
+        matched: "España Sub-17",
+        alias_type: "localized",
+      },
+    ]);
+    const entries = entriesOfV2(answer, { profiles: false });
+    expect(entries.map((e) => e.label).slice(0, 3)).toEqual(["Spain", "Real Espana", "Spain U17"]);
+    expect(leadOf(entries)).toBe("national_team");
+    expect(groupHits(entries, leadOf(entries)).map((g) => g.group)[0]).toBe("national_team");
+  });
+
+  test("an answer of 1.0 (no matched name) keeps the maqueta's order", () => {
+    const entries = entriesOfV2(v2(), { profiles: false });
+    expect(leadOf(entries)).toBeUndefined();
+    expect(groupHits(entries, leadOf(entries)).map((g) => g.group)[0]).toBe("team");
   });
 
   test("a player is listed only with the profiles open; coaches, referees and stadiums never are", () => {
