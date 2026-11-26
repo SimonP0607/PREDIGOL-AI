@@ -1,0 +1,11 @@
+[Unit]
+Description=PrediGol: weekly research V2
+
+[Timer]
+# Monday 04:20 Bogotá (09:20 UTC): the hour the worker's own weekly job used; no match is on at that hour.
+OnCalendar=Mon *-*-* 09:20:00 UTC
+Persistent=true
+RandomizedDelaySec=3min
+
+[Install]
+WantedBy=timers.target
