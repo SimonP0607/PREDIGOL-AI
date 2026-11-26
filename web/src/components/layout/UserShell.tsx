@@ -11,7 +11,6 @@ import { FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { accountState } from "@/product/profile/centre";
 import { BrandLogo } from "@/components/brand/Brand";
 import { StatusBarSpace } from "@/components/layout/StatusBarSpace";
 import { DataSourcesProvider } from "@/components/system/DataSources";
@@ -28,7 +27,7 @@ import { BottomBar, TopNav } from "./Bars";
 import { InboxBell } from "@/product/push/InboxBell";
 import { AccountMenu, PreviewBanner } from "./HeaderControls";
 import { SearchButton } from "@/components/system/search/SearchButton";
-import { MoreSheet } from "./MoreSheet";
+import { MoreSheet, useAccountLine } from "./MoreSheet";
 import { UPDATES_PATH } from "./nav";
 import { useMoreItems } from "./useMoreItems";
 import { useNavFlags } from "./useNavFlags";
@@ -65,6 +64,7 @@ export function UserShell({ children }: { children: ReactNode }) {
   const items = useMoreItems();
   const flags = useNavFlags();
   const owner = privateItems(auth.showAdmin, flags);
+  const account = useAccountLine();
   const wide = flags.v2 && flags.news;
   // Novedades holds an entry this reader has not seen (plan UX, B6): a dot on «Más» and on its row
   const unread = useUpdatesUnread();
@@ -111,14 +111,7 @@ export function UserShell({ children }: { children: ReactNode }) {
                     owner={owner}
                     unread={unread ? [UPDATES_PATH] : []}
                     language={{ locale, onChange: (next) => void auth.setLocale(next) }}
-                    account={
-                      auth.user
-                        ? {
-                            name: auth.user.display_name,
-                            state: accountState(auth.showAdmin, auth.user.membership ?? null),
-                          }
-                        : null
-                    }
+                    account={account}
                   />
                   {/* The language left the bar (plan maestro UX/UI 2026, wave 3): it is in «Más» and in Perfil. The
                   bell of Avisos takes this place when the inbox exists; nothing is drawn while it does not. */}

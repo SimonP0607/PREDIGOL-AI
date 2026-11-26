@@ -10,7 +10,7 @@
  * 1024 px) it is a menu under «Más». The list itself (MoreList) takes everything it shows as props, so it renders
  * without a session or a router's state.
  */
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ChevronDown,
@@ -25,7 +25,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { t, type Locale } from "@/lib/i18n";
+import { t, useI18n, type Locale } from "@/lib/i18n";
 import {
   installOrder,
   installPlatform,
@@ -51,7 +51,6 @@ import {
 } from "@/components/ui/sheet";
 import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { useInstallPrompt } from "@/product/push/useInstallPrompt";
-import { accountState } from "@/product/profile/centre";
 import { initialsOf, LanguageRadios, LanguageSwitch } from "./HeaderControls";
 import {
   currentMore,
@@ -346,6 +345,32 @@ export function MoreList({
   );
 }
 
+/**
+ * The account's name and state for the head of «Más» (UX-251). The name is the account's own; the state in words
+ * («Administrador», «Activa», «En prueba hasta…») is written by `accountState`, which travels in its own chunk, loaded
+ * once a session exists, so the first visit's JS does not grow (UX-139).
+ */
+export function useAccountLine(): { name: string; state: string } | null {
+  const auth = useAuth();
+  const { locale } = useI18n();
+  const user = auth.user;
+  const admin = auth.showAdmin;
+  const membership = user?.membership ?? null;
+  const [state, setState] = useState("");
+  const signedIn = user !== null && user !== undefined;
+  useEffect(() => {
+    if (!signedIn) return;
+    let current = true;
+    void import("@/product/profile/centre").then(({ accountState }) => {
+      if (current) setState(accountState(admin, membership));
+    });
+    return () => {
+      current = false;
+    };
+  }, [signedIn, admin, membership, locale]);
+  return user ? { name: user.display_name, state } : null;
+}
+
 export function MoreSheet({
   open,
   onOpenChange,
@@ -364,12 +389,7 @@ export function MoreSheet({
   const owner = privateItems(auth.showAdmin, flags);
   const unread = useUpdatesUnread();
   const contact = useQuery({ ...live.supportContact, enabled: open });
-  const account = auth.user
-    ? {
-        name: auth.user.display_name,
-        state: accountState(auth.showAdmin, auth.user.membership ?? null),
-      }
-    : null;
+  const account = useAccountLine();
   // closed by one of its rows: the reader went on to that page, so the focus does not jump back to the bar
   const picked = useRef(false);
   return (

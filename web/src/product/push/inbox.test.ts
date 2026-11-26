@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { t } from "@/lib/i18n";
 import type { InboxItem } from "@/lib/api/v1/types_inbox";
-import { bellFigure, groupByDay, noticeDay, noticeTarget } from "./inbox";
+import { bellFigure, noticeTarget } from "./inbox";
+import { groupByDay, noticeDay } from "./inboxDays";
 
 describe("«Avisos» (decision 1)", () => {
   test("the bell writes nothing at zero and «9+» beyond nine", () => {
