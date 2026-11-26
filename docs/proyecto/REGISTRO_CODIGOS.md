@@ -590,6 +590,6 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 CI-023 · SEG-003 · UX-248 · BE-114 · FE-011 · OPS-023 · DOC-017
 
-IA-183
+IA-190
 
 (El número de IA va en su propia línea desde el 10-nov-2026: así un PR de IA, que tarda en pasar el CI del backend, no choca con la línea común cada vez que se fusiona un PR de otra área.)
