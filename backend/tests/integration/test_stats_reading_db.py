@@ -59,3 +59,27 @@ def test_a_document_written_after_the_cutoff_is_not_read_and_a_missing_one_says_
     assert rd.read(db, kind="team", entity_id=ids[0], competition_season_id=cs, scope="season", as_of=written).status == "ok"
     gone = rd.read(db, kind="team", entity_id=ids[0], competition_season_id=cs, scope="u20", context="home")
     assert gone.status == "no_document" and gone.readings == ()
+
+
+def test_the_trends_read_equal_the_trends_c13_serves_and_become_facts(db: psycopg.Connection[Any], seed: Seed) -> None:
+    """RP-6.2 on a real season: the trend rows Intelligence reads are those of C-13, the league reference comes with each, a fact keeps its
+    document and the percentile places a team among the peers of the league at the cut-off."""
+    from fbi.stats import facts as sf
+
+    cs, ids = _written(db, seed)
+    at = T0 + timedelta(days=120, hours=1)
+    served = stats_profile.build_team(db, ids[0], season=cs, scope="season", context="all", at=at).entities[0]
+    doc = rd.read(db, kind="team", entity_id=ids[0], competition_season_id=cs, scope="season", context="all", as_of=at)
+    assert doc.status == "ok" and not isinstance(served.team, Missing)
+    served_trends = [] if isinstance(served.team.trends, Missing) else served.team.trends.items
+    assert [t.key for t in doc.trends] == [t.key for t in served_trends] and doc.trends, "the season has trends"
+    for read, sv in zip(doc.trends, served_trends, strict=True):
+        assert (read.hits, read.n, read.pct, read.wilson_low, read.wilson_high) == (sv.hits, sv.n, sv.pct, sv.wilson_low, sv.wilson_high)
+        assert read.league_pct == (None if isinstance(sv.league_pct, Missing) else sv.league_pct)
+    keys = [t.key for t in doc.trends]
+    peers = sf.peers(db, competition_season_id=cs, scope="season", context="all", keys=keys, as_of=at, min_sample=1)
+    assert set(peers) <= set(keys) and all(len(v) <= len(ids) for v in peers.values())
+    facts, left = sf.facts_of(doc, peers=peers, min_sample=1)
+    assert len(facts) + len(left) == len(doc.trends)
+    assert all(x.document_id == doc.document_id and x.league_pct is not None for x in facts)
+    assert sf.peers(db, competition_season_id=cs, scope="season", context="all", keys=keys, as_of=T0, min_sample=1) == {}, "nothing before it was written"
