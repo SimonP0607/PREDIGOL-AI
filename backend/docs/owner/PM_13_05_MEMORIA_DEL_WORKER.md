@@ -84,6 +84,65 @@ Candidatos a mirar primero (por lo que hacen, sin medir todavía): `fixtures_syn
 `elo_refresh` (1,9 millones de filas), `historical_validation` (0,9 millones), `pick_pipeline`, `odds_book_refresh` y el
 análisis de IA (`ai_cycle`, hasta 18 min).
 
+## Decisión del 26-nov-2026 (siete días medidos: 20-nov 05:40 a 26-nov 23:15 UTC, 39.015 ejecuciones de 73 trabajos)
+
+Lectura solo de `raw.ingestion_runs.params->'_mem'`, del cgroup del worker y de `/proc/<pid>/smaps` (sin tocar nada). Con `overlap`
+medio de 10 a 25 tramos abiertos a la vez, la cifra de un tramo es una cota; por eso se cruzó con una atribución que reparte cada
+cambio de memoria entre los tramos abiertos en ese intervalo (1/k) y se miró cada vida larga del worker por separado.
+
+**Lo que se vio**
+
+1. El worker no llega a 3 GiB de golpe: sube unos 330 MiB por hora y casi no baja. Suelo entre dos ejecuciones: 1,7 GiB a las 17:00 y
+   3,0 GiB a las 21:00 del 25-nov. Hoy (26-nov) los despliegues lo reinician cada una o dos horas (nueve reinicios), y por eso no pasó de
+   1,9 GiB salvo picos de 3,0 GiB a las 11:30 y 12:00.
+2. Lo que se queda: `pick_pipeline` (850 pasos, cada 12 a 30 minutos) se lleva del 84 % al 139 % del crecimiento neto en las cuatro vidas largas
+   del worker (de 15 a 67 MiB que quedan retenidos por paso; 331 de 850 pasos dejaron ≥ 100 MiB). `stats_documents`, `research_monitor`
+   y `elo_refresh` le siguen. Ningún caché de módulo explica el crecimiento (las `lru_cache` son de 1 a 4.096 entradas pequeñas y no hay
+   diccionarios globales grandes).
+3. Los picos: `stats_documents` (12 pasos el 26-nov, 26 a 35 minutos cada uno, +470 a +1.930 MiB, hasta 2,15 GiB sobre su arranque;
+   al menos cinco pararon en el tope de 35 minutos (`stopped_reason = tiempo_maximo`)). Corría a los 12 minutos de **cada** arranque del worker (nueve al día por los despliegues).
+   Le siguen `ai_cycle` (57 pasos, hasta +1,85 GiB), `research_monitor` (7 pasos, hasta +2,26 GiB; +1,1 GiB retenido en uno),
+   `fixtures_sync` (+1,04 GiB) y `elo_refresh` (+0,66 GiB).
+4. `/proc/<pid>/smaps` del worker a las 23:19 UTC, 58 minutos después de un reinicio: 1,15 GiB residentes y 0,19 GiB en swap; siete
+   arenas de 64 MiB de `malloc` (231 MiB residentes y 159 MiB en swap) y 303 mapeos anónimos con 1.047 MiB; 24 hilos; el entorno del
+   worker no fija `MALLOC_ARENA_MAX`, el de los procesos de la matriz sí (2).
+
+**Qué sale a proceso aparte, por la regla de la guía (> 200 MiB de máximo histórico en ≥ 3 ejecuciones o > 500 MiB sobre su arranque)**
+
+| Trabajo | Ejecuciones ≥ 500 MiB sobre su arranque | Pico máx. sobre su arranque | Decisión |
+| --- | --- | --- | --- |
+| `stats_documents` | 10 de 10 | 2.155 MiB | Primero: ya no se repite a cada arranque (este PR). El pase de las 07:20 UTC pasa a proceso aparte, por temporadas, en el siguiente PR (hoy un proceso aparte no baja el pico del contenedor, solo evita que el worker lo conserve). |
+| `research_monitor` | 5 de 7 | 2.256 MiB | Segundo: una vez al día; script aparte con su tope, como `availability_refresh`. Siguiente PR. |
+| `ai_cycle` | 5 de 57 | 1.851 MiB | Zona de Intelligence: se avisa con estos datos; no se toca. |
+| `pick_pipeline` | 91 de 850 | 1.465 MiB | **Se queda**: corre cada 12 a 30 minutos y tras cada captura; el cambio de este PR (devolver memoria tras cada paso pesado) es lo que se mide. Si el suelo sigue subiendo tras el cambio, se procesa por lotes de partidos. |
+
+**Qué cambia en este PR (OPS-026)**
+
+* `stats_documents`: el pase de «puesta al día» tras un arranque solo se programa si ningún pase completo terminó en las últimas 20
+  horas (`analytics.stat_runs.stopped_reason IS NULL`). El de las 07:20 UTC no cambia.
+* `fbi.ops.memrelease` (interruptor `FBI_WORKER_MEMTRIM`, encendido por omisión): al arrancar, glibc se limita a dos arenas; tras una
+  ejecución pesada (sube el proceso ≥ 50 MiB o pasa ≥ 150 MiB sobre su arranque), como mucho cada cinco minutos, `gc.collect()` y
+  `malloc_trim(0)`. Lo hecho queda en `params._mem.release` de la fila de esa ejecución: `rss_before_mib`, `rss_after_mib`, `freed_mib`,
+  `freed_by_trim_mib`, `blocks_before`/`blocks_after` (bloques vivos de Python), `collected` y `seconds`.
+
+**Cómo se lee el resultado**
+
+```
+SELECT job_type, count(*) n, round(avg((params->'_mem'->'release'->>'freed_mib')::numeric),1) liberado_medio,
+       round(max((params->'_mem'->'release'->>'freed_mib')::numeric),1) liberado_max,
+       round(avg((params->'_mem'->'release'->>'seconds')::numeric),2) segundos_medio,
+       round(avg(((params->'_mem'->'release'->>'blocks_before')::bigint - (params->'_mem'->'release'->>'blocks_after')::bigint)),0) bloques_menos
+  FROM raw.ingestion_runs WHERE params->'_mem' ? 'release' AND started_at >= '<D0>' GROUP BY 1 ORDER BY liberado_medio DESC
+```
+
+* Si `freed_mib` es grande y los bloques de Python no bajan, lo retenido era memoria de `malloc` fragmentada: el cambio sirve y se queda.
+* Si `freed_mib` es ≈ 0 y los bloques no bajan, el trabajo guarda datos reales: se procesa por lotes (o sale a proceso aparte).
+* Si `seconds` pasa de 1 s de media, se quita el `gc.collect()` (queda solo el `malloc_trim`).
+* Antes/después del suelo: el mínimo de `rss_start_mib` de `pick_pipeline` por vida del worker (antes: 1,7 → 3,0 GiB en 4 horas el 25-nov).
+
+**Vuelta atrás de este PR**: `FBI_WORKER_MEMTRIM=0` y `predigolctl up` (devuelve el worker a su comportamiento anterior, salvo el pase de
+`stats_documents` tras un arranque, que se retira con un `revert`).
+
 ## Vuelta atrás
 
 `FBI_WORKER_MEMWATCH=0` en `/etc/predigol/app.env` y `predigolctl up`: el worker deja de medir. Las claves `_mem` ya escritas se
