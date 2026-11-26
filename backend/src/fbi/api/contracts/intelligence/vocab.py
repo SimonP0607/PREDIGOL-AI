@@ -32,6 +32,14 @@ SettlementResult = Literal["pending", "win", "loss", "push", "void", "half_win",
 ConfirmationLevel = Literal["oficial", "dos_origenes", "declaracion", "un_medio", "rumor"]
 """How confirmed a fact is (AD-C07, AD-G03). Syndication does not raise the level."""
 
+FactCategory = Literal["hecho_confirmado", "informacion_probable", "rumor", "interpretacion_tactica", "hipotesis"]
+"""The five categories of a context fact (plan RP-4.1, ``fbi.ai.factor_schema``): given by code from the state of the fact; a text and the registry
+of factors write the last two, never evidence."""
+
+FigureBase = Literal["raw", "calibrated_no_market", "calibrated_with_market"]
+"""What a stated figure rests on (plan RP-2.1, ``fbi.forecasting.figure_base``): the model's own number, a champion that corrects the model alone, or a
+champion that also reads the market's price. The market's own number is labelled by its own field (``implied``), never by this vocabulary."""
+
 StoryWarning = Literal["contradiccion", "desactualizada"]
 """Two notices a story can carry without being a level of confirmation."""
 
@@ -78,6 +86,8 @@ VOCABULARIES: Final[dict[str, tuple[str, ...]]] = {
     "evaluation": get_args(EvaluationStep),
     "settlement_result": get_args(SettlementResult),
     "confirmation_level": get_args(ConfirmationLevel),
+    "fact_category": get_args(FactCategory),
+    "figure_base": get_args(FigureBase),
     "story_warning": get_args(StoryWarning),
     "validation_verdict": get_args(ValidationVerdict),
     "market_state": get_args(MarketState),

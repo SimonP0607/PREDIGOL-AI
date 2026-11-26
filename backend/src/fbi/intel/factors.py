@@ -43,8 +43,18 @@ VERSION: Final = "factors-v1"
 """The shape of the packet block (``block``)."""
 
 DESCRIPTIVE: Final = "DESCRIPTIVE"
+TESTED_NO_EFFECT: Final = "TESTED_NO_EFFECT"
+TESTED_EFFECT: Final = "TESTED_EFFECT"
 VALIDATED: Final = "VALIDATED"
-STATUSES: Final = (DESCRIPTIVE, VALIDATED)
+STATUSES: Final = (DESCRIPTIVE, TESTED_NO_EFFECT, TESTED_EFFECT, VALIDATED)
+MEASURED: Final = (TESTED_NO_EFFECT, TESTED_EFFECT)
+"""The two states an experiment's measurement writes. Neither is a permission."""
+
+
+def usable_as_signal(status: str | None) -> bool:
+    """Whether a text, a decision or a model may rest on a factor in this state: only a validation, which a person took with an experiment.
+    A factor that is measured but not validated (with or without effect), descriptive, unknown or unread is not usable: the safe side of every doubt."""
+    return status == VALIDATED
 
 H2H: Final = h2h.FACTOR
 SCENARIOS: Final = scenarios.FACTOR
@@ -214,6 +224,17 @@ def known(key: str) -> Factor:
         raise LookupError(f"{key!r} is not a context factor; the registry knows {', '.join(sorted(BY_KEY))}") from None
 
 
+def known_any(key: str) -> Factor:
+    """A factor of the catalogue, or one of the typed facts of ``fbi.intel.factor_block`` (they hold a status in the registry but are not a block of the packet,
+    so the packet's ``factors`` entry lists the catalogue only)."""
+    from fbi.intel import factor_block
+
+    for f in factor_block.BLOCK:
+        if f.key == key:
+            return f
+    return known(key)
+
+
 def check_reason(reason: str) -> str:
     reason = reason.strip()
     if len(reason) < MIN_REASON:
@@ -251,15 +272,15 @@ def _lock(conn: psycopg.Connection[Any]) -> None:
         cur.execute("SELECT pg_advisory_xact_lock(hashtext('intel.context_factors'))")
 
 
-def _insert(conn: psycopg.Connection[Any], factor: Factor, status: str, *, who: str, reason: str, evidence: dict[str, Any],
+def _insert(conn: psycopg.Connection[Any], factor: Factor, status: str, *, who: str | None, reason: str, evidence: dict[str, Any],
             previous: Decision | None, at: datetime | None) -> Decision:
     when = at or now()
     if previous is not None and when < previous.decided_at:
         raise ValueError(f"a decision cannot be dated before the one it follows ({previous.decided_at.isoformat()})")
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("INSERT INTO intel.context_factors (factor, version, status, decided_at, decided_by, who, reason, evidence, "
-                    f"previous_id) VALUES (%s, %s, %s, %s, 'owner', %s, %s, %s, %s) RETURNING {_COLUMNS}",
-                    (factor.key, factor.version, status, when, who, reason,
+                    f"previous_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING {_COLUMNS}",
+                    (factor.key, factor.version, status, when, "system" if who is None else "owner", who, reason,
                      Jsonb({"factor": factor.key, "version": factor.version} | evidence), None if previous is None else previous.id))
         row = cur.fetchone()
     assert row is not None
@@ -271,18 +292,20 @@ def promote(conn: psycopg.Connection[Any], key: str, *, experiment: str, result:
     """A person validates a factor at the version in force, citing the experiment and its result. Validating what is already
     validated by the same experiment writes nothing; by another experiment, it is a new decision (a re-validation). The caller
     commits."""
-    factor = known(key)
+    factor = known_any(key)
     reason, who, evidence = check_reason(reason), check_who(who), check_evidence(experiment, result)
     _lock(conn)
     current = newest(conn, factor.key, factor.version)
     if current is not None and current.status == VALIDATED and current.experiment == evidence["experiment"]:
         return Change(current, False)
+    if current is not None and current.status == TESTED_NO_EFFECT and current.experiment == evidence["experiment"]:
+        raise PermissionError(f"{factor.key} ({factor.version}) was measured with no effect by {evidence['experiment']!r}: a validation cites another experiment")
     return Change(_insert(conn, factor, VALIDATED, who=who, reason=reason, evidence=evidence, previous=current, at=at), True)
 
 
 def retire(conn: psycopg.Connection[Any], key: str, *, reason: str, who: str, at: datetime | None = None) -> Change:
     """A person takes a validation back: the factor is DESCRIPTIVE again. Refuses a factor that is not validated. The caller commits."""
-    factor = known(key)
+    factor = known_any(key)
     reason, who = check_reason(reason), check_who(who)
     _lock(conn)
     current = newest(conn, factor.key, factor.version)
@@ -290,3 +313,22 @@ def retire(conn: psycopg.Connection[Any], key: str, *, reason: str, who: str, at
         raise PermissionError(f"{factor.key} ({factor.version}) is not validated: there is nothing to take back")
     evidence = {"retired_decision": current.id, "retired_experiment": current.experiment}
     return Change(_insert(conn, factor, DESCRIPTIVE, who=who, reason=reason, evidence=evidence, previous=current, at=at), True)
+
+
+def record_test(conn: psycopg.Connection[Any], key: str, *, effect: bool, experiment: str, result: Mapping[str, Any], reason: str,
+                who: str | None = None, at: datetime | None = None) -> Change:
+    """An experiment's measurement of a factor at the version in force: ``effect`` says whether it showed one. It cites the experiment and its result as a
+    validation does, and the system may write it (``who`` None): measuring is not deciding, and neither state lets anything use the factor. The same experiment
+    recorded twice writes nothing; a factor already VALIDATED by a person is never moved by a measurement (retire it first). The caller commits."""
+    factor = known_any(key)
+    state = TESTED_EFFECT if effect else TESTED_NO_EFFECT
+    reason, evidence = check_reason(reason), check_evidence(experiment, result)
+    if who is not None:
+        who = check_who(who)
+    _lock(conn)
+    current = newest(conn, factor.key, factor.version)
+    if current is not None and current.status == VALIDATED:
+        raise PermissionError(f"{factor.key} ({factor.version}) is validated by {current.who}: a measurement does not move a decision; retire it first")
+    if current is not None and current.status == state and current.experiment == evidence["experiment"]:
+        return Change(current, False)
+    return Change(_insert(conn, factor, state, who=who, reason=reason, evidence=evidence, previous=current, at=at), True)

@@ -40,7 +40,8 @@ SHEET: dict[tuple[str, str], dict[str, float]] = {
     ("BTTS", "0"): {"Yes": 0.57, "No": 0.43},
 }
 COLUMNS = ("market_key, selection, line, family, model_name, model_version_id, data_cutoff_ts, p_model, p, p_lo, p_hi, calibration, "
-           "calibrator_id, p_market_used, market_as_of, basis, known_at, version, code_version")
+           "calibrator_id, p_market_used, market_as_of, basis, known_at, version, code_version, figure_label, cal_method, cal_intercept, "
+           "cal_w_model, cal_w_market")
 
 
 class World:
@@ -658,3 +659,61 @@ def test_the_pass_can_stop_writing_the_forecast_without_a_deploy(
     monkeypatch.setenv("FBI_MATCH_FORECAST", "1")
     on = pipeline.run_pipeline(conn, at=now + timedelta(minutes=30), code_version="test", apply=True)
     assert on.match_forecasts is not None and on.match_forecasts.rows_written == 7 and len(world.stored(fid)) == 7
+
+
+# ── what the stated figure rests on (RP-2.1, migration 0181) ─────────────────────────────────────────────────────
+
+def test_a_stored_figure_says_what_it_rests_on_and_the_weights_the_calibrator_gave_each_input(db: psycopg.Connection[Any], world: World) -> None:
+    fid = world.fixture()
+    for model in ("poisson", "dixon_coles"):
+        world.predict_all(fid, model)
+    world.champion("OU", "dixon_coles", "logit2", {"a": 0.1, "b": 0.5, "c": 0.7})
+    world.consensus(fid, "OU", "2.5", {"Over": 0.55, "Under": 0.45}, as_of=AT - timedelta(minutes=40))
+    world.write(fid)
+    totals = world.stored(fid, "OU")
+    assert {(r["figure_label"], r["cal_method"]) for r in totals} == {("calibrated_with_market", "logit2")}
+    assert {(float(r["cal_intercept"]), float(r["cal_w_model"]), float(r["cal_w_market"])) for r in totals} == {(0.1, 0.5, 0.7)}
+    for market in ("1X2", "BTTS"):  # no champion: the model's own number, said so, with no weights to invent
+        assert {(r["figure_label"], r["cal_method"], r["cal_intercept"], r["cal_w_model"], r["cal_w_market"])
+                for r in world.stored(fid, market)} == {("raw", None, None, None, None)}
+
+
+def test_a_champion_that_leaves_the_market_out_is_labelled_so_and_weighs_it_zero(db: psycopg.Connection[Any], world: World) -> None:
+    fid = world.fixture()
+    world.predict_all(fid, "dixon_coles", only=("OU",))
+    world.champion("OU", "dixon_coles", "platt", {"a": -0.1, "b": 0.8})
+    world.write(fid)
+    assert {(r["figure_label"], r["cal_method"], float(r["cal_intercept"]), float(r["cal_w_model"]), float(r["cal_w_market"]))
+            for r in world.stored(fid, "OU")} == {("calibrated_no_market", "platt", -0.1, 0.8, 0.0)}
+
+
+def test_the_label_must_agree_with_what_the_row_already_says_and_a_row_without_one_is_still_a_row(db: psycopg.Connection[Any],
+                                                                                              world: World) -> None:
+    fid = world.fixture()
+    calibrator = world.champion("OU", "dixon_coles", "platt", {"a": 0.0, "b": 1.0})
+    calibrated = {"calibration": "CALIBRATED", "calibrator_id": calibrator, "basis": "champion"}
+    weights = {"cal_intercept": Decimal("0"), "cal_w_model": Decimal("1"), "cal_w_market": Decimal("0")}
+    with must_be_accepted(db) as cur:
+        _insert(cur, _row(world, fid))  # written before the label: nothing says anything and nothing is refused
+        _insert(cur, _row(world, fid, selection="Under", p_model=Decimal("0.38"), p=Decimal("0.38"), p_lo=None, p_hi=None, figure_label="raw"))
+        _insert(cur, _row(world, fid, known_at=AT + timedelta(hours=1), figure_label="calibrated_no_market", cal_method="platt", **calibrated,
+                          **weights))
+    refused: dict[str, tuple[dict[str, Any], str]] = {
+        "a label nobody reads": ({"figure_label": "maybe"}, "match_forecasts_figure_label_values"),
+        "a method nobody reads": ({"figure_label": "calibrated_no_market", "cal_method": "magic", **calibrated, **weights},
+                                  "match_forecasts_cal_method_values"),
+        "raw on a calibrated row": ({"figure_label": "raw", **calibrated}, "match_forecasts_label_is_coherent"),
+        "calibrated on an uncalibrated row": ({"figure_label": "calibrated_no_market", "cal_method": "platt", **weights},
+                                              "match_forecasts_label_is_coherent"),
+        "calibrated with no method": ({"figure_label": "calibrated_no_market", **calibrated, **weights}, "match_forecasts_label_is_coherent"),
+        "a method with no weights": ({"figure_label": "calibrated_no_market", "cal_method": "platt", **calibrated},
+                                     "match_forecasts_label_is_coherent"),
+        "with market for a method that does not read it": ({"figure_label": "calibrated_with_market", "cal_method": "platt", **calibrated,
+                                                            **weights}, "match_forecasts_label_is_coherent"),
+        "no market for a method that reads it": ({"figure_label": "calibrated_no_market", "cal_method": "logit2", **calibrated, **weights},
+                                                 "match_forecasts_label_is_coherent"),
+    }
+    for what, (over, constraint) in refused.items():
+        with must_be_rejected_saying(db, constraint) as cur:
+            _insert(cur, _row(world, fid, known_at=AT + timedelta(hours=2), **over))
+        _ = what

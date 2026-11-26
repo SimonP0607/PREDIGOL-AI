@@ -188,8 +188,9 @@ def test_wherever_the_filter_is_the_code_that_answers_it_is_too() -> None:
 def test_only_the_extractor_of_research_v2_writes_a_subject_type() -> None:
     """v1's collectors build ``EvidenceIn`` without a subject: its rows are what they always were."""
     writers = sorted(str(p.relative_to(BACKEND)) for p in SOURCES if "subject_type=" in p.read_text())
-    assert writers == ["src/fbi/ai/extract_v2.py"], \
-        "``EvidenceIn(subject_type=...)`` is research v2's; ``fbi.ai.evidence`` only declares the field and stores what it is given"
+    assert writers == ["src/fbi/ai/calendar_facts.py", "src/fbi/ai/extract_v2.py", "src/fbi/ai/stakes_facts.py"], \
+        ("``EvidenceIn(subject_type=...)`` is research v2's and, under the one schema of a context fact, the calculated «what is at stake» and schedule "
+         "(RP-4.2 and RP-4.3, own calculation, off by default); ``fbi.ai.evidence`` only declares the field and stores what it is given")
 
 
 @pytest.mark.parametrize("file", ["src/fbi/ai/collectors.py", "src/fbi/ai/research.py", "src/fbi/ai/cycle.py"])

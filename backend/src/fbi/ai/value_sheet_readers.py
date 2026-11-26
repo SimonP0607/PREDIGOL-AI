@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 import psycopg
+from psycopg.rows import dict_row
 
 from fbi.ai.gates import typed_visible
 from fbi.ai.value_sheet import Counts
@@ -33,6 +34,13 @@ SELECT fixture_id, count(*) AS facts, count(*) FILTER (WHERE status = 'CONFIRMED
    AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
  GROUP BY fixture_id
 """
+FACT_ROWS_SQL = """
+SELECT kind, origin, status, source_tier, fact_schema, side, fresh_until IS NOT NULL AS has_validity, published_at IS NOT NULL AS has_date,
+       subject_type IS NOT NULL AS has_entity, (source_name IS NOT NULL AND btrim(source_name) <> '') AS has_source, count(*) AS n
+  FROM ai.evidence
+ WHERE (subject_type IS NULL OR %(typed)s) AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
+ GROUP BY kind, origin, status, source_tier, fact_schema, side, has_validity, has_date, has_entity, has_source
+"""
 CHRONICLES_SQL = """
 SELECT count(*) FILTER (WHERE route <> 'none') AS written,
        count(*) FILTER (WHERE status IN ('ok', 'partial')) AS valid
@@ -50,6 +58,20 @@ def facts_by_fixture(
     with conn.cursor() as cur:
         cur.execute(FACTS_BY_FIXTURE_SQL, params)
         return {int(r[0]): (int(r[1]), int(r[2])) for r in cur.fetchall()}
+
+
+def fact_rows(
+    conn: psycopg.Connection[Any], *, since: datetime, until: datetime, typed: bool | None = None
+) -> list[dict[str, Any]]:
+    """The facts of ``[since, until)`` grouped by what the schema of a context fact looks at (RP-4.1, ``fbi.ai.factor_counts``): kind, origin,
+    state, tier, the mark of the schema, the side and which of the attributes the row has, with how many. Research v2's claims count only while
+    they are visible, like every reader of ``ai.evidence`` that is not its own - unless the caller says ``typed=True``: a context fact is a typed
+    claim by nature (its entity is its ``subject``), so the owner's measure of the schema (``scripts/ia_context_facts.py``) counts them whatever the
+    gate says. It counts; nothing it reads reaches a packet, a decision or a pick."""
+    params = {"since": since, "until": until, "typed": typed_visible(conn) if typed is None else typed}
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(FACT_ROWS_SQL, params)
+        return list(cur.fetchall())
 
 
 def counts(conn: psycopg.Connection[Any], *, since: datetime, until: datetime) -> Counts:
@@ -84,7 +106,9 @@ __all__ = [
     "CHRONICLES_SQL",
     "FACTS_BY_FIXTURE_SQL",
     "FACTS_SQL",
+    "FACT_ROWS_SQL",
     "FIXTURES_SQL",
     "counts",
+    "fact_rows",
     "facts_by_fixture",
 ]

@@ -1722,7 +1722,7 @@
    ]
   },
   "C-01": {
-   "version": "2.0.0",
+   "version": "2.1.0",
    "public": [
     "$ :: object",
     "$.availability",
@@ -11300,6 +11300,15 @@
     "$.sources|AnalysisSourcesPrivate.facts.items[].assertion|Missing.sample|integer :: integer",
     "$.sources|AnalysisSourcesPrivate.facts.items[].assertion|Missing.sample|null :: null",
     "$.sources|AnalysisSourcesPrivate.facts.items[].assertion|string :: string",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category :: one of null, string",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category|null :: null",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category|string :: string",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category|string = \"hecho_confirmado\"",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category|string = \"hipotesis\"",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category|string = \"informacion_probable\"",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category|string = \"interpretacion_tactica\"",
+    "$.sources|AnalysisSourcesPrivate.facts.items[].category|string = \"rumor\"",
     "$.sources|AnalysisSourcesPrivate.facts.items[].contributed_es",
     "$.sources|AnalysisSourcesPrivate.facts.items[].contributed_es !always",
     "$.sources|AnalysisSourcesPrivate.facts.items[].contributed_es :: string",
@@ -44675,7 +44684,7 @@
    ]
   },
   "C-07": {
-   "version": "1.0.0",
+   "version": "1.1.0",
    "public": [
     "$ :: object",
     "$.contract",
@@ -44808,6 +44817,15 @@
     "$.facts.items !always",
     "$.facts.items :: array",
     "$.facts.items[] :: object",
+    "$.facts.items[].category",
+    "$.facts.items[].category :: one of null, string",
+    "$.facts.items[].category|null :: null",
+    "$.facts.items[].category|string :: string",
+    "$.facts.items[].category|string = \"hecho_confirmado\"",
+    "$.facts.items[].category|string = \"hipotesis\"",
+    "$.facts.items[].category|string = \"informacion_probable\"",
+    "$.facts.items[].category|string = \"interpretacion_tactica\"",
+    "$.facts.items[].category|string = \"rumor\"",
     "$.facts.items[].contributed_es",
     "$.facts.items[].contributed_es !always",
     "$.facts.items[].contributed_es :: string",
@@ -45461,6 +45479,15 @@
     "$.facts.items[].assertion|Missing.sample|integer :: integer",
     "$.facts.items[].assertion|Missing.sample|null :: null",
     "$.facts.items[].assertion|string :: string",
+    "$.facts.items[].category",
+    "$.facts.items[].category :: one of null, string",
+    "$.facts.items[].category|null :: null",
+    "$.facts.items[].category|string :: string",
+    "$.facts.items[].category|string = \"hecho_confirmado\"",
+    "$.facts.items[].category|string = \"hipotesis\"",
+    "$.facts.items[].category|string = \"informacion_probable\"",
+    "$.facts.items[].category|string = \"interpretacion_tactica\"",
+    "$.facts.items[].category|string = \"rumor\"",
     "$.facts.items[].contributed_es",
     "$.facts.items[].contributed_es !always",
     "$.facts.items[].contributed_es :: string",
@@ -55483,7 +55510,7 @@
    ]
   },
   "C-14": {
-   "version": "1.1.0",
+   "version": "1.2.0",
    "public": [
     "$ :: object",
     "$.away",
@@ -55685,6 +55712,13 @@
     "$.markets.items[].selections[].bookmaker",
     "$.markets.items[].selections[].bookmaker !always",
     "$.markets.items[].selections[].bookmaker :: string",
+    "$.markets.items[].selections[].figure_base",
+    "$.markets.items[].selections[].figure_base :: one of null, string",
+    "$.markets.items[].selections[].figure_base|null :: null",
+    "$.markets.items[].selections[].figure_base|string :: string",
+    "$.markets.items[].selections[].figure_base|string = \"calibrated_no_market\"",
+    "$.markets.items[].selections[].figure_base|string = \"calibrated_with_market\"",
+    "$.markets.items[].selections[].figure_base|string = \"raw\"",
     "$.markets.items[].selections[].history",
     "$.markets.items[].selections[].history !always",
     "$.markets.items[].selections[].history :: one of HistoryMark, Missing",
@@ -56276,6 +56310,13 @@
     "$.markets.items[].selections[].bookmaker",
     "$.markets.items[].selections[].bookmaker !always",
     "$.markets.items[].selections[].bookmaker :: string",
+    "$.markets.items[].selections[].figure_base",
+    "$.markets.items[].selections[].figure_base :: one of null, string",
+    "$.markets.items[].selections[].figure_base|null :: null",
+    "$.markets.items[].selections[].figure_base|string :: string",
+    "$.markets.items[].selections[].figure_base|string = \"calibrated_no_market\"",
+    "$.markets.items[].selections[].figure_base|string = \"calibrated_with_market\"",
+    "$.markets.items[].selections[].figure_base|string = \"raw\"",
     "$.markets.items[].selections[].history",
     "$.markets.items[].selections[].history !always",
     "$.markets.items[].selections[].history :: one of HistoryMark, Missing",
@@ -56745,6 +56786,13 @@
     "$.markets.items[].selections[].selection",
     "$.markets.items[].selections[].selection !always",
     "$.markets.items[].selections[].selection :: string",
+    "$.markets.items[].selections[].shadow_base",
+    "$.markets.items[].selections[].shadow_base :: one of null, string",
+    "$.markets.items[].selections[].shadow_base|null :: null",
+    "$.markets.items[].selections[].shadow_base|string :: string",
+    "$.markets.items[].selections[].shadow_base|string = \"calibrated_no_market\"",
+    "$.markets.items[].selections[].shadow_base|string = \"calibrated_with_market\"",
+    "$.markets.items[].selections[].shadow_base|string = \"raw\"",
     "$.markets.items[].state",
     "$.markets.items[].state !always",
     "$.markets.items[].state :: string",
@@ -60356,6 +60404,14 @@
   {
    "date": "2026-11-26",
    "reason": "C-11 1.3.0 flow.panel (RP-1.2) sobre C-11 1.2.0 fusionado"
+  },
+  {
+   "date": "2026-11-26",
+   "reason": "IA-191: C-07 1.1.0 (categoría opcional del hecho) y C-01 2.1.0 que lo incorpora"
+  },
+  {
+   "date": "2026-11-26",
+   "reason": "IA-193: C-14 1.2.0 añade figure_base y shadow_base (RP-2.1)"
   }
  ]
 }

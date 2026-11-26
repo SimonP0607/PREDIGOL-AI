@@ -163,7 +163,7 @@
    "sin_pruebas": 36
   },
   "decision_v1": {
-   "archivos": 121,
+   "archivos": 122,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/compare_probabilities.py",
@@ -216,6 +216,7 @@
     "backend/src/fbi/lifecycle/__init__.py",
     "backend/src/fbi/lifecycle/derive.py",
     "backend/src/fbi/lifecycle/store.py",
+    "backend/src/fbi/market/closing_consensus.py",
     "backend/src/fbi/narrator/facts.py",
     "backend/src/fbi/observability/drift.py",
     "backend/src/fbi/picks/pipeline.py",
@@ -254,6 +255,7 @@
     "intel": 4,
     "knowledge": 1,
     "lifecycle": 3,
+    "market": 1,
     "narrator": 1,
     "observability": 1,
     "picks": 1,
@@ -268,14 +270,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 46,
+    "módulo": 47,
     "prueba": 52,
     "ruta": 10,
     "script": 9,
     "trabajo": 3,
     "web": 1
    },
-   "sin_pruebas": 69
+   "sin_pruebas": 70
   },
   "decision_v2": {
    "archivos": 98,
@@ -413,7 +415,7 @@
    "sin_pruebas": 14
   },
   "evidence": {
-   "archivos": 175,
+   "archivos": 181,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -426,6 +428,7 @@
     "backend/src/fbi/ai/battery/extractor.py",
     "backend/src/fbi/ai/battery/reviewer.py",
     "backend/src/fbi/ai/cache.py",
+    "backend/src/fbi/ai/calendar_facts.py",
     "backend/src/fbi/ai/collectors.py",
     "backend/src/fbi/ai/commands.py",
     "backend/src/fbi/ai/config.py",
@@ -455,6 +458,7 @@
     "backend/src/fbi/ai/quarantine.py",
     "backend/src/fbi/ai/research.py",
     "backend/src/fbi/ai/source_policy.py",
+    "backend/src/fbi/ai/stakes_facts.py",
     "backend/src/fbi/ai/team_claims.py",
     "backend/src/fbi/ai/text.py",
     "backend/src/fbi/ai/unified_readers.py",
@@ -497,6 +501,7 @@
     "backend/src/fbi/factlinks/views.py",
     "backend/src/fbi/ingestion/absence_timing.py",
     "backend/src/fbi/intel/decision.py",
+    "backend/src/fbi/intel/factor_block.py",
     "backend/src/fbi/intel/leakage.py",
     "backend/src/fbi/intel/leakage_v10.py",
     "backend/src/fbi/intel/match_review.py",
@@ -527,7 +532,7 @@
    ],
    "etiqueta": "almacén de evidencia: ai.evidence",
    "paquetes": {
-    "ai": 40,
+    "ai": 42,
     "api": 17,
     "chronicle": 4,
     "decision": 1,
@@ -537,7 +542,7 @@
     "evidence": 4,
     "factlinks": 3,
     "ingestion": 1,
-    "intel": 5,
+    "intel": 6,
     "narrative": 1,
     "news": 7,
     "observability": 1,
@@ -551,14 +556,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 79,
-    "prueba": 71,
+    "módulo": 82,
+    "prueba": 74,
     "ruta": 17,
     "script": 5,
     "trabajo": 2,
     "web": 1
    },
-   "sin_pruebas": 104
+   "sin_pruebas": 107
   },
   "extract_v1": {
    "archivos": 23,
@@ -666,7 +671,7 @@
    "sin_pruebas": 19
   },
   "forecast_v1": {
-   "archivos": 68,
+   "archivos": 69,
    "consumidores": [
     "backend/scripts/compare_probabilities.py",
     "backend/scripts/ia_decision_v2.py",
@@ -723,15 +728,16 @@
    },
    "por_clase": {
     "módulo": 18,
-    "prueba": 33,
+    "prueba": 34,
     "ruta": 10,
     "script": 7
    },
    "sin_pruebas": 35
   },
   "forecast_v2": {
-   "archivos": 33,
+   "archivos": 36,
    "consumidores": [
+    "backend/scripts/ia_coherence_audit.py",
     "backend/scripts/ia_decision_v2.py",
     "backend/scripts/ia_single_figure.py",
     "backend/src/fbi/api/contracts/intelligence/match.py",
@@ -747,6 +753,7 @@
     "backend/src/fbi/decision/engine.py",
     "backend/src/fbi/decision/shadow.py",
     "backend/src/fbi/decision/view.py",
+    "backend/src/fbi/forecasting/battery_audit.py",
     "backend/src/fbi/forecasting/figure_text.py",
     "backend/src/fbi/forecasting/market_reader.py",
     "backend/src/fbi/forecasting/single_figure.py",
@@ -759,17 +766,17 @@
     "api": 5,
     "chronicle": 5,
     "decision": 3,
-    "forecasting": 3,
-    "scripts": 2,
+    "forecasting": 4,
+    "scripts": 3,
     "valuation": 1
    },
    "por_clase": {
-    "módulo": 12,
-    "prueba": 14,
+    "módulo": 13,
+    "prueba": 15,
     "ruta": 5,
-    "script": 2
+    "script": 3
    },
-   "sin_pruebas": 19
+   "sin_pruebas": 21
   },
   "haiku_arm": {
    "archivos": 86,

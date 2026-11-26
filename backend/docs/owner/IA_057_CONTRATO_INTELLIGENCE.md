@@ -64,6 +64,8 @@ La web traduce el texto (ES/EN) y nunca deduce un valor a partir de otros.
 - **Evaluaciones (AD-D06):** `E1` primera lectura, `E2` por hecho nuevo, `E3` alineación oficial, `E4` cierre.
 - **Liquidación (`settle-v4`):** `pending`, `win`, `loss`, `push`, `void`, `half_win`, `half_loss` (la prueba comprueba que son los de `fbi/picks/settlement.py`).
 - **Confirmación (AD-C07, AD-G03):** `oficial`, `dos_origenes`, `declaracion`, `un_medio`, `rumor`. Avisos que no son nivel: `contradiccion`, `desactualizada`.
+- **Categoría de un hecho de contexto (RP-4.1, C-07 1.1.0):** `hecho_confirmado`, `informacion_probable`, `rumor`, `interpretacion_tactica`, `hipotesis`. La da el código a partir del estado del hecho (nunca un modelo); las dos últimas solo las escribe el texto y el registro de factores, nunca una evidencia.
+- **Base de una cifra (RP-2.1, C-14 1.2.0):** `raw` (el número propio del modelo), `calibrated_no_market` (un campeón que corrige solo al modelo: identidad o Platt) y `calibrated_with_market` (un campeón `logit2`, que además lee el precio del mercado). El número del propio mercado no usa este vocabulario: lo da `implied`. Lo da el código a partir del calibrador aplicado; una fila escrita antes del rótulo no lo lleva.
 - **Veredicto de validación (AD-K02):** `VALIDADO`, `NO_VALIDADO`, `INSUFICIENTE`, siempre con `sample` y `needed`. `INSUFICIENTE` exactamente cuando la muestra no llega; con muestra completa, `VALIDADO` o `NO_VALIDADO`.
 - **Estado de mercado (AD-E01):** `evaluable`, `en_calibracion`, `necesita_datos`, `no_ofrecer`.
 - **Estado de capacidad (AD-003):** `construida`, `en_sombra`, `lista_revision`, `autorizada`.

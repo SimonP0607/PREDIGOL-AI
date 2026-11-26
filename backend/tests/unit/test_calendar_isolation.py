@@ -32,6 +32,8 @@ IMPORTS_THE_READER = {
                                  "itself (research/rest_ab.py) takes the numbers and never sees the calendar",
     "scripts/calendar_features.py": "the experiments' command (F4.4): loads the calendars, reports how much of them there is, exports and "
                                     "runs the pre-registered test; it reads and trains nothing production reads",
+    "ai/calendar_facts.py": "the schedule facts of a match (RP-4.3): rest, the fortnight and the next match of each side from the team's whole "
+                                      "calendar as of a moment, said as calculated context facts (off by default; none is an argument of a forecast)",
     "intel/factors.py": "the registry of context factors (F6): the VERSION of the reader, which a validation of rest and congestion is "
                         "about, so that changing the reader sends the factor back to DESCRIPTIVE; it reads that constant and nothing else",
 }

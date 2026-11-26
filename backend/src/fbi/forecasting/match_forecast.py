@@ -159,10 +159,11 @@ SELECT f.fixture_id, f.market_key, f.line, f.selection, f.p, f.model_name, f.mod
 INSERT_SQL = """
 INSERT INTO models.match_forecasts (version, known_at, fixture_id, family, market_key, selection, line, model_name,
        model_version_id, data_cutoff_ts, p_model, p, p_lo, p_hi, p_push, calibration, calibrator_id, p_market_used,
-       market_as_of, basis, input_hash, code_version)
+       market_as_of, basis, input_hash, code_version, figure_label, cal_method, cal_intercept, cal_w_model, cal_w_market)
 VALUES (%(version)s, %(known_at)s, %(fixture_id)s, %(family)s, %(market_key)s, %(selection)s, %(line)s, %(model_name)s,
         %(model_version_id)s, %(data_cutoff_ts)s, %(p_model)s, %(p)s, %(p_lo)s, %(p_hi)s, %(p_push)s, %(calibration)s,
-        %(calibrator_id)s, %(p_market_used)s, %(market_as_of)s, %(basis)s, %(input_hash)s, %(code_version)s)
+        %(calibrator_id)s, %(p_market_used)s, %(market_as_of)s, %(basis)s, %(input_hash)s, %(code_version)s, %(figure_label)s, %(cal_method)s, %(cal_intercept)s, %(cal_w_model)s,
+        %(cal_w_market)s)
 ON CONFLICT ON CONSTRAINT match_forecasts_once DO NOTHING
 """
 
@@ -243,7 +244,8 @@ def store(conn: psycopg.Connection[Any], f: MarketForecast, *, at: datetime, cod
                 "calibration": f.calibration, "calibrator_id": f.calibrator_id,
                 "p_market_used": _q(o.p_market) if f.calibration == CALIBRATED else None,
                 "market_as_of": o.market_as_of if f.calibration == CALIBRATED else None, "basis": f.basis,
-                "input_hash": f.input_hash, "code_version": code_version})
+                "input_hash": f.input_hash, "code_version": code_version, "figure_label": f.base.label, "cal_method": f.base.method,
+                "cal_intercept": _q(f.base.intercept), "cal_w_model": _q(f.base.w_model), "cal_w_market": _q(f.base.w_market)})
             written += max(cur.rowcount, 0)
     return written
 

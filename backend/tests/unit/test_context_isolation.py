@@ -35,6 +35,8 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
                              "left (FACT_NO_OBJECTIVE), to authorise that class of sentence; it runs nothing of the engine",
         "chronicle/review_v2.py": "the factual review of the single chronicle (IA-118) reads the same name (FACT_NO_OBJECTIVE) to check "
                                   "«nothing at stake» against the engine's reading after the match; it runs nothing of the engine",
+        "ai/stakes_facts.py": "what each team plays for as a calculated context fact (RP-4.2): it reads the names of the engine's "
+                                        "own facts (FACT_NO_OBJECTIVE, NOT_CODED) and says what the stored reading proved; it runs nothing of the engine",
     },
     "fbi.intel.scenarios": {
         "ai/packet.py": "the packet: what the match alone does to its table and to its tie, as of its moment",
@@ -55,6 +57,10 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
                                "DESCRIPTIVE, and the two relations it records as DESCRIPTIVE in the registry (it reads the catalogue's keys and blocks "
                                "and the words DESCRIPTIVE and VALIDATED, and nothing else; it never validates)",
         "intel/leakage.py": "the nightly proof: the rule factors_known (it reads the catalogue's keys and blocks and nothing else)",
+        "intel/factor_block.py": "the typed facts of the structured-context block (RP-4.5): their first row in the registry and the coverage of every "
+                                 "factor's status (it writes DESCRIPTIVE rows by the system and reads statuses; it validates nothing)",
+        "intel/factor_residual.py": "the residual test of a factor against the market (RP-4.5): the names of the two measured states its verdict "
+                                    "supports; it reads no model, no forecast and no packet, and writes nothing",
         "familydecisions/decide.py": "the decision of a family (F11, shadow) writes on its record which context factors could explain the family and "
                                      "the standing each had when it decided (it reads each factor's version and the words DESCRIPTIVE and VALIDATED, and "
                                      "nothing else; the state, the score and the stake of the decision are the same with or without them: held by "

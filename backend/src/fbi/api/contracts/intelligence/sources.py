@@ -27,11 +27,13 @@ from fbi.api.contracts.intelligence.base import (
     ItemList,
     Missing,
     UtcDatetime,
+    _absent,
     private,
 )
 from fbi.api.contracts.intelligence.vocab import (
     ConfirmationLevel,
     EvaluationStep,
+    FactCategory,
     FactRelation,
     StoryWarning,
 )
@@ -86,6 +88,9 @@ class UsedFact(DatedFact):
     entity: EntityRef
     team: str | Missing
     level: ConfirmationLevel | Missing
+    category: FactCategory | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.1: the category of the fact (RP-4.1), given by code from its level of confirmation; absent when the level is.")
     warnings: list[StoryWarning]
     relation: FactRelation
     contributed_es: str = Field(min_length=1)
@@ -136,7 +141,7 @@ class AnalysisSources(IntelligenceContract):
     """C-07, public projection."""
 
     CONTRACT_ID: ClassVar[str] = "C-07"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     fixture_id: int = Field(ge=1)
     evaluation: EvaluationStep | Missing

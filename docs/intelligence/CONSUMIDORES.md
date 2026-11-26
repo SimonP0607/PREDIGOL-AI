@@ -6,15 +6,15 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 
 | Candidato | Destino | Archivos | Sin pruebas | Escriben | Rutas | Trabajos | Web | Scripts |
 |---|---|---|---|---|---|---|---|---|
-| decision-v1 (referencia estable) (`decision_v1`) | conservar | 121 | 69 | 0 | 10 | 3 | 1 | 9 |
+| decision-v1 (referencia estable) (`decision_v1`) | conservar | 122 | 70 | 0 | 10 | 3 | 1 | 9 |
 | decision-v2 en sombra (`decision_v2`) | consolidar | 98 | 56 | 1 | 8 | 6 | 0 | 1 |
 | decisiones de familias (decision-fam-v1) (`decision_families`) | consolidar | 69 | 36 | 2 | 7 | 1 | 5 | 1 |
 | ciclo de evaluación E1 a E4 (`eval_cycle`) | consolidar | 21 | 14 | 1 | 4 | 2 | 0 | 0 |
 | ciclo de estados de la selección (`lifecycle`) | consolidar | 23 | 15 | 1 | 4 | 1 | 0 | 1 |
-| forecast-v1 (cifra por modelo) (`forecast_v1`) | consolidar | 68 | 35 | 1 | 10 | 0 | 0 | 7 |
-| forecast-v2 (cifra única) (`forecast_v2`) | conservar | 33 | 19 | 0 | 5 | 0 | 0 | 2 |
+| forecast-v1 (cifra por modelo) (`forecast_v1`) | consolidar | 69 | 35 | 1 | 10 | 0 | 0 | 7 |
+| forecast-v2 (cifra única) (`forecast_v2`) | conservar | 36 | 21 | 0 | 5 | 0 | 0 | 3 |
 | circuito de noticias: news.items (`news_items`) | consolidar | 31 | 20 | 2 | 2 | 1 | 1 | 2 |
-| almacén de evidencia: ai.evidence (`evidence`) | conservar | 175 | 104 | 2 | 17 | 2 | 1 | 5 |
+| almacén de evidencia: ai.evidence (`evidence`) | conservar | 181 | 107 | 2 | 17 | 2 | 1 | 5 |
 | texto de los lectores (user-narrative-v3) (`user_narrative`) | consolidar | 25 | 14 | 0 | 4 | 1 | 3 | 0 |
 | resumen del partido (brief-v8) (`brief_v8`) | consolidar | 29 | 15 | 0 | 0 | 0 | 3 | 0 |
 | crónica única (chronicle-v4) (`chronicle_v4`) | conservar | 36 | 25 | 1 | 4 | 3 | 0 | 3 |
@@ -29,7 +29,7 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 
 ## decision-v1 (referencia estable) (`decision_v1`) — conservar
 
-Paquetes: `ai` (2), `api` (10), `apps` (1), `core` (2), `council` (1), `decision` (8), `evalcycle` (5), `evalpass` (1), `evaluation` (1), `familydecisions` (1), `forecasting` (1), `ingestion` (1), `intel` (4), `knowledge` (1), `lifecycle` (3), `narrator` (1), `observability` (1), `picks` (1), `playermarkets` (1), `plugins` (2), `portfolio` (4), `research` (1), `scripts` (9), `shadowjobs` (2), `tracking` (1), `valuation` (3), `web` (1).
+Paquetes: `ai` (2), `api` (10), `apps` (1), `core` (2), `council` (1), `decision` (8), `evalcycle` (5), `evalpass` (1), `evaluation` (1), `familydecisions` (1), `forecasting` (1), `ingestion` (1), `intel` (4), `knowledge` (1), `lifecycle` (3), `market` (1), `narrator` (1), `observability` (1), `picks` (1), `playermarkets` (1), `plugins` (2), `portfolio` (4), `research` (1), `scripts` (9), `shadowjobs` (2), `tracking` (1), `valuation` (3), `web` (1).
 
 Nadie la escribe por nombre de tabla en este mapa (puede ser una versión o un interruptor, no una tabla).
 
@@ -65,7 +65,7 @@ Escriben: `backend/src/fbi/forecasting/match_forecast.py`.
 
 ## forecast-v2 (cifra única) (`forecast_v2`) — conservar
 
-Paquetes: `api` (5), `chronicle` (5), `decision` (3), `forecasting` (3), `scripts` (2), `valuation` (1).
+Paquetes: `api` (5), `chronicle` (5), `decision` (3), `forecasting` (4), `scripts` (3), `valuation` (1).
 
 Nadie la escribe por nombre de tabla en este mapa (puede ser una versión o un interruptor, no una tabla).
 
@@ -77,7 +77,7 @@ Escriben: `backend/src/fbi/news/store.py`, `backend/src/fbi/newsroom/moderation.
 
 ## almacén de evidencia: ai.evidence (`evidence`) — conservar
 
-Paquetes: `ai` (40), `api` (17), `chronicle` (4), `decision` (1), `evalcycle` (3), `evalpass` (1), `evaluation` (2), `evidence` (4), `factlinks` (3), `ingestion` (1), `intel` (5), `narrative` (1), `news` (7), `observability` (1), `people` (2), `picks` (1), `players` (1), `proposals` (1), `research` (1), `scripts` (5), `shadowjobs` (2), `web` (1).
+Paquetes: `ai` (42), `api` (17), `chronicle` (4), `decision` (1), `evalcycle` (3), `evalpass` (1), `evaluation` (2), `evidence` (4), `factlinks` (3), `ingestion` (1), `intel` (6), `narrative` (1), `news` (7), `observability` (1), `people` (2), `picks` (1), `players` (1), `proposals` (1), `research` (1), `scripts` (5), `shadowjobs` (2), `web` (1).
 
 Escriben: `backend/src/fbi/ai/evidence.py`, `backend/src/fbi/people/identity/store.py`.
 

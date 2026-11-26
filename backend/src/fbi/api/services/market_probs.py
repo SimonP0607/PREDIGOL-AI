@@ -72,7 +72,7 @@ WITH last AS (
      WHERE fixture_id = %(f)s AND version = ANY(%(versions)s) AND known_at <= %(at)s
      GROUP BY 1, 2, 3
 )
-SELECT x.version, x.market_key, x.line, x.selection, x.calibration, x.known_at, x.p, x.p_lo, x.p_hi
+SELECT x.version, x.market_key, x.line, x.selection, x.calibration, x.known_at, x.p, x.p_lo, x.p_hi, x.figure_label
   FROM models.match_forecasts x
   JOIN last l ON l.version = x.version AND l.market_key = x.market_key AND l.line = x.line AND l.k = x.known_at
  WHERE x.fixture_id = %(f)s
@@ -251,12 +251,14 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
             family = forecasts[FAMILY_VERSION].get((unit, sel, line))
             model: Probability | Missing = _missing("sin_datos")
             shadow_p: Probability | Missing = _missing("sin_datos")
+            base: str | None = None  # what the figure in ``model`` rests on
+            shadow_base: str | None = None  # and the one in ``model_shadow``
             if published is not None:
                 origin = VERSION
                 if evaluable and readers_see_forecast:
-                    model = _probability(published, VERSION)
+                    model, base = _probability(published, VERSION), published.get("figure_label")
                 else:
-                    shadow_p = _probability(published, VERSION)
+                    shadow_p, shadow_base = _probability(published, VERSION), published.get("figure_label")
             elif family is not None and lead.kind == "double_chance":
                 # a double chance is two outcomes of three: read from the same model's outcomes, never from a stored figure that
                 # does not add up to 2 (fbi.market.coherence)
@@ -267,13 +269,15 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
                 if value is not None and len(rows_1x2) == 2:
                     origin = FAMILY_VERSION
                     shadow_p = _sum_probability(rows_1x2, value, FAMILY_VERSION)
+                    labels = {r.get("figure_label") for r in rows_1x2}
+                    shadow_base = labels.pop() if len(labels) == 1 else None
             elif family is not None:
                 origin = FAMILY_VERSION
-                shadow_p = _probability(family, FAMILY_VERSION)
+                shadow_p, shadow_base = _probability(family, FAMILY_VERSION), family.get("figure_label")
             if figures is not None and isinstance(shadow_p, Missing) and lead.period == "FT":
                 fig = figures.get(unit, sel, line)
                 if fig is not None:
-                    shadow_p = _figure_probability(fig)
+                    shadow_p, shadow_base = _figure_probability(fig), fig.base.label
                     if isinstance(origin, Missing):
                         origin = SINGLE_FIGURE
             i = imp.get((sel, line))
@@ -283,7 +287,7 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
                 selection=sel, line=float(line), best_odds=float(top.odds), bookmaker=top.bookmaker, model=model,
                 implied=Implied(value=fx.half_up(i[0], 4), pct=fx.pct_int(i[0]), books=i[1], as_of=i[2]) if i else _missing("sin_datos"),
                 history=history(home_rows, away_rows, top), parlay=ParlayFlag(allowed=v.allowed, reason=cast(Any, v.reason)),
-                model_shadow=shadow_p))
+                model_shadow=shadow_p, figure_base=cast(Any, base), shadow_base=cast(Any, shadow_base)))
         selections = _coherent(lead.kind, selections)
         markets.append(MarketMarksPrivate(
             key=key, unit=unit, category=lead.family, kind=lead.kind, period=lead.period, subject=lead.subject,

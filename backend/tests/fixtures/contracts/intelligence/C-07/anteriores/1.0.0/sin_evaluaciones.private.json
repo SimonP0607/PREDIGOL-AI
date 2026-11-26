@@ -1,0 +1,46 @@
+{
+  "contract": "C-07",
+  "contract_version": "1.0.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T19:00:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "fixture_id": 990001,
+  "evaluation": {
+    "missing_reason": "sin_datos"
+  },
+  "evaluation_version": {
+    "missing_reason": "sin_datos"
+  },
+  "evaluated_at": {
+    "missing_reason": "sin_datos"
+  },
+  "summary": {
+    "facts": 0,
+    "sources": 0,
+    "by_level": [],
+    "unused_rumours": 0
+  },
+  "facts": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "level_rule_es": "Oficial: lo dice la fuente oficial (club, liga o federación). Dos orígenes: lo cuentan dos fuentes independientes. Un medio: lo cuenta una sola fuente. Rumor: nadie lo confirma; se lista, pero el análisis no lo usa.",
+  "relation_rule_es": "A favor o en contra: el hecho cambia en dos puntos o más la probabilidad de una selección del análisis (un jugador del que depende). Contexto: se tuvo en cuenta sin mover nada. No usada: un rumor.",
+  "refused": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "evaluations": {
+    "items": [],
+    "missing_reason": "sin_datos"
+  },
+  "published_at": {
+    "missing_reason": "sin_datos"
+  },
+  "rule_version": {
+    "missing_reason": "sin_datos"
+  }
+}
