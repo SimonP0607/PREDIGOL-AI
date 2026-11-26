@@ -248,6 +248,7 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | N
     from fbi.intel.leakage_v10 import audit_day as audit_day_v10
     from fbi.intel.outcomes import settle_decisions
     from fbi.intel.report import days_to_report, write_report
+    from fbi.market import closing_consensus
 
     today = local_day(at)
     calib: dict[str, Any] = {}
@@ -275,6 +276,7 @@ def run_nightly(conn: psycopg.Connection[Any], *, at: datetime, after: Extra | N
 
     return _run(conn, "nightly", at, with_extra([
         ("outcomes", lambda: settle_decisions(conn, at=at)),
+        ("real_close", lambda: closing_consensus.step(conn, at=at)),
         ("postmortems", lambda: postmortems_step(conn, at=at)),
         ("memory", lambda: memory_step(conn, at=at)),
         ("calibration", _calibration),
