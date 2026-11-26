@@ -1,0 +1,588 @@
+{
+  "contract": "C-11",
+  "contract_version": "1.2.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "decides": false,
+  "shadow": {
+    "verdict": "sin_comprobar",
+    "breaks": [],
+    "picks_source": {
+      "switch": "FBI_PICKS_SOURCE",
+      "audience": "lector",
+      "reads_as": "legacy",
+      "default": "legacy",
+      "at_default": true,
+      "worker_recorded": {
+        "missing_reason": "sin_datos"
+      },
+      "effect": "intelligence: la página de Picks lee la decisión de Intelligence (decision-v1); apagado: la de siempre. Sigue apagado: lo enciende solo el dueño.",
+      "changeable_here": false
+    },
+    "ai_mode": {
+      "switch": "FBI_AI_MODE",
+      "audience": "intelligence",
+      "reads_as": "shadow",
+      "default": "shadow",
+      "at_default": true,
+      "worker_recorded": {
+        "missing_reason": "sin_datos"
+      },
+      "effect": "enforce: la revisión de la IA puede quitar un pick a los lectores, solo si el último informe de combined dice pass; shadow: revisa sin efecto; off: no revisa.",
+      "changeable_here": false
+    },
+    "ai_enforcement": {
+      "mode": "shadow",
+      "enforced": false,
+      "reason": "mode_shadow",
+      "gate_verdict": {
+        "missing_reason": "sin_datos"
+      }
+    },
+    "published_picks": {
+      "read_failed": true,
+      "error": "QueryCanceled"
+    },
+    "switches": [
+      {
+        "switch": "FBI_AI_RESEARCH_V2",
+        "audience": "intelligence",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Research v2 (AD-C05): shadow corre al lado de la v1 sin mover nada de ella.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_AGENTS",
+        "audience": "intelligence",
+        "reads_as": "ninguno",
+        "default": "ninguno",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Los agentes que pueden correr (partido, estadísticas, Council), solo en sombra.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_ENGINES",
+        "audience": "intelligence",
+        "reads_as": "rules,llm",
+        "default": "rules,llm",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Los motores que revisan: rules y llm siempre; los demás, solo en sombra.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_FAMILY_DECISIONS",
+        "audience": "intelligence",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Familias de conteos (AD-B07): shadow decide en sombra con versiones propias que ningún pick lee.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_PM_REVIEWER",
+        "audience": "intelligence",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "La revisión mecánica de los post-mortems y la atribución (attr-v1).",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_LEARNING_ANALYST",
+        "audience": "intelligence",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "El analista de aprendizaje semanal: propone, nunca aplica.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_ENVELOPES_INDEPENDENT",
+        "audience": "intelligence",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Preparado y sin usar (IA-058): encendido, el LAB deja de ceder ante el techo conjunto de 190.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_MATCH_INTELLIGENCE",
+        "audience": "lector",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "La pestaña «Intelligence» del partido para lectores (solo lo publicado).",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_NEWS_V2",
+        "audience": "lector",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Noticias como las maquetas 08-10.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_SEARCH",
+        "audience": "lector",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "La búsqueda global de los lectores.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_PROFILES",
+        "audience": "lector",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Las páginas de club, selección y jugador.",
+        "changeable_here": false
+      }
+    ],
+    "worker_ledger": {
+      "missing_reason": "sin_datos"
+    }
+  },
+  "capabilities": {
+    "read_failed": true,
+    "error": "UndefinedTable"
+  },
+  "costs": {
+    "read_failed": true,
+    "error": "UndefinedTable"
+  },
+  "security": {
+    "battery": {
+      "verdict": {
+        "missing_reason": "sin_datos"
+      },
+      "row": {
+        "missing_reason": "sin_datos"
+      },
+      "at": {
+        "missing_reason": "sin_datos"
+      }
+    },
+    "leak_audit": {
+      "missing_reason": "sin_datos"
+    },
+    "gates": {
+      "version": "gates-panel-v1",
+      "as_of": "2026-11-21T16:42:00Z",
+      "rule_holds": true,
+      "summary": [
+        {
+          "status": "PASA",
+          "count": 0
+        },
+        {
+          "status": "NO PASA",
+          "count": 0
+        },
+        {
+          "status": "NO EVALUADO",
+          "count": 0
+        },
+        {
+          "status": "RECHAZA",
+          "count": 2
+        },
+        {
+          "status": "PENDIENTE POR ACCIONES MANUALES",
+          "count": 2
+        },
+        {
+          "status": "PENDIENTE POR TIEMPO REAL",
+          "count": 3
+        },
+        {
+          "status": "PENDIENTE POR MUESTRA",
+          "count": 0
+        },
+        {
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "count": 9
+        }
+      ],
+      "items": [
+        {
+          "id": "gate_b",
+          "name": "Gate B",
+          "piece": "Plan Maestro IA, sección 24 (gate-b-v1)",
+          "status": "PENDIENTE POR TIEMPO REAL",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "sin fila registrada: es el veredicto de hoy de su evaluador (vista previa, sin registrar)",
+            "the Orchestrator has not written a run of the shadow yet: nothing to measure"
+          ]
+        },
+        {
+          "id": "research_v2",
+          "name": "Research v2",
+          "piece": "Plan Maestro IA, fase 2 (su propio gate de equivalencia)",
+          "status": "PENDIENTE POR TIEMPO REAL",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": "2026-11-23",
+          "why": [
+            "sin fila registrada: es el veredicto de hoy de su evaluador (vista previa, sin registrar)",
+            "ningún día completo con research v2 en sombra en todas las pasadas (2026-11-15 had no passes); el primer día evaluable sería 2026-11-23, si empieza en la próxima pasada (en este entorno FBI_AI_RESEARCH_V2 es off: hay que ponerlo en shadow)"
+          ]
+        },
+        {
+          "id": "gate_a",
+          "name": "Gate A",
+          "piece": "Plan Maestro IA, sección 24 (fin de la fase 0)",
+          "status": "PENDIENTE POR ACCIONES MANUALES",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "ninguna fila registrada en ai.feature_gates (python -m scripts.ia_gate evaluate --record)"
+          ]
+        },
+        {
+          "id": "ai_gate_v2",
+          "name": "Puerta de la capa IA (ai-gate-v2)",
+          "piece": "Plan Maestro IA (fbi.ai.shadow, fbi.ai.gating)",
+          "status": "PENDIENTE POR ACCIONES MANUALES",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "no hay informe de combined en ai.shadow_reports"
+          ]
+        },
+        {
+          "id": "g_coh",
+          "name": "G-COH",
+          "piece": "INT-A04",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "INT-A03 (IA-053) está en sombra: el 12-nov lo que guarda el Match Center y lo que lee la decisión coinciden en 2.528 de 2.528 filas (24 h) y 2.955 de 2.955 (72 h); falta Picks (con UX) e INT-A04, el informe y la fila del gate",
+            "su experimento del LAB, INT-A02 (IA-036), RECHAZA en los tres mercados: según la regla de rechazo, queda la reescalada como cifra coherente y se sigue en el LAB"
+          ]
+        },
+        {
+          "id": "g_precio",
+          "name": "G-PRECIO",
+          "piece": "INT-A06",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: el umbral de edad fijado por el dueño con la medida de INT-A06 (IA-037: 0 decisiones con precio sin edad el 11-nov; propuesta 45/75/195 min, sin aplicar) y la fila del gate"
+          ]
+        },
+        {
+          "id": "g_fuentes_1",
+          "name": "G-FUENTES 1",
+          "piece": "INT-B01",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "el registro depurado de INT-B01 aún no está en la sombra: el gate no se puede evaluar",
+            "las cifras son la medida de IA-040 (11-nov-2026), antes del registro nuevo: ninguna es el veredicto del gate"
+          ]
+        },
+        {
+          "id": "g_fuentes_2",
+          "name": "G-FUENTES 2",
+          "piece": "INT-B02",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: INT-B01; INT-B03; INT-B02 (búsqueda dirigida en Research v2, en sombra)"
+          ]
+        },
+        {
+          "id": "g_fuentes_3",
+          "name": "G-FUENTES 3",
+          "piece": "INT-B04",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: INT-B04 (enlace en mundo cerrado, en sombra); gate de Research v2"
+          ]
+        },
+        {
+          "id": "g_eventos",
+          "name": "G-EVENTOS",
+          "piece": "INT-B09",
+          "status": "RECHAZA",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "INT-B09 (IA-045): RECHAZA, evaluado el 2026-11-11 05:19:31-05:19:59 UTC (una sola evaluación)",
+            "Válido: 3.095 eventos (≥ 200), intervalo agrupado por 371 partidos y controles 0,096 [-0,011; 0,203], que incluye 0.",
+            "Ningún segmento tiene el intervalo de D por encima de 0: el mercado ya tenía los hechos y no se propone ninguna fuente nueva.",
+            "La diferencia mínima detectable de los segmentos es aproximada (del ancho del intervalo); la global es 0,050 pp."
+          ]
+        },
+        {
+          "id": "g_e4",
+          "name": "G-E4",
+          "piece": "INT-A09",
+          "status": "RECHAZA",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "INT-A09 (IA-039): RECHAZA, evaluado el 2026-11-11 05:32-05:35 UTC (una sola evaluación)",
+            "Auditoría de fugas limpia.",
+            "El retador se archiva con su motivo y el modelo activo no cambia (regla de rechazo)."
+          ]
+        },
+        {
+          "id": "g_e6",
+          "name": "G-E6",
+          "piece": "INT-A08",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "protocolo proto-int-a08-v1 registrado (a37fdb4265f4…), sin resultado congelado todavía"
+          ]
+        },
+        {
+          "id": "g_delib",
+          "name": "G-DELIB",
+          "piece": "INT-C08",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: INT-C03; INT-C04; INT-C05; INT-C06; INT-C07 (en sombra, tras el Gate B); la ventana de P1"
+          ]
+        },
+        {
+          "id": "g_cron",
+          "name": "G-CRON",
+          "piece": "INT-D04",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: INT-D02 (crónica v4 en sombra; no ha empezado)"
+          ]
+        },
+        {
+          "id": "p1",
+          "name": "P1",
+          "piece": "Plan Maestro IA (ventana de evaluación de la sombra)",
+          "status": "PENDIENTE POR TIEMPO REAL",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "no hay ancla de configuración (el Gate B no pudo calcularla): nada que contar todavía"
+          ]
+        },
+        {
+          "id": "f_player",
+          "name": "F-Player",
+          "piece": "fuera de este plan",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: fuera del Plan Maestro de Intelligence 2026"
+          ]
+        }
+      ]
+    },
+    "schema_check": {
+      "database_revision": "0137",
+      "code_head": "0139",
+      "up_to_date": false,
+      "missing_relations": [
+        "intel.capabilities",
+        "intel.capability_transitions"
+      ]
+    }
+  },
+  "protocols": {
+    "missing_reason": "sin_datos"
+  },
+  "flow": {
+    "read_failed": true,
+    "error": "UndefinedTable"
+  },
+  "news_engine": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-G01"
+  },
+  "alert_queue": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-D08"
+  }
+}
