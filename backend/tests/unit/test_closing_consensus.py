@@ -27,7 +27,7 @@ def test_three_books_make_a_consensus_and_two_do_not() -> None:
 def test_the_probabilities_of_a_book_sum_to_one() -> None:
     three = [*book(1, "2.10", "3.40", "3.60", 10), *book(2, "2.05", "3.50", "3.70", 25), *book(3, "2.15", "3.30", "3.50", 55)]
     shin = [r for r in cc.rows(1, three) if r.method == "shin"]
-    assert abs(sum(r.p_fair for r in shin) - 1) < Decimal("0.00001")
+    assert abs(sum((r.p_fair for r in shin), Decimal(0)) - 1) < Decimal("0.00001")
 
 
 def test_an_asian_handicap_pair_is_quoted_at_opposite_lines_and_is_one_book() -> None:
