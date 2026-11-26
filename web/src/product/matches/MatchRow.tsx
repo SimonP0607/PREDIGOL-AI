@@ -8,6 +8,7 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@/lib/i18n";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { WhyChip } from "@/product/favorites/WhyChip";
 import type { Why } from "@/product/home/why";
 import { FixtureLine } from "./FixtureLine";
@@ -123,6 +124,8 @@ function StatusTag({ group }: { group: MatchItem["group"] }) {
  * written, not only in a hover text a phone never shows: the screen reader hears what it counts and where it goes.
  */
 function OddsChip({ fixtureId, count }: { fixtureId: number; count: number }) {
+  // «solo fútbol» or a pause (PM-14-07): how many houses price the match, and the way to those prices, are not shown
+  if (useNoPrices()) return null;
   return (
     <Link
       to="/matches/$fixtureId"

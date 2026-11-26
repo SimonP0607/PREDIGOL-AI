@@ -6,6 +6,7 @@
 import type { PriceNow } from "@/lib/api/v1/types_records";
 import { t } from "@/lib/i18n";
 import { formatOdds, fmtSignedPct } from "@/lib/i18n/format";
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import { Freshness } from "./Bits";
 
@@ -16,7 +17,8 @@ export function PriceNowLine({
   now: PriceNow | null | undefined;
   className?: string | undefined;
 }) {
-  if (!now) return null;
+  const noPrices = useNoPrices();
+  if (!now || noPrices) return null;
   const stale = now.freshness === "stale";
   return (
     <span
