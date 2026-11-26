@@ -93,7 +93,7 @@ export function LanguageRadios({
   );
 }
 
-function initialsOf(name: string): string {
+export function initialsOf(name: string): string {
   return (
     name
       .split(/\s+/)

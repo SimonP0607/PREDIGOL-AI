@@ -10,7 +10,7 @@
  * 1024 px) it is a menu under «Más». The list itself (MoreList) takes everything it shows as props, so it renders
  * without a session or a router's state.
  */
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ChevronDown,
@@ -25,7 +25,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { live } from "@/lib/api/v1/queries";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { t, type Locale } from "@/lib/i18n";
+import { t, useI18n, type Locale } from "@/lib/i18n";
 import {
   installOrder,
   installPlatform,
@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/sheet";
 import { WhatsappLink } from "@/product/support/WhatsappLink";
 import { useInstallPrompt } from "@/product/push/useInstallPrompt";
-import { LanguageRadios, LanguageSwitch } from "./HeaderControls";
+import { initialsOf, LanguageRadios, LanguageSwitch } from "./HeaderControls";
 import {
   currentMore,
   moreHide,
@@ -146,6 +146,48 @@ export function UnreadDot({ label = "nav.unread" }: { label?: string }) {
   );
 }
 
+/** The account at the head of «Más» (UX-251, decision C-03): the initials, the name and the state in words; it opens Perfil. Never the e-mail. */
+export function AccountHeader({
+  name,
+  state,
+  onPick,
+  className,
+}: {
+  name: string;
+  state: string;
+  onPick?: () => void;
+  className?: string;
+}) {
+  return (
+    <Link
+      to="/profile"
+      onClick={onPick}
+      data-testid="more-account"
+      className={cn(
+        "flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className,
+      )}
+    >
+      <span
+        aria-hidden
+        className="flex h-[2.375rem] w-9 shrink-0 items-center justify-center rounded-b-[1.125rem] rounded-t-[0.625rem] border border-gold/45 bg-linear-to-b from-accent to-elevated font-display text-xs font-extrabold text-gold-strong"
+      >
+        {initialsOf(name)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold">{name}</span>
+        <span
+          className="block truncate text-caption text-muted-foreground"
+          data-testid="more-account-state"
+        >
+          {state}
+        </span>
+      </span>
+      <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-subtle-foreground" />
+    </Link>
+  );
+}
+
 /** The rows of «Más», then the install steps (not inside the installed app) and «Cerrar sesión». */
 export function MoreList({
   items,
@@ -158,8 +200,11 @@ export function MoreList({
   whatsapp = null,
   language,
   owner = [],
+  account = null,
 }: {
   items: readonly MoreItem[];
+  /** The account's header (UX-251): name and state; none without a session. */
+  account?: { name: string; state: string } | null;
   /** The owner's private rows (UX-152): under their own heading, never a reader's. */
   owner?: readonly MoreItem[];
   pathname: string;
@@ -178,6 +223,14 @@ export function MoreList({
   const current = currentMore(pathname, items);
   return (
     <>
+      {account ? (
+        <AccountHeader
+          name={account.name}
+          state={account.state}
+          onPick={onPick}
+          className="mt-3 border border-border"
+        />
+      ) : null}
       <nav aria-label={t("nav.moreTitle")} className="mt-3">
         <ul className="grid gap-1 sm:grid-cols-2">
           {items.map((item) => {
@@ -292,6 +345,32 @@ export function MoreList({
   );
 }
 
+/**
+ * The account's name and state for the head of «Más» (UX-251). The name is the account's own; the state in words
+ * («Administrador», «Activa», «En prueba hasta…») is written by `accountState`, which travels in its own chunk, loaded
+ * once a session exists, so the first visit's JS does not grow (UX-139).
+ */
+export function useAccountLine(): { name: string; state: string } | null {
+  const auth = useAuth();
+  const { locale } = useI18n();
+  const user = auth.user;
+  const admin = auth.showAdmin;
+  const membership = user?.membership ?? null;
+  const [state, setState] = useState("");
+  const signedIn = user !== null && user !== undefined;
+  useEffect(() => {
+    if (!signedIn) return;
+    let current = true;
+    void import("@/product/profile/centre").then(({ accountState }) => {
+      if (current) setState(accountState(admin, membership));
+    });
+    return () => {
+      current = false;
+    };
+  }, [signedIn, admin, membership, locale]);
+  return user ? { name: user.display_name, state } : null;
+}
+
 export function MoreSheet({
   open,
   onOpenChange,
@@ -310,6 +389,7 @@ export function MoreSheet({
   const owner = privateItems(auth.showAdmin, flags);
   const unread = useUpdatesUnread();
   const contact = useQuery({ ...live.supportContact, enabled: open });
+  const account = useAccountLine();
   // closed by one of its rows: the reader went on to that page, so the focus does not jump back to the bar
   const picked = useRef(false);
   return (
@@ -336,6 +416,7 @@ export function MoreSheet({
         <MoreList
           items={items}
           owner={owner}
+          account={account}
           pathname={pathname}
           standalone={isStandalone()}
           platform={installPlatform()}
@@ -369,8 +450,11 @@ export function MoreMenu({
   language,
   flags = NAV_V1,
   owner = [],
+  account = null,
 }: {
   items: readonly MoreItem[];
+  /** The account's header (UX-251): name and state. */
+  account?: { name: string; state: string } | null;
   /** The unified plan's bars: which rows the desk's pills replace. */
   flags?: NavFlags;
   /** The owner's private rows (UX-152). */
@@ -403,6 +487,14 @@ export function MoreMenu({
         <ChevronDown aria-hidden className="h-3.5 w-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-72" data-testid="nav-more-menu">
+        {account ? (
+          <>
+            <DropdownMenuItem asChild>
+              <AccountHeader name={account.name} state={account.state} className="min-h-12" />
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         {items.map((item) => {
           const Icon = item.icon;
           const here = current?.to === item.to;
