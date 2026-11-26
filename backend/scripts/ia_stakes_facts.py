@@ -20,7 +20,7 @@ from typing import Any
 
 import psycopg
 
-from fbi.competitions import stakes_facts as sf
+from fbi.ai import stakes_facts as sf
 
 OPTIONS = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=90000"
 

@@ -1,4 +1,4 @@
-"""RP-4.2: what each team plays for, as a calculated fact (``fbi.competitions.stakes_facts``). The readings are the REAL engine's (``scenarios-v2``) over small
+"""RP-4.2: what each team plays for, as a calculated fact (``fbi.ai.stakes_facts``). The readings are the REAL engine's (``scenarios-v2``) over small
 tables whose outcome is known by hand: a secured title, a lost title, an open place, a regulation not coded, a team in no table. A fact is complete under
 the schema of RP-4.1, never predicts and never says more than the engine proved. The database side is ``tests/integration/test_stakes_facts.py``."""
 
@@ -11,9 +11,9 @@ from typing import Any
 import pytest
 
 from fbi.ai import factor_schema
+from fbi.ai import stakes_facts as sf
 from fbi.competitions import rules as rl
 from fbi.competitions import scenarios as sc
-from fbi.competitions import stakes_facts as sf
 
 from .test_scenarios_v2_ia082 import coded, fixtures, make_rules
 
