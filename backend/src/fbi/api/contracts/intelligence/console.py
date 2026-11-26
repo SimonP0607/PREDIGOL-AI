@@ -1,6 +1,6 @@
 """C-11, the Intelligence console (AD-J08, IA-079): one private answer with what the owner checks before anything else.
 
-``GET /api/v1/admin/intelligence/console`` (``require_admin``; no public projection - ``PRIVATE_ONLY``). Six blocks:
+``GET /api/v1/admin/intelligence/console`` (``require_admin``; no public projection - ``PRIVATE_ONLY``). Seven blocks:
 
 * ``shadow`` - «nada sale de la sombra»: the real state of ``FBI_PICKS_SOURCE`` and ``FBI_AI_MODE`` (with whether the AI's veto is in force),
   the selections published to readers, and every switch of Intelligence and of the readers' Intelligence screens, as the API process reads them
@@ -13,6 +13,8 @@
   with the owner's closure on file, AD-001) and whether the database's schema is the code's.
 * ``protocols`` (1.1.0, IA-143) - every preregistered protocol that can be signed (the LAB ones and the chronicle's own), with its fingerprint
   of now and whether the owner's signature of THAT fingerprint is on file (``ai.protocol_signatures``). A signature turns nothing on.
+* ``flow`` (1.2.0, RP-1.5) - the twelve stages of the learning cycle, each with the alarm of the plan and what the hourly check read of it: up to
+  date, stopped, or with no store yet. It decides and changes nothing.
 * ``news_engine`` and ``alert_queue`` - absent with their reason until AD-G01 and AD-D08 exist.
 
 A block the server could not read this time is a ``ReadFailure`` (the error's class, never its message): one table that is missing does not
@@ -32,6 +34,7 @@ from fbi.api.contracts.intelligence.base import (
     ItemList,
     Missing,
     UtcDatetime,
+    _absent,
 )
 from fbi.api.contracts.intelligence.vocab import CapabilityState
 
@@ -321,13 +324,56 @@ class ConsoleProtocols(IntelligenceModel):
     notice_es: str
 
 
+# ── flow of the learning cycle ───────────────────────────────────────
+
+FlowStatus = Literal["al_dia", "parada", "sin_almacen", "sin_registro", "informativa"]
+
+
+class FlowStage(IntelligenceModel):
+    """One of the twelve stages of the learning cycle and what the hourly check read of it (RP-1.5)."""
+
+    number: int = Field(ge=1, le=12)
+    key: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    name_es: str = Field(min_length=1)
+    alarm_es: str = Field(min_length=1, description="The alarm of the plan for this stage, as the plan words it.")
+    status: FlowStatus = Field(description="parada is the alarm; sin_almacen is a stage whose store does not exist yet (never «al día»).")
+    detail_es: str = Field(min_length=1)
+    value: float | Missing
+    limit: float | Missing
+    unit: str | Missing
+    last_at: UtcDatetime | Missing = Field(description="The last sign of life the stage was judged on.")
+
+
+class Cycle(IntelligenceModel):
+    """The twelve stages of the learning cycle in order. It decides nothing and changes no parameter."""
+
+    rule_version: str = Field(pattern=r"^freshness-v[1-9][0-9]*$")
+    stopped: int = Field(ge=0, le=12, description="How many stages are stopped (status parada).")
+    stages: list[FlowStage] = Field(min_length=12, max_length=12)
+
+    @model_validator(mode="after")
+    def _in_order(self) -> Cycle:
+        if [x.number for x in self.stages] != list(range(1, 13)):
+            raise ValueError("the stages are the twelve of the plan, in order")
+        if self.stopped != sum(x.status == "parada" for x in self.stages):
+            raise ValueError("stopped must count the stages whose status is parada")
+        return self
+
+
+class Flow(IntelligenceModel):
+    """The state of the flows, computed by the server. ``cycle`` is RP-1.5 (1.2.0); the panel «El camino de un pick» (RP-1.2) joins it as a
+    further optional field of this block, so the block never changes name."""
+
+    cycle: Cycle
+
+
 # ── the contract ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class ConsoleContract(IntelligenceContract):
     """C-11, private only."""
 
     CONTRACT_ID: ClassVar[str] = "C-11"
-    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.2.0"
     PRIVATE_ONLY: ClassVar[bool] = True
 
     decides: Literal[False] = Field(default=False, description="Nothing here decides, records or switches anything.")
@@ -337,5 +383,8 @@ class ConsoleContract(IntelligenceContract):
     security: Security
     protocols: ConsoleProtocols | Missing | ReadFailure = Field(
         description="The preregistered protocols and the owner's signatures (1.1.0); sin_datos before revision 0166.")
+    flow: Flow | Missing | ReadFailure | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.2.0 (RP-1.5): the state of the flows; ``cycle`` holds the twelve stages of the learning cycle with the hourly freshness check. Absent in a 1.1.0 answer.")
     news_engine: Missing = Field(description="The news engine (AD-G01): no_entregado until it exists.")
     alert_queue: Missing = Field(description="The private alerts' queue (AD-D08): no_entregado until it exists.")

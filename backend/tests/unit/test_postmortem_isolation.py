@@ -80,6 +80,7 @@ NAMES_IT: dict[str, str] = {
     "api/services/intelligence.py": "the Admin Console's PrediGol Intelligence: the post-mortem of a decision and the memory (GET /admin/intelligence/memory)",
     "ai/agents/attribution.py": "the attribution of the shadow (plan IA, phase 5, attr-v1): reads the post-mortem of each settled selection (its class, its CLV) to "
                                 "say which agent was right - after the result, into intel.agent_attributions; no pick, filter or decision reads it",
+    "ops/freshness.py": "the hourly stall check (RP-1.5): counts the post-mortems of matches the learning cycle wrote in 36 hours (stage 1, Observación); a read, it writes nothing and no pick, filter or decision reads it",
     "ai/agents/pmr.py": "the Post-Match Reviewer (plan IA, phase 5, pmr-v1): reads the post-mortem answers of the cases it is asked about and keeps its narrative in "
                         "ai.postmortem_narratives under its own version; Batch only, for the owner",
     "api/services/ai_attribution.py": "the Admin Console's Atribución tab (GET /admin/ai/attribution): the post-mortems of the shadow with what each agent did and "

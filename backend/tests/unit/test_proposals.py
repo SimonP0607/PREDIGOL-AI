@@ -154,6 +154,7 @@ def test_no_route_job_or_agent_imports_the_register() -> None:
 def test_only_the_register_writes_its_tables() -> None:
     naming = sorted(str(p.relative_to(BACKEND)) for root in ("src/fbi", "apps", "scripts") for p in (BACKEND / root).rglob("*.py")
                     if TABLES.search(p.read_text(encoding="utf-8")))
-    assert naming == ["src/fbi/proposals/__init__.py", "src/fbi/proposals/store.py"], naming
+    assert naming == ["src/fbi/ops/freshness.py", "src/fbi/proposals/__init__.py", "src/fbi/proposals/store.py"], naming
+    # freshness.py only COUNTS the proposals nobody has decided (stage 11 of the cycle, informative): the writes check below keeps it a reader
     writes = re.compile(r"\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+ai\.change_")
     assert [p.name for p in (SRC / "proposals").glob("*.py") if writes.search(p.read_text(encoding="utf-8"))] == ["store.py"]

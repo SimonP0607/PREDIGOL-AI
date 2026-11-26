@@ -16,7 +16,7 @@ def test_every_job_outside_the_book_is_wrapped_exactly_once() -> None:
     wrapped = re.findall(r'^@_booked\("(\w+)"\)\ndef (_\w+)\(', SOURCE, re.M)
     types = [t for t, _ in wrapped]
     assert sorted(types) == sorted(job_book.BOOKED_JOB_TYPES), "the wrapped functions and BOOKED_JOB_TYPES must be the same set"
-    assert len(types) == len(set(types)) == 33
+    assert len(types) == len(set(types)) == 34
 
 
 def test_the_watchdog_knows_every_booked_type() -> None:
