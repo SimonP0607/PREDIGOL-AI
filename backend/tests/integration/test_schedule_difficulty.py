@@ -89,3 +89,22 @@ def test_the_index_as_of_a_moment_and_the_independent_check(db: psycopg.Connecti
 
     n, mean = sd.league_mean(db, cs, at=AT)
     assert n == 3 and mean == pytest.approx((hist[a][-1] + hist[b][-1] + hist[c][-1]) / 3)
+
+
+def test_the_recent_difficulty_is_the_calendar_just_played_as_rated_by_the_moment_asked(db: psycopg.Connection[Any]) -> None:
+    cs = season(db)
+    me, a, b, c, future, old = (team(db) for _ in range(6))
+    hist = {a: [1600.0] * 12, b: [1450.0] * 12, c: [1500.0] * 12}
+    run(db, AT - timedelta(days=1), hist, cs)
+    run(db, AT + timedelta(hours=1), {a: [9999.0] * 12, b: [9999.0] * 12, c: [9999.0] * 12}, cs)   # computed later: never read
+    fixture(db, cs, me, a, AT - timedelta(days=3), status="finished")                              # at home
+    fixture(db, cs, b, me, AT - timedelta(days=10), status="finished")                             # away
+    fixture(db, cs, me, c, AT - timedelta(days=17), status="finished", neutral=True)
+    fixture(db, cs, me, future, AT + timedelta(days=2))                                            # still to be played: not recent
+    fixture(db, cs, me, old, AT - timedelta(days=130), status="finished")                          # beyond the window
+    fixture(db, cs, me, a, AT - timedelta(days=1), status="postponed")                             # not played
+    got = sd.recent_difficulty(db, me, at=AT)
+    assert [r.opponent_id for r in got.rivals] == [a, b, c]
+    assert [r.venue for r in got.rivals] == ["home", "away", "neutral"]
+    assert got.difficulty.index == pytest.approx((1600.0 - 65 + 1450.0 + 65 + 1500.0) / 3)
+    assert sd.recent_difficulty(db, me, at=AT, n=2).rivals[-1].opponent_id == b
