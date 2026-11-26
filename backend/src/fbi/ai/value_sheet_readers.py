@@ -35,11 +35,11 @@ SELECT fixture_id, count(*) AS facts, count(*) FILTER (WHERE status = 'CONFIRMED
  GROUP BY fixture_id
 """
 FACT_ROWS_SQL = """
-SELECT kind, origin, status, source_tier, fact_schema, side, fresh_until IS NOT NULL AS has_validity, published_at IS NOT NULL AS has_date,
+SELECT kind, origin, status, source_tier, fact_schema, side, attributes ->> 'certainty' AS certainty, fresh_until IS NOT NULL AS has_validity, published_at IS NOT NULL AS has_date,
        subject_type IS NOT NULL AS has_entity, (source_name IS NOT NULL AND btrim(source_name) <> '') AS has_source, count(*) AS n
   FROM ai.evidence
  WHERE (subject_type IS NULL OR %(typed)s) AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
- GROUP BY kind, origin, status, source_tier, fact_schema, side, has_validity, has_date, has_entity, has_source
+ GROUP BY kind, origin, status, source_tier, fact_schema, side, certainty, has_validity, has_date, has_entity, has_source
 """
 CHRONICLES_SQL = """
 SELECT count(*) FILTER (WHERE route <> 'none') AS written,

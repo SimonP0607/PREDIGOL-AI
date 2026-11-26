@@ -111,7 +111,7 @@ def require(fact: FactView) -> None:
         raise IncompleteFactError(absent)
 
 
-def category_of(status: str | None, origin: str, tier: str | None = None) -> Category | None:
+def category_of(status: str | None, origin: str, tier: str | None = None, certainty: str | None = None) -> Category | None:
     """The category of an item of evidence by CODE, from what the server stored (the table of correspondence of RP-4.1).
 
     ===============================================================  =====================
@@ -126,7 +126,12 @@ def category_of(status: str | None, origin: str, tier: str | None = None) -> Cat
 
     A source with no tier or an aggregator never rises above a rumour here: the status ladder already holds it there. ``tier`` is read only to say
     so: a PROBABLE item of an aggregator or of an unknown source is a rumour.
+
+    ``certainty`` is what a fact says of itself in its attributes: our own calculation that states a REGULARITY of the history, not a number it observed
+    (the probable rotation of RP-4.3), says ``probable`` and is ``informacion_probable`` whatever its status; it is never a confirmed fact.
     """
+    if origin == "own_calc" and certainty == "probable":
+        return "informacion_probable"
     if origin in ("own_calc", "owner"):
         return "hecho_confirmado"
     if status == "CONFIRMED":

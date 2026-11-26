@@ -16,8 +16,9 @@ fortnight still marked to-be-played after its kick-off) says so in the fact, and
 (``TeamCalendar.state``); a team with no previous match in the 60 days before the match has no rest fact. A side with nothing to say produces no fact:
 the absence is counted (``Counts``) and never filled in.
 
-NOT HERE (RP-4.3, second tranche): the minutes of the usual starters in 14 days and the probable rotation. They need the player statistics and the
-estimate of the starters, and the rotation can only ever be «probable»; they come with their own piece of evidence and their own test.
+SECOND TRANCHE (RP-4.3, ``fbi.ai.minutes_facts``, the same switch): the minutes of the usual starters in the 14 days before the match and, when the team's own
+history shows the pattern and the rest is short, a probable rotation. The rotation is the only fact of this switch that is not a confirmed fact: it carries
+``certainty = "probable"`` and the schema gives it the category ``informacion_probable`` (``factor_schema.category_of``).
 
 Reads the calendar through ``fbi.competitions.team_calendar`` and the matches in ``core.fixtures``; writes ``ai.evidence`` only through ``fbi.ai.evidence.store`` and only
 when on. 0 requests.
@@ -34,7 +35,7 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ai import evidence, factor_schema
+from fbi.ai import evidence, factor_schema, minutes_facts
 from fbi.ai.stakes_facts import AHEAD, MATCHES_SQL, Match
 from fbi.competitions import team_calendar as tc
 
@@ -44,7 +45,7 @@ SOURCE_NAME: Final = "PrediGol · calendario del equipo (team-calendar-reader-1)
 CLOSE_NEXT: Final = timedelta(days=4)
 """«Next match within 4 days»: the plan's threshold for the fact of a short turnaround."""
 MAX_CLAIM: Final = 560
-TABLES: Final = ("core.fixtures", *tc.TABLES, "ai.evidence")
+TABLES: Final = ("core.fixtures", *tc.TABLES, *minutes_facts.TABLES, "ai.evidence")
 RULE: Final = ("Hechos de calendario, no un juicio sobre el estado físico: días desde el último partido en cualquier competición, partidos en los 14 días "
                "anteriores y próximo partido, del calendario conocido en el momento de la lectura.")
 WHY: Final[Mapping[str, str]] = {
@@ -69,6 +70,12 @@ class SideFact:
     side: str
     claim: str
     calculation: Mapping[str, Any]
+    kind: str = "schedule"
+    claim_type: str = "SCHEDULE"
+    story: str = "calendar"
+    """The first word of the story key: each kind of fact of a side is its own story."""
+    certainty: str | None = None
+    """``probable`` for a regularity of the history, never an announced fact; None for a calculated fact."""
 
 
 @dataclass(slots=True)
@@ -79,11 +86,14 @@ class Counts:
     whole: int = 0
     not_whole: int = 0
     no_previous: int = 0
+    minutes: int = 0
+    rotation: int = 0
     errors: list[str] = field(default_factory=list)
 
     def as_json(self) -> dict[str, Any]:
         return {"version": VERSION, "matches": self.matches, "facts": self.facts, "created": self.created, "whole": self.whole,
-                "not_whole": self.not_whole, "no_previous": self.no_previous, "errors": self.errors}
+                "not_whole": self.not_whole, "no_previous": self.no_previous, "minutes": self.minutes,
+                "rotation": self.rotation, "errors": self.errors}
 
 
 def _days(value: float) -> str:
@@ -134,12 +144,18 @@ def side_fact(cal: tc.TeamCalendar, match: Match, side: str, name: str) -> SideF
 def item_of(fact: SideFact, *, at: datetime) -> evidence.EvidenceIn:
     """The fact as the item the store takes: complete in the seven attributes, or ``store`` refuses it. Its date is the calendar's own read (the moment
     asked when the calendar was never read, which is said in the fact)."""
-    fetched = fact.calculation["calendar_fetched_at"]
+    fetched = fact.calculation.get("calendar_fetched_at")
     published = at if fetched is None else min(at, datetime.fromisoformat(str(fetched)))
+    probable = fact.certainty is not None
+    attributes: dict[str, Any] = {"calculation": VERSION if fact.story == "calendar" else minutes_facts.VERSION, **fact.calculation}
+    if fact.certainty is not None:
+        attributes["certainty"] = fact.certainty
     return evidence.EvidenceIn(
-        fixture_id=fact.match.fixture_id, team_id=fact.team, kind="schedule", claim=fact.claim, origin="own_calc", source_name=SOURCE_NAME,
-        retrieved_at=at, story_key=f"calendar:{fact.match.fixture_id}:{fact.team}", assertion="info", published_at=published, confidence=0.95,
-        relevance=0.6 if fact.calculation["whole"] else 0.4, attributes={"calculation": VERSION, **fact.calculation}, claim_type="SCHEDULE",
+        fixture_id=fact.match.fixture_id, team_id=fact.team, kind=fact.kind, claim=fact.claim, origin="own_calc",
+        source_name=SOURCE_NAME if fact.story == "calendar" else minutes_facts.SOURCE_NAME,
+        retrieved_at=at, story_key=f"{fact.story}:{fact.match.fixture_id}:{fact.team}", assertion="info", published_at=published,
+        confidence=0.6 if probable else 0.95, relevance=0.4 if probable else (0.6 if fact.calculation.get("whole", True) else 0.4),
+        attributes=attributes, claim_type=fact.claim_type,
         subject_type="TEAM", subject_id=fact.team, fresh_until=fact.match.kickoff, side=fact.side, fact_schema=factor_schema.VERSION)
 
 
@@ -159,8 +175,14 @@ def collect(conn: psycopg.Connection[Any], *, at: datetime, ahead: timedelta = A
         rows = cur.execute(MATCHES_SQL, {"at": at, "until": at + ahead}).fetchall()
     for r in rows:
         match = Match(int(r["fixture_id"]), r["kickoff_at"], int(r["home_team_id"]), int(r["away_team_id"]))
-        facts = [f for side, team, name in (("home", match.home_id, r["home_name"]), ("away", match.away_id, r["away_name"]))
-                 if (f := side_fact(tc.load(conn, team_id=team, at=at, kickoff=match.kickoff), match, side, str(name))) is not None]
+        facts: list[SideFact] = []
+        for side, team, name in (("home", match.home_id, r["home_name"]), ("away", match.away_id, r["away_name"])):
+            cal = tc.load(conn, team_id=team, at=at, kickoff=match.kickoff)
+            if (fact := side_fact(cal, match, side, str(name))) is not None:
+                facts.append(fact)
+            facts += [SideFact(match, team, side, d.claim, d.calculation, d.kind, d.claim_type, d.story, d.certainty)
+                      for d in minutes_facts.facts_of(minutes_facts.load(conn, team_id=team, at=at, kickoff=match.kickoff), match.kickoff,
+                                                      cal.rest_days(match.kickoff), str(name))]
         out.append(Read(match, str(r["competition"]), str(r["home_name"]), str(r["away_name"]), facts))
     return out
 
@@ -173,10 +195,13 @@ def run(conn: psycopg.Connection[Any], *, at: datetime, write: bool | None = Non
     for read in collect(conn, at=at, ahead=ahead):
         counts.matches += 1
         counts.facts += len(read.facts)
-        counts.no_previous += 2 - len(read.facts)
+        counts.no_previous += 2 - sum(1 for f in read.facts if f.story == "calendar")
         for fact in read.facts:
-            counts.whole += int(bool(fact.calculation["whole"]))
-            counts.not_whole += int(not fact.calculation["whole"])
+            if fact.story == "calendar":
+                counts.whole += int(bool(fact.calculation["whole"]))
+                counts.not_whole += int(not fact.calculation["whole"])
+            counts.minutes += int(fact.story == "minutes")
+            counts.rotation += int(fact.story == "rotation")
             if not do_write:
                 continue
             try:
