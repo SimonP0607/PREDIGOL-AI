@@ -72,8 +72,8 @@ quiet_check() {
 #   3. when their timers elapse next: within HEAVY_LOOKAHEAD_MIN minutes (40 by default: a bit more than what a deploy needs) counts as about to start.
 # Prints what it sees; returns 0 (free), 2 (busy) or 3 (it could not look: the caller treats it as busy).
 HEAVY_LOOKAHEAD_MIN=${HEAVY_LOOKAHEAD_MIN:-40}
-HEAVY_LOCKS="backup restore-test pitr maint"
-HEAVY_SERVICES="predigol-backup predigol-pitr predigol-maint predigol-restore-test predigol-pitr-test predigol-pitr-verify"
+HEAVY_LOCKS="backup restore-test pitr maint research"
+HEAVY_SERVICES="predigol-backup predigol-pitr predigol-maint predigol-restore-test predigol-pitr-test predigol-pitr-verify predigol-research"
 
 heavy_check() {
   local rc=0 lk f u state t timers nxt ep now limit look=$HEAVY_LOOKAHEAD_MIN
