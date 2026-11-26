@@ -20,23 +20,22 @@ No model writes any of this and none of it changes a probability: it is read-onl
 
 from __future__ import annotations
 
-import json
 import math
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Final
 
 import psycopg
 from psycopg.rows import tuple_row
 
+from fbi.stats import team
 from fbi.stats.reading import Document, TrendReading
 
 VERSION: Final = "stat-facts-v1"
 
-MIN_SAMPLE: Final = int(json.loads((Path(__file__).with_name("stabilization_v1.json")).read_text(encoding="utf-8"))["current_min_matches"])
+MIN_SAMPLE: Final = team.MIN_MATCHES
 """The fewest matches a trend is read on: the one the statistics pages already use («can rise, never be lowered without the owner's decision»)."""
 MIN_PEERS: Final = 8
 """The fewest teams a percentile is computed among; with fewer it is not given."""
