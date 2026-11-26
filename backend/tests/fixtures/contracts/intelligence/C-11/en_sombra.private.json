@@ -1203,210 +1203,212 @@
     "notice_es": "Una firma no activa nada: deja constancia de que el protocolo es el que el dueño aprobó antes de mirar los datos. Ningún veredicto enciende, promociona ni cambia un umbral por estar firmado (AD-K07)."
   },
   "flow": {
-    "rule_version": "freshness-v1",
-    "stopped": 2,
-    "stages": [
-      {
-        "number": 1,
-        "key": "observacion",
-        "name_es": "Observación",
-        "alarm_es": "Sin filas en 36 horas",
-        "status": "al_dia",
-        "detail_es": "Último post-mortem de partido: hace 6.2 horas (límite 36.0).",
-        "value": 6.2,
-        "limit": 36.0,
-        "unit": "horas",
-        "last_at": "2026-11-24T08:48:00Z"
-      },
-      {
-        "number": 2,
-        "key": "patron",
-        "name_es": "Patrón",
-        "alarm_es": "Sin corrida en 8 días",
-        "status": "parada",
-        "detail_es": "Última corrida de la investigación semanal: hace 211.4 horas (límite 192.0).",
-        "value": 211.4,
-        "limit": 192.0,
-        "unit": "horas",
-        "last_at": "2026-11-15T19:36:00Z"
-      },
-      {
-        "number": 3,
-        "key": "hipotesis",
-        "name_es": "Hipótesis",
-        "alarm_es": "Más de 20 propuestas sin triage",
-        "status": "parada",
-        "detail_es": "23 hipótesis propuestas sin triage (límite 20).",
-        "value": 23.0,
-        "limit": 20.0,
-        "unit": "hipótesis",
-        "last_at": {
-          "missing_reason": "sin_datos"
+    "cycle": {
+      "rule_version": "freshness-v1",
+      "stopped": 2,
+      "stages": [
+        {
+          "number": 1,
+          "key": "observacion",
+          "name_es": "Observación",
+          "alarm_es": "Sin filas en 36 horas",
+          "status": "al_dia",
+          "detail_es": "Último post-mortem de partido: hace 6.2 horas (límite 36.0).",
+          "value": 6.2,
+          "limit": 36.0,
+          "unit": "horas",
+          "last_at": "2026-11-24T08:48:00Z"
+        },
+        {
+          "number": 2,
+          "key": "patron",
+          "name_es": "Patrón",
+          "alarm_es": "Sin corrida en 8 días",
+          "status": "parada",
+          "detail_es": "Última corrida de la investigación semanal: hace 211.4 horas (límite 192.0).",
+          "value": 211.4,
+          "limit": 192.0,
+          "unit": "horas",
+          "last_at": "2026-11-15T19:36:00Z"
+        },
+        {
+          "number": 3,
+          "key": "hipotesis",
+          "name_es": "Hipótesis",
+          "alarm_es": "Más de 20 propuestas sin triage",
+          "status": "parada",
+          "detail_es": "23 hipótesis propuestas sin triage (límite 20).",
+          "value": 23.0,
+          "limit": 20.0,
+          "unit": "hipótesis",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 4,
+          "key": "triage",
+          "name_es": "Triage",
+          "alarm_es": "Hipótesis propuesta sin triage hace más de 31 días",
+          "status": "al_dia",
+          "detail_es": "La propuesta más antigua espera hace 12.0 días (límite 31).",
+          "value": 12.0,
+          "limit": 31.0,
+          "unit": "días",
+          "last_at": "2026-11-12T15:00:00Z"
+        },
+        {
+          "number": 5,
+          "key": "experimento",
+          "name_es": "Experimento",
+          "alarm_es": "Aceptada sin protocolo pasadas 24 horas",
+          "status": "al_dia",
+          "detail_es": "0 hipótesis aceptadas sin experimento pasadas 24 horas.",
+          "value": 0.0,
+          "limit": 0.0,
+          "unit": "hipótesis",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 6,
+          "key": "validacion_historica",
+          "name_es": "Validación histórica",
+          "alarm_es": "Experimento sin resultado",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.3.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 7,
+          "key": "sombra_prospectiva",
+          "name_es": "Sombra prospectiva",
+          "alarm_es": "Sombra sin condición de decisión",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-9.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 8,
+          "key": "comparacion",
+          "name_es": "Comparación",
+          "alarm_es": "Muestra alcanzada sin comparar",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.3.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 9,
+          "key": "veredicto",
+          "name_es": "Veredicto",
+          "alarm_es": "Comparación sin veredicto",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 10,
+          "key": "propuesta_de_cambio",
+          "name_es": "Propuesta de cambio",
+          "alarm_es": "Éxito sin propuesta",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 11,
+          "key": "aprobacion",
+          "name_es": "Aprobación y promoción o descarte",
+          "alarm_es": "Propuesta sin decidir",
+          "status": "informativa",
+          "detail_es": "0 propuestas de cambio esperan tu decisión. El plan no fija plazo: se informa la cifra.",
+          "value": 0.0,
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": "propuestas",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 12,
+          "key": "seguimiento",
+          "name_es": "Seguimiento",
+          "alarm_es": "Promoción sin vigilancia",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-12.2.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
         }
-      },
-      {
-        "number": 4,
-        "key": "triage",
-        "name_es": "Triage",
-        "alarm_es": "Hipótesis propuesta sin triage hace más de 31 días",
-        "status": "al_dia",
-        "detail_es": "La propuesta más antigua espera hace 12.0 días (límite 31).",
-        "value": 12.0,
-        "limit": 31.0,
-        "unit": "días",
-        "last_at": "2026-11-12T15:00:00Z"
-      },
-      {
-        "number": 5,
-        "key": "experimento",
-        "name_es": "Experimento",
-        "alarm_es": "Aceptada sin protocolo pasadas 24 horas",
-        "status": "al_dia",
-        "detail_es": "0 hipótesis aceptadas sin experimento pasadas 24 horas.",
-        "value": 0.0,
-        "limit": 0.0,
-        "unit": "hipótesis",
-        "last_at": {
-          "missing_reason": "sin_datos"
-        }
-      },
-      {
-        "number": 6,
-        "key": "validacion_historica",
-        "name_es": "Validación histórica",
-        "alarm_es": "Experimento sin resultado",
-        "status": "sin_almacen",
-        "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.3.",
-        "value": {
-          "missing_reason": "sin_datos"
-        },
-        "limit": {
-          "missing_reason": "sin_datos"
-        },
-        "unit": {
-          "missing_reason": "sin_datos"
-        },
-        "last_at": {
-          "missing_reason": "sin_datos"
-        }
-      },
-      {
-        "number": 7,
-        "key": "sombra_prospectiva",
-        "name_es": "Sombra prospectiva",
-        "alarm_es": "Sombra sin condición de decisión",
-        "status": "sin_almacen",
-        "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-9.1.",
-        "value": {
-          "missing_reason": "sin_datos"
-        },
-        "limit": {
-          "missing_reason": "sin_datos"
-        },
-        "unit": {
-          "missing_reason": "sin_datos"
-        },
-        "last_at": {
-          "missing_reason": "sin_datos"
-        }
-      },
-      {
-        "number": 8,
-        "key": "comparacion",
-        "name_es": "Comparación",
-        "alarm_es": "Muestra alcanzada sin comparar",
-        "status": "sin_almacen",
-        "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.3.",
-        "value": {
-          "missing_reason": "sin_datos"
-        },
-        "limit": {
-          "missing_reason": "sin_datos"
-        },
-        "unit": {
-          "missing_reason": "sin_datos"
-        },
-        "last_at": {
-          "missing_reason": "sin_datos"
-        }
-      },
-      {
-        "number": 9,
-        "key": "veredicto",
-        "name_es": "Veredicto",
-        "alarm_es": "Comparación sin veredicto",
-        "status": "sin_almacen",
-        "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.1.",
-        "value": {
-          "missing_reason": "sin_datos"
-        },
-        "limit": {
-          "missing_reason": "sin_datos"
-        },
-        "unit": {
-          "missing_reason": "sin_datos"
-        },
-        "last_at": {
-          "missing_reason": "sin_datos"
-        }
-      },
-      {
-        "number": 10,
-        "key": "propuesta_de_cambio",
-        "name_es": "Propuesta de cambio",
-        "alarm_es": "Éxito sin propuesta",
-        "status": "sin_almacen",
-        "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.1.",
-        "value": {
-          "missing_reason": "sin_datos"
-        },
-        "limit": {
-          "missing_reason": "sin_datos"
-        },
-        "unit": {
-          "missing_reason": "sin_datos"
-        },
-        "last_at": {
-          "missing_reason": "sin_datos"
-        }
-      },
-      {
-        "number": 11,
-        "key": "aprobacion",
-        "name_es": "Aprobación y promoción o descarte",
-        "alarm_es": "Propuesta sin decidir",
-        "status": "informativa",
-        "detail_es": "0 propuestas de cambio esperan tu decisión. El plan no fija plazo: se informa la cifra.",
-        "value": 0.0,
-        "limit": {
-          "missing_reason": "sin_datos"
-        },
-        "unit": "propuestas",
-        "last_at": {
-          "missing_reason": "sin_datos"
-        }
-      },
-      {
-        "number": 12,
-        "key": "seguimiento",
-        "name_es": "Seguimiento",
-        "alarm_es": "Promoción sin vigilancia",
-        "status": "sin_almacen",
-        "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-12.2.",
-        "value": {
-          "missing_reason": "sin_datos"
-        },
-        "limit": {
-          "missing_reason": "sin_datos"
-        },
-        "unit": {
-          "missing_reason": "sin_datos"
-        },
-        "last_at": {
-          "missing_reason": "sin_datos"
-        }
-      }
-    ]
+      ]
+    }
   },
   "news_engine": {
     "missing_reason": "no_entregado",

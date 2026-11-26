@@ -344,20 +344,27 @@ class FlowStage(IntelligenceModel):
     last_at: UtcDatetime | Missing = Field(description="The last sign of life the stage was judged on.")
 
 
-class Flow(IntelligenceModel):
-    """The twelve stages in order. It decides nothing and changes no parameter."""
+class Cycle(IntelligenceModel):
+    """The twelve stages of the learning cycle in order. It decides nothing and changes no parameter."""
 
     rule_version: str = Field(pattern=r"^freshness-v[1-9][0-9]*$")
     stopped: int = Field(ge=0, le=12, description="How many stages are stopped (status parada).")
     stages: list[FlowStage] = Field(min_length=12, max_length=12)
 
     @model_validator(mode="after")
-    def _in_order(self) -> Flow:
+    def _in_order(self) -> Cycle:
         if [x.number for x in self.stages] != list(range(1, 13)):
             raise ValueError("the stages are the twelve of the plan, in order")
         if self.stopped != sum(x.status == "parada" for x in self.stages):
             raise ValueError("stopped must count the stages whose status is parada")
         return self
+
+
+class Flow(IntelligenceModel):
+    """The state of the flows, computed by the server. ``cycle`` is RP-1.5 (1.2.0); the panel «El camino de un pick» (RP-1.2) joins it as a
+    further optional field of this block, so the block never changes name."""
+
+    cycle: Cycle
 
 
 # ── the contract ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -378,6 +385,6 @@ class ConsoleContract(IntelligenceContract):
         description="The preregistered protocols and the owner's signatures (1.1.0); sin_datos before revision 0166.")
     flow: Flow | Missing | ReadFailure | None = Field(
         default=None, exclude_if=_absent,
-        description="1.2.0 (RP-1.5): the twelve stages of the learning cycle with the hourly freshness check; absent in a 1.1.0 answer.")
+        description="1.2.0 (RP-1.5): the state of the flows; ``cycle`` holds the twelve stages of the learning cycle with the hourly freshness check. Absent in a 1.1.0 answer.")
     news_engine: Missing = Field(description="The news engine (AD-G01): no_entregado until it exists.")
     alert_queue: Missing = Field(description="The private alerts' queue (AD-D08): no_entregado until it exists.")

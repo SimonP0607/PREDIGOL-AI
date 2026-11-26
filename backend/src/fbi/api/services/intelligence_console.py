@@ -43,6 +43,7 @@ from fbi.api.contracts.intelligence.console import (
     ConsoleProtocols,
     CostPart,
     Costs,
+    Cycle,
     Declared,
     EnvelopeView,
     Flow,
@@ -481,12 +482,16 @@ def _or_missing[T](value: T | None) -> T | Missing:
     return NO_DATA if value is None else value
 
 
-def flow_of(readings: Iterable[freshness.Reading]) -> Flow:
+def cycle_of(readings: Iterable[freshness.Reading]) -> Cycle:
     """The twelve readings of ``fbi.ops.freshness`` in the contract's words. A figure the stage does not have is ``sin_datos``."""
     stages = [FlowStage(number=r.stage.number, key=r.stage.key, name_es=r.stage.name_es, alarm_es=r.stage.alarm_es, status=r.status,
                         detail_es=r.detail_es, value=_or_missing(r.value), limit=_or_missing(r.limit), unit=_or_missing(r.unit),
                         last_at=_or_missing(r.last_at)) for r in readings]
-    return Flow(rule_version=freshness.VERSION, stopped=sum(x.status == "parada" for x in stages), stages=stages)
+    return Cycle(rule_version=freshness.VERSION, stopped=sum(x.status == "parada" for x in stages), stages=stages)
+
+
+def flow_of(readings: Iterable[freshness.Reading]) -> Flow:
+    return Flow(cycle=cycle_of(readings))
 
 
 def flow(conn: Conn, at: datetime) -> Flow:
@@ -514,5 +519,5 @@ def console(conn: Conn) -> Envelope[ConsoleContract]:
 
 
 __all__ = ["ALERT_QUEUE", "CONSOLE_RELATIONS", "FAMILY_MODES", "NEWS_ENGINE", "SPECS", "STATE_WORDS", "attempt", "build", "capabilities_of",
-           "clear_cache", "code_head", "console", "costs_of", "flow", "flow_of", "gates_of", "leak_audit_of", "protocols", "protocols_of", "schema_of", "switch_words",
+           "clear_cache", "code_head", "console", "costs_of", "cycle_of", "flow", "flow_of", "gates_of", "leak_audit_of", "protocols", "protocols_of", "schema_of", "switch_words",
            "worker_word"]
