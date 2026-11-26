@@ -7,6 +7,7 @@
   "legs_one": "{count} selección",
   "legs_other": "{count} selecciones",
   "legsRange": "{min}–{max} selecciones",
+  "selections": "Selecciones y por qué están",
   "legsList": "Selecciones del parlay",
   "combinedOdds": "Cuota combinada",
   "empty": {

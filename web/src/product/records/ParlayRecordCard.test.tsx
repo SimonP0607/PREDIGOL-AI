@@ -195,3 +195,57 @@ describe("the three totals go by the card's width, AP-K02", () => {
     expect(dl).not.toContain("sm:grid-cols-3");
   });
 });
+
+describe("the Parlays page: summary on top, selections folded (UX-252, decision C-04)", () => {
+  const two = () => [leg(1, "PENDING", match({})), leg(2, "PENDING", match({}))];
+
+  test("the price and the probability come before the selections", async () => {
+    const markup = await html(<ParlayRecordCard kind="daily" parlay={parlay(two())} />);
+    expect(markup.indexOf('data-testid="parlay-summary"')).toBeGreaterThan(-1);
+    expect(markup.indexOf('data-testid="parlay-summary"')).toBeLessThan(
+      markup.indexOf('data-testid="parlay-legs-fold"'),
+    );
+    expect(markup).toContain('data-testid="parlay-combined-odds"');
+  });
+
+  test("the selections sit in a native disclosure, open while the parlay runs, each leg keeping its row", async () => {
+    const markup = await html(<ParlayRecordCard kind="daily" parlay={parlay(two())} />);
+    const fold = markup.match(/<details\b[^>]*data-testid="parlay-legs-fold"[^>]*>/)?.[0] ?? "";
+    expect(fold).toContain(" open");
+    expect(text(markup)).toContain("Selecciones y por qué están");
+    expect(markup.match(/data-testid="parlay-leg"/g)).toHaveLength(2);
+  });
+
+  test("once it ended the selections fold away; the result stays in the summary", async () => {
+    const ended = { ...parlay(two()), status: "WON" as const };
+    const markup = await html(<ParlayRecordCard kind="daily" parlay={ended} />);
+    const fold = markup.match(/<details\b[^>]*data-testid="parlay-legs-fold"[^>]*>/)?.[0] ?? "";
+    expect(fold).not.toContain(" open");
+    expect(markup).toContain('data-testid="parlay-summary"');
+  });
+
+  test("a multi-day parlay folds one disclosure per day", async () => {
+    const day = (d: number) =>
+      match({ kickoff_at: new Date(Date.UTC(2026, 10, d, 20, 0, 0)).toISOString() });
+    const multi = {
+      ...parlay([
+        leg(1, "PENDING", day(27)),
+        leg(2, "PENDING", day(28)),
+        leg(3, "PENDING", day(28)),
+      ]),
+      kind: "multiday" as const,
+    };
+    const markup = await html(<ParlayRecordCard kind="multiday" parlay={multi} />);
+    expect(markup.match(/<details\b[^>]*data-testid="parlay-day"/g)).toHaveLength(2);
+  });
+
+  test("Inicio's compact card keeps its order: legs, then the summary", async () => {
+    const markup = await html(
+      <ParlayRecordCard kind="daily" parlay={parlay(two())} variant="compact" />,
+    );
+    expect(markup).not.toContain("<details");
+    expect(markup.indexOf('data-testid="parlay-leg"')).toBeLessThan(
+      markup.indexOf('data-testid="parlay-summary"'),
+    );
+  });
+});
