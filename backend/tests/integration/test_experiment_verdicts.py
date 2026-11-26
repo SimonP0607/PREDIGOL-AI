@@ -32,7 +32,8 @@ def test_a_verdict_on_a_registered_protocol_is_written_with_its_fingerprint_and_
     assert (v.experiment, v.verdict, v.n, v.recorded_by) == ("EXP-E1", "exito", 1200, "system")
     assert v.protocol_fingerprint == fingerprint(E1) and v.protocol_version == E1.version
     assert v.thresholds == {"success_below": 0.005, "n_required": 1000}
-    assert v.population["matches"] == 1200 and v.low < v.mean < v.high
+    assert v.population["matches"] == 1200
+    assert v.low is not None and v.mean is not None and v.high is not None and v.low < v.mean < v.high
 
 
 def test_a_verdict_without_a_prior_protocol_is_refused_and_nothing_is_written(db: psycopg.Connection[Any]) -> None:
