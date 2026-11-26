@@ -49,7 +49,7 @@ El validador rechaza, por ejemplo: `Update stuff`, `C4: arreglo`, `fix: cosas` (
 
 ## 4. Descripción del PR
 
-La plantilla (`.github/pull_request_template.md`) trae las secciones **Resumen**, **Qué cambia**, **Por qué**, **Cómo se probó**, **Riesgo y vuelta atrás**, **Despliegue** y **Códigos**. Se rellenan todas; lo que no aplique se escribe «No aplica». El validador exige al menos «Resumen» y «Despliegue».
+La plantilla (`.github/pull_request_template.md`) trae las secciones **Resumen**, **Qué cambia**, **Por qué**, **Cómo se probó**, **Riesgo y vuelta atrás**, **Despliegue**, **Códigos** y **Lienzo de diseño**. Se rellenan todas; lo que no aplique se escribe «No aplica». El validador exige al menos «Resumen» y «Despliegue». En «Lienzo de diseño» se marca «Lámina del lienzo actualizada» con el enlace de la lámina (o «No aplica» si el PR no cambia nada visible), de modo que lo que el usuario ve en producción y el lienzo principal no se separen.
 
 ## 5. Commits
 
