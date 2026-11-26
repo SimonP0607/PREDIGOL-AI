@@ -27,6 +27,7 @@ from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.research.dirs import writable
 from fbi.research.evolution import learn_from_v2
 from fbi.research.loop import frozen, model_ready
 from fbi.research.v2 import run_v2
@@ -34,7 +35,7 @@ from fbi.research.v2_record import record_v2
 from fbi.research.v2_report import report_json, report_markdown
 
 REPO = Path(__file__).resolve().parents[1]
-REPORT_DIR = REPO / "data" / "reports"
+REPORT_DIR = writable("reports", REPO / "data" / "reports")
 
 
 def dirty() -> list[str]:
