@@ -194,5 +194,35 @@ def from_board(board: Mapping[str, Any], *, period: Mapping[str, str]) -> list[P
     return out
 
 
+VERDICT_STAGE_FROM: Final = "en_sombra"
+VERDICT_STAGE_TO: Final = "lista_para_revision"
+VERDICT_FIGURES: Final = ("n", "mean", "low", "high", "adjusted_p")
+
+
+def from_verdicts(rows: Iterable[Mapping[str, Any]]) -> list[Proposal]:
+    """The proposals the verdicts of the plan's experiments support (RP-8.4): one per verdict of SUCCESS (``exito``), with its figures, the protocol it stood on
+    (version and fingerprint) and its thresholds as evidence, and the verdict itself as its reference. An abandonment or an «insufficient» verdict proposes nothing:
+    there is nothing to promote. Only numbers, versions and fingerprints are read from a row - never its reason or its population text - so no text can make one.
+    A proposal changes nothing: it moves a capability from ``en_sombra`` to ``lista_para_revision`` and waits for the owner's signature, and it never names a
+    probability or lowers a threshold (``problems`` refuses both)."""
+    out: list[Proposal] = []
+    for row in rows:
+        experiment = str(row.get("experiment", ""))
+        if row.get("verdict") != "exito" or not re.fullmatch(r"EXP-E[0-9]{1,2}", experiment):
+            continue
+        figures = {k: row.get(k) for k in VERDICT_FIGURES if isinstance(row.get(k), int | float) and not isinstance(row.get(k), bool)}
+        thresholds = {str(k): v for k, v in dict(row.get("thresholds") or {}).items() if isinstance(v, int | float) and not isinstance(v, bool)}
+        population = {str(k): v for k, v in dict(row.get("population") or {}).items() if isinstance(v, int | float | str) and not isinstance(v, bool) and len(str(v)) <= 80
+                      and str(k).lower() not in TEXT_KEYS}
+        evidence = {"verdict_id": int(row.get("id") or 0), "experiment": experiment, "protocol": {"version": str(row.get("protocol_version", "")),
+                    "fingerprint": str(row.get("protocol_fingerprint", ""))}, "figures": figures, "thresholds": thresholds, "population": population,
+                    "computed_at": str(row.get("computed_at", ""))}
+        refs = ({"table": "analytics.experiment_verdicts", "id": int(row.get("id") or 0), "experiment": experiment},)
+        out.append(Proposal("promocion_capacidad", f"capability:{experiment.lower()}", VERDICT_STAGE_FROM, VERDICT_STAGE_TO,
+                            {"from": VERDICT_STAGE_FROM, "to": VERDICT_STAGE_TO, "experiment": experiment}, evidence, refs,
+                            f"{experiment}: veredicto de éxito con {int(figures.get('n') or 0)} partidos, con su protocolo y sus umbrales fijados antes de los datos; la firma del dueño decide"))
+    return out
+
+
 __all__ = ["BOARD_VERSION", "KINDS", "PROBABILITY_KEYS", "REJECTED", "SIGNED", "TARGETS", "TEXT_KEYS", "UNTRUSTED", "VERSION", "Proposal",
            "Row", "evidence_hash", "from_board", "problems", "sign_problems"]

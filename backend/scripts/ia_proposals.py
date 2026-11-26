@@ -5,6 +5,7 @@
     python -m scripts.ia_proposals board --from 2026-11-01 --to 2026-12-01 # the promotions board-v1 supports (writes nothing)
     python -m scripts.ia_proposals board ... --write                      # append them (proposed_by = system; nothing is applied)
     python -m scripts.ia_proposals drafts [--write]                       # the retirements of AD-K06, parity pending
+    python -m scripts.ia_proposals verdicts [--write]                     # the proposals the experiments' verdicts of success support (RP-8.4)
     python -m scripts.ia_proposals sign --id 4 --hash <sha256> --signature "Firmo..." --confirm-owner      # THE OWNER'S ACTION
     python -m scripts.ia_proposals reject --id 4 --hash <sha256> --signature "Rechazo..." --confirm-owner  # THE OWNER'S ACTION
     python -m scripts.ia_proposals record --id 4 --as aplicada --note "..." --confirm-owner                # after the owner applied it
@@ -28,13 +29,13 @@ from typing import Any
 import psycopg
 
 from fbi.core.version import code_version
-from fbi.proposals import REJECTED, SIGNED, Row, from_board, problems
+from fbi.proposals import REJECTED, SIGNED, Row, from_board, from_verdicts, problems
 from fbi.proposals import store as register
 from fbi.proposals.drafts import RETIREMENTS
 
-COMMANDS = ("list", "show", "board", "drafts", "sign", "reject", "record")
+COMMANDS = ("list", "show", "board", "drafts", "verdicts", "sign", "reject", "record")
 OWNER = ("sign", "reject", "record")
-WRITES = ("board", "drafts", *OWNER)
+WRITES = ("board", "drafts", "verdicts", *OWNER)
 OK, REFUSED, USAGE = 0, 1, 2
 
 
@@ -61,6 +62,26 @@ def _row(r: Row) -> dict[str, Any]:
             "status": r.status, "proposed_by": p.proposed_by, "reason": p.reason, "evidence_hash": p.hash}
 
 
+VERDICTS_SQL = """
+SELECT id, experiment, protocol_version, protocol_fingerprint, verdict, n, mean, low, high, adjusted_p, thresholds, population, computed_at
+  FROM analytics.experiment_verdicts_latest ORDER BY id
+"""
+
+
+def _verdict_rows(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
+    from psycopg.rows import dict_row
+
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(VERDICTS_SQL)
+        return list(cur.fetchall())
+
+
+def _verdicts_with_a_proposal(conn: psycopg.Connection[Any]) -> set[int]:
+    """The ids of the verdicts that already carry a proposal, wherever it stands (the plan's indicator: successes without a proposal = 0)."""
+    return {int(ref["id"]) for r in register.rows(conn, limit=10_000) for ref in r.proposal.evidence_refs
+            if ref.get("table") == "analytics.experiment_verdicts" and isinstance(ref.get("id"), int)}
+
+
 def run(conn: psycopg.Connection[Any], args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     if args.command == "list":
         return {"proposals": [_row(r) for r in register.rows(conn)], **register.summary(conn)}, OK
@@ -70,8 +91,13 @@ def run(conn: psycopg.Connection[Any], args: argparse.Namespace) -> tuple[dict[s
             return {"error": f"no proposal {args.proposal_id}"}, REFUSED
         return {**_row(found[0]), "change": found[0].proposal.change, "evidence": found[0].proposal.evidence,
                 "evidence_refs": list(found[0].proposal.evidence_refs)}, OK
-    if args.command in ("board", "drafts"):
-        if args.command == "board":
+    if args.command in ("board", "drafts", "verdicts"):
+        without: list[int] = []
+        if args.command == "verdicts":
+            drafted = from_verdicts(_verdict_rows(conn))
+            have = _verdicts_with_a_proposal(conn)
+            without = [p.evidence["verdict_id"] for p in drafted if p.evidence["verdict_id"] not in have]
+        elif args.command == "board":
             from fbi.evaluation import views
 
             start = datetime.combine(args.start, time(), UTC)
@@ -82,11 +108,12 @@ def run(conn: psycopg.Connection[Any], args: argparse.Namespace) -> tuple[dict[s
             drafted = list(RETIREMENTS)
         plan = [{"kind": p.kind, "target": p.target, "to": p.proposed_version, "problems": problems(p), "evidence_hash": p.hash}
                 for p in drafted]
+        extra = {"successes_without_a_proposal": len(without)} if args.command == "verdicts" else {}
         if not args.write:
-            return {"plan": plan, "written": []}, OK
+            return {"plan": plan, "written": [], **extra}, OK
         written = [register.register(conn, p, code_version=code_version()) for p in drafted if not problems(p)]
         conn.commit()
-        return {"plan": plan, "written": written}, OK
+        return {"plan": plan, "written": written, **extra}, OK
     try:
         if args.command in ("sign", "reject"):
             sid = register.sign(conn, args.proposal_id, decision=SIGNED if args.command == "sign" else REJECTED,
