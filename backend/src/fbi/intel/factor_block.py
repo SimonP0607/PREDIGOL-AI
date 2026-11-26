@@ -6,10 +6,10 @@ packet: they are typed facts in ``ai.evidence``, and the registry also needs to 
 that nobody has tested. ``BLOCK`` lists them and ``register`` gives each its first row, DESCRIPTIVE, written by the system (idempotent), so that
 ``coverage`` can say that every factor of the block has a status as a row and not only by default.
 
-The versions are the ones of the code that computes each fact (``fbi.ai.stakes_facts.VERSION``, ``fbi.ai.calendar_facts.VERSION``); they
-are written here as text, not imported, so the registry reads none of the modules that compute (a test holds the text equal to the module's). A fact that a
-later piece adds (the availability of a player, the referee, the coach, the usual formation, the minutes of the starters) is added to ``BLOCK`` in that piece,
-with its version, and its test says so.
+The versions are the ones of the code that computes each fact (``fbi.ai.stakes_facts.VERSION``, ``fbi.ai.calendar_facts.VERSION``,
+``fbi.ai.people_facts.VERSION``); they are written here as text, not imported, so the registry reads none of the modules that compute (a test holds the text
+equal to the module's). A fact that a later piece adds (the availability of a player, the minutes of the starters) is added to ``BLOCK`` in that piece, with its
+version, and its test says so.
 """
 
 from __future__ import annotations
@@ -25,6 +25,9 @@ from fbi.intel.factors import Factor
 
 STAKES: Final = "stakes_facts"
 CALENDAR_FACTS: Final = "calendar_facts"
+COACH_FACTS: Final = "coach_facts"
+FORMATION_FACTS: Final = "formation_facts"
+REFEREE_FACTS: Final = "referee_facts"
 
 BLOCK: Final[tuple[Factor, ...]] = (
     Factor(STAKES, "stakes-facts-v1", ("evidence", "stakes"), False, "Qué se juega cada equipo",
@@ -33,6 +36,13 @@ BLOCK: Final[tuple[Factor, ...]] = (
     Factor(CALENDAR_FACTS, "calendar-facts-v1", ("evidence", "schedule"), False, "Descanso, carga y próximo partido, dichos como hechos",
            "que los días desde el último partido, los partidos de las dos últimas semanas y la cercanía del siguiente cambian el resultado más allá de lo que "
            "ya dicen el modelo y el mercado"),
+    Factor(COACH_FACTS, "people-facts-v1", ("evidence", "coach"), False, "Quién dirige y desde cuándo",
+           "que los días que lleva un entrenador en el banquillo (un cambio reciente, un técnico veterano) cambian el resultado más allá de lo que ya dicen "
+           "el modelo y el mercado"),
+    Factor(FORMATION_FACTS, "people-facts-v1", ("evidence", "formation"), False, "Formación más usada",
+           "que la formación que un equipo usa de costumbre cambia el resultado más allá de lo que ya dicen el modelo y el mercado"),
+    Factor(REFEREE_FACTS, "people-facts-v1", ("evidence", "referee"), False, "Árbitro nombrado",
+           "que el árbitro nombrado para el partido cambia el resultado (o los córners y las tarjetas) más allá de lo que ya dicen el modelo y el mercado"),
 )
 BY_KEY: Final[dict[str, Factor]] = {f.key: f for f in BLOCK}
 REASON: Final = "Registrado como DESCRIPTIVO al cargar el bloque de contexto estructurado (RP-4.5): nadie ha probado el factor, no puede ser razón de nada."
