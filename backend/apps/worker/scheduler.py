@@ -214,7 +214,7 @@ from fbi.ops.worker_lock import WorkerLock, holder
 log = structlog.get_logger("worker")
 
 
-def _booked(job_type: str) -> Any:
+def _booked(job_type: str) -> Callable[[job_book.F], job_book.F]:
     """RP-1.1: every pass of the job leaves one row in the ledger (``fbi.ops.job_book``), opened before and closed after, also on failure."""
     return job_book.booked_job(job_type, lambda: _connect)
 
