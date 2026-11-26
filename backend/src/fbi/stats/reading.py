@@ -19,7 +19,7 @@ reading equal to the answer of C-13 for the same entity. It writes nothing and d
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final, Literal
 
@@ -91,6 +91,8 @@ class Document:
     computed_at: datetime | None = None
     readings: tuple[Reading, ...] = ()
     trends: tuple[TrendReading, ...] = ()
+    body: Mapping[str, Any] = field(default_factory=dict, compare=False, repr=False)
+    """The document's body as stored, for the cuts that read a block the figures do not carry (halves, a player's starts)."""
 
     def get(self, key: str) -> Reading | None:
         return next((r for r in self.readings if r.key == key), None)
@@ -177,7 +179,7 @@ def document_of(row: Mapping[str, Any], *, as_of: datetime | None = None, keys: 
     version = str(row["calc_version"])
     body = row["doc"] if isinstance(row["doc"], Mapping) else {}
     return Document("ok", kind, entity, cs, scope, context, version, document_id(kind, entity, cs, scope, context, version),
-                    int(row.get("sample") or 0), computed_at, readings_of(body, keys), trends_of(body))
+                    int(row.get("sample") or 0), computed_at, readings_of(body, keys), trends_of(body), body)
 
 
 def read(conn: psycopg.Connection[Any], *, kind: str, entity_id: int, competition_season_id: int, scope: str = "season",
