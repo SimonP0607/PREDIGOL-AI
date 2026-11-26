@@ -18,6 +18,7 @@ import type {
 import type { BuilderQuery, BuiltParlay } from "./types_builder";
 import type { MarketProbs, StatsContext, StatsProfile, StatsScope } from "./types_stats";
 import type { Availability, AvailabilityPrivate } from "./types_availability";
+import type { MatchPeriodStats } from "./types_period_stats";
 import type { SearchV2 } from "./types_search";
 import type { ProviderUsage } from "./types_provider_usage";
 import type { EvaluationBoard } from "./types_evaluation_board";
@@ -286,6 +287,7 @@ import type {
   SignupIn,
   VerifyInfo,
   VerifyIn,
+  WellbeingState,
 } from "./types_auth";
 import type {
   CompetitionScoreRow,
@@ -417,6 +419,22 @@ export function exportUrl(kind: "picks" | "parlays", filter?: MyPicksFilter): st
   }
   const query = params.toString();
   return `/api/v1/me/${kind}/export${query ? `?${query}` : ""}`;
+}
+
+/**
+ * The address of the file of the published picks (plan PM, PM-14-08): a plain download from the page's own origin, with the session
+ * cookie. A GET, like the files of Mis picks. `picks` and `calibration` are the two CSV files; `json` holds both.
+ */
+export function transparencyExportUrl(
+  kind: "picks" | "calibration" | "json",
+  preview?: "shadow" | undefined,
+): string {
+  const params = new URLSearchParams();
+  if (kind === "json") params.set("format", "json");
+  else if (kind === "calibration") params.set("part", "calibration");
+  if (preview) params.set("preview", preview);
+  const query = params.toString();
+  return `/api/v1/transparency/export${query ? `?${query}` : ""}`;
 }
 
 /** A repeated parameter (`?market=1X2&market=OU`) is an array; an empty one is left out. */
@@ -552,6 +570,9 @@ export const v1 = {
   logout: () => postJson<void>("/auth/logout", {}),
   me: () => getJson<Me>("/auth/me"),
   updatePreferences: (prefs: PreferencesIn) => patchJson<Me>("/auth/me/preferences", prefs),
+  /** «Solo fútbol» and the pause (plan PM, PM-14-07): what the reader chose, and the choice (a field left out stays). */
+  putWellbeing: (body: { football_only?: boolean; pause_days?: 0 | 1 | 7 | 30 }) =>
+    putJson<WellbeingState>("/me/wellbeing", body),
   changePassword: (current_password: string, new_password: string) =>
     postJson<void>("/auth/me/password", { current_password, new_password }),
   // the steps of signing in
@@ -811,6 +832,9 @@ export const v1 = {
   /** C-16 (plan PM): the seven states of a match's blocks and markets. 404 while FBI_AVAILABILITY is off. */
   matchAvailability: (id: number | string) =>
     getJson<Envelope<Availability>>(`/matches/${id}/availability`),
+  /** PM-10-03: the statistics of a match by half. 404 while FBI_MATCH_HALVES is off. */
+  matchPeriodStats: (id: number | string) =>
+    getJson<Envelope<MatchPeriodStats>>(`/matches/${id}/period-stats`),
   /** C-16, private: the matrix of every graded competition and the last week of changes and shadow discrepancies. */
   adminAvailabilityMatrix: () =>
     getJson<Envelope<AvailabilityPrivate>>("/admin/availability/matrix"),

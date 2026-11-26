@@ -1,4 +1,5 @@
 /** Small, shared pieces of the product screens: prices, value, freshness, match state. */
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { Clock, FlaskConical, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -29,6 +30,8 @@ export function OddsPill({
   size?: "sm" | "md" | "lg";
   className?: string | undefined;
 }) {
+  // «Solo fútbol» and the pause (PM-14-07): a reader who chose to see no price sees none, wherever one is drawn.
+  if (useNoPrices()) return null;
   return (
     <span className={cn(priceVariants({ size, tone: best ? "gold" : "plain" }), className)}>
       {formatOdds(odds)}

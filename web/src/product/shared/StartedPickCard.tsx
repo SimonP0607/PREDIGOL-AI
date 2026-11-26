@@ -5,12 +5,13 @@
  * now (minute and score), its result and its value against the last pre-match price (a
  * near-close price, not validated as the closing line - so the label says so).
  */
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { hintProps } from "@/components/system/tapHint";
 import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { t } from "@/lib/i18n";
 import { formatOdds, fmtSignedPct, fmtSignedPp } from "@/lib/i18n/format";
 import { formatTime } from "@/lib/time";
@@ -34,7 +35,13 @@ const RESULTS: Record<string, ResultStatus> = {
   half_loss: "HALF_LOSS",
 };
 
-export function StartedPickCard({
+/** As the pick card: none for a reader who chose to see no price or pick (PM-14-07). */
+export function StartedPickCard(props: ComponentProps<typeof StartedPickCardBody>) {
+  if (useNoPrices()) return null;
+  return <StartedPickCardBody {...props} />;
+}
+
+function StartedPickCardBody({
   pick,
   shadow = false,
   className,

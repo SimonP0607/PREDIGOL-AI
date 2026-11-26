@@ -18,6 +18,7 @@ import { describe, expect, test } from "bun:test";
 import { CATALOGS, type Catalog, type Locale } from "./catalogs";
 // The namespaces added when their screen loads (`addCatalog`): imported so the list does not depend on test order.
 import "@/product/shared/availabilityText";
+import "@/product/wellbeing/wellbeingText";
 import "@/components/analytics/evidenceText";
 import "@/components/analytics/stats/readText";
 import "@/product/competitions/text";

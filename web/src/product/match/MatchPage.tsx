@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
 import { LiveApiError } from "@/lib/api/v1/client";
-import { useAuth, useMatchVizSwitches } from "@/lib/auth/AuthProvider";
+import { useAuth, useMatchVizSwitches, useNoPrices } from "@/lib/auth/AuthProvider";
 import { useScrollCue } from "@/lib/scrollCue";
 import { Card, EmptyState, ErrorState, SkeletonBlock } from "@/product/shared/States";
 import { buttonVariants } from "@/components/ui/button";
@@ -237,7 +237,10 @@ export function MatchPage({ fixtureId }: { fixtureId: string }) {
   const availability = useMatchAvailability(fixtureId);
   const shownMarkets = view.data?.data.markets;
   const pricesShown = shownMarkets?.status === "ok" && (shownMarkets.data?.length ?? 0) > 0;
-  const tabs = coverage ? tabsForCoverage(availability, { pricesShown }) : tabsFor();
+  const noPrices = useNoPrices();
+  const tabs = coverage
+    ? tabsForCoverage(availability, { pricesShown, noPrices })
+    : tabsFor(noPrices);
   const [tab, setTab] = useMatchTab(fixtureId, sectionsFor(auth.showAdmin, tabs), knownPhase);
   // Plan UX, A6: which matches readers open, from where, and which sections they read.
   useEffect(() => {

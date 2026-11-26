@@ -6,6 +6,7 @@
  *
  * `PickListView` is the pure part (a test renders it from rows); `PickListSection` reads the pages.
  */
+import type { ReactNode } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2, Rows3 } from "lucide-react";
 import { live } from "@/lib/api/v1/queries";
@@ -18,6 +19,7 @@ import { marketName, selectionLabel } from "@/product/shared/markets";
 import { ErrorState, SkeletonCards } from "@/product/shared/States";
 import type { PublishedPick } from "@/lib/api/v1/types_transparency";
 import { Block, Note } from "./parts";
+import { ExportLinks } from "./ExportLinks";
 import { intText, resultTone, scoreText } from "./model";
 
 /** Picks per page: enough to read, few enough for a phone. */
@@ -100,12 +102,15 @@ export function PickListView({
   hasMore,
   loadingMore,
   onMore,
+  exportLinks,
 }: {
   items: readonly PublishedPick[];
   total: number;
   hasMore: boolean;
   loadingMore: boolean;
   onMore: () => void;
+  /** The download of the published picks (PM-14-08): drawn by `ExportLinks`, which is nothing while the switch is off. */
+  exportLinks?: ReactNode;
 }) {
   return (
     <Block
@@ -146,6 +151,7 @@ export function PickListView({
         </>
       )}
       <Note>{t("transparency.picks.legend")}</Note>
+      {exportLinks}
     </Block>
   );
 }
@@ -185,6 +191,7 @@ export function PickListSection({ preview }: { preview: "shadow" | undefined }) 
       hasMore={q.hasNextPage}
       loadingMore={q.isFetchingNextPage}
       onMore={() => void q.fetchNextPage()}
+      exportLinks={<ExportLinks preview={preview} />}
     />
   );
 }

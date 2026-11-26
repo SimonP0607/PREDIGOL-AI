@@ -104,6 +104,18 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     ("predigol_worker", "analytics.evaluation_segments", "DELETE", False),
     ("predigol_api", "analytics.evaluation_segments", "SELECT", True),
     ("predigol_api", "analytics.evaluation_reports", "INSERT", False),
+    # the team statistics by half and the register of what was asked for them (PM-05-01, PM-05-02, 0175): the worker adds and rewrites a
+    # match's rows, never deletes one; the API reads them
+    ("predigol_worker", "core.fixture_team_stats_period", "INSERT", True),
+    ("predigol_worker", "core.fixture_team_stats_period", "UPDATE", True),
+    ("predigol_worker", "core.fixture_team_stats_period", "DELETE", False),
+    ("predigol_worker", "core.fixture_period_asks", "INSERT", True),
+    ("predigol_worker", "core.fixture_period_asks", "UPDATE", True),
+    ("predigol_worker", "core.fixture_period_asks", "DELETE", False),
+    ("predigol_api", "core.fixture_team_stats_period", "SELECT", True),
+    ("predigol_api", "core.fixture_period_asks", "SELECT", True),
+    ("predigol_api", "core.fixture_team_stats_period", "INSERT", False),
+    ("predigol_api", "core.fixture_period_asks", "UPDATE", False),
     # the current-price book (BE-010): the worker builds it and purges it, the API reads it
     ("predigol_worker", "market.book_current", "INSERT", True),
     ("predigol_worker", "market.book_current", "UPDATE", True),
@@ -230,6 +242,9 @@ def can(conn: psycopg.Connection, role: str, table: str, privilege: str) -> bool
     # when the account is anonymised; the worker of PrediGol Intelligence never reads it
     *(("predigol_api", "customer.calendar_feeds", privilege, True) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
     *(("predigol_worker", "customer.calendar_feeds", privilege, False) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
+    # PM-14-07 (0176): a reader's «solo fútbol» mode and pause - the API reads and writes it, the worker never sees it
+    *(("predigol_api", "customer.wellbeing", privilege, True) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
+    *(("predigol_worker", "customer.wellbeing", privilege, False) for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")),
     # what readers think of PrediGol (plan UX, B6): the API records the survey and «¿Te sirvió?» (a vote changes: UPDATE),
     # deletes them when the account is anonymised and, as the messenger, past their 24 months; the worker of PrediGol
     # Intelligence never reads them (the opinion never enters the models)

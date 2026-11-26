@@ -9,6 +9,7 @@ import { formatDateYear, formatRelative } from "@/lib/time";
 import type { TeamRef } from "@/lib/api/v1/types";
 import type { Absence, H2HMatch, Side, StandingLine, TableRow } from "@/lib/api/v1/types_center";
 import { PlayerPhoto, TeamName } from "@/components/football/Logos";
+import { usePmReaderSwitches } from "@/lib/auth/AuthProvider";
 import { sectionCodeText } from "@/components/system/sectionCode";
 import { ErrorState, SkeletonBlock } from "@/product/shared/States";
 import type { MatchCtx } from "./context";
@@ -160,6 +161,27 @@ function FullTables({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
   );
 }
 
+/** The link to the competition's own table (plan PM, lámina I04; UX-243): the page the whole table lives on. */
+export function CompetitionTableLinkTo({ competitionId }: { competitionId: number }) {
+  return (
+    <Link
+      to="/competitions/$competitionId"
+      params={{ competitionId: String(competitionId) }}
+      className="tap relative mt-1 inline-flex min-h-8 items-center text-caption text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      data-testid="competition-table-link"
+    >
+      {t("match.standings.competitionTable")}
+    </Link>
+  );
+}
+
+/** Behind `FBI_COMPETITION_PAGE`: without the competition's page there is nowhere to go, so nothing is drawn. */
+function CompetitionTableLink({ ctx }: { ctx: MatchCtx }) {
+  const { competitionPage } = usePmReaderSwitches();
+  if (!competitionPage) return null;
+  return <CompetitionTableLinkTo competitionId={ctx.match.competition.id} />;
+}
+
 function StandingsTable({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) {
   const sorted = [...rows].sort((a, b) => a.rank - b.rank);
   const after = rows.some((r) => !r.before_kickoff);
@@ -201,6 +223,7 @@ function StandingsTable({ ctx, rows }: { ctx: MatchCtx; rows: StandingLine[] }) 
       ) : null}
       <TableFreshness rows={rows} />
       <FullTables ctx={ctx} rows={rows} />
+      <CompetitionTableLink ctx={ctx} />
     </>
   );
 }

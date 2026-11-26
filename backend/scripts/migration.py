@@ -2,6 +2,7 @@
 
     python -m scripts.migration plan                      # tiers 1-3, every assumption shown; no request
     python -m scripts.migration plan --tiers 1,2 --no-ids # priced as if /fixtures?ids= were unavailable
+    python -m scripts.migration plan --tiers 9 --depth 2  # the current season and the 2 completed ones before it (DM-03)
     python -m scripts.migration capacity                  # Pro / Ultra / Mega against the plan and live needs
     python -m scripts.migration dry-run                   # end to end on a scratch database, fake HTTP
     python -m scripts.migration seed --tiers 1 --yes      # write the units (no request)
@@ -24,7 +25,7 @@ import psycopg
 from fbi.core.config import settings
 from fbi.core.logging import configure as configure_logging
 from fbi.migration.capacity import live_budget, recommend, scenarios
-from fbi.migration.config import load_migration_config, load_plans
+from fbi.migration.config import MigrationConfig, load_migration_config, load_plans
 from fbi.migration.facts import DatabaseFacts, name_mismatches
 from fbi.migration.planner import MigrationPlan, plan_migration
 from fbi.migration.units import migration_status, save_plan, seed_plan
@@ -34,10 +35,21 @@ def _tiers(text: str) -> set[int]:
     return {int(x) for x in text.split(",") if x.strip()}
 
 
+def depth_seasons(cfg: MigrationConfig, depth: int | None) -> list[int] | None:
+    """The seasons ``--depth N`` asks for: the current one (when the config includes it) and the N completed seasons before it.
+    ``None`` leaves the config's own ``seasons.target_depth`` in force (the default of every plan so far)."""
+    if depth is None:
+        return None
+    if depth < 0:
+        raise SystemExit("--depth must be 0 or more")
+    past = [cfg.current_season - k for k in range(1, depth + 1)]
+    return ([cfg.current_season] if cfg.include_current else []) + past
+
+
 def _plan(conn: psycopg.Connection, args: argparse.Namespace) -> MigrationPlan:
     cfg = load_migration_config()
     return plan_migration(cfg, DatabaseFacts(conn), tiers=_tiers(args.tiers), ids_batching=not args.no_ids,
-                          with_optional=args.with_optional)
+                          with_optional=args.with_optional, seasons=depth_seasons(cfg, args.depth))
 
 
 def _print_plan(plan: MigrationPlan) -> None:
@@ -67,6 +79,9 @@ def main() -> int:
         p.add_argument("--tiers", default="1,2,3")
         p.add_argument("--no-ids", action="store_true", help="price detail as 4 requests per fixture")
         p.add_argument("--with-optional", action="store_true", help="include OPTIONAL endpoints (player seasons)")
+        p.add_argument("--depth", type=int, default=None,
+                       help="completed seasons to plan besides the current one (default: seasons.target_depth of the config); "
+                            "decision DM-03 of the Plan Maestro PM: 2 for the new competitions of priorities P0 to P2")
         p.add_argument("--json", action="store_true")
         if name == "seed":
             p.add_argument("--yes", action="store_true")
