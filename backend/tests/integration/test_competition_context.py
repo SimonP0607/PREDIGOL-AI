@@ -296,7 +296,7 @@ def test_only_the_listed_modules_name_the_tables_that_hold_the_outcome_of_a_tie(
 
 
 def test_the_one_door_reads_only_the_columns_that_are_structure() -> None:
-    sql = " ".join(s for s in (cx.STAGE_SQL, cx.EARLIER_LEGS_SQL))
+    sql = " ".join(s for s in (cx.STAGE_SQL, cx.EARLIER_LEGS_SQL, cx.FORMAT_SQL))
     ties = set(re.findall(r"\bt\.(\w+)", sql))
     stages = set(re.findall(r"\bs\.(\w+)", sql))
 

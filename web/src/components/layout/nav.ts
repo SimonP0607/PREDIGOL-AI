@@ -90,6 +90,30 @@ export interface NavFlags {
   news: boolean;
   /** The pages of clubs, national teams and players are open (FBI_PROFILES): «Equipos». */
   profiles: boolean;
+  /** The reader chose «solo fútbol» or a pause (FBI_WELLBEING, PM-14-07): no address that is a price, a pick or a parlay. */
+  noPrices?: boolean;
+}
+
+/**
+ * The addresses that ARE a price, a pick or a parlay (PM-14-07): for a reader who sees none they leave every bar and «Más», and the
+ * page itself says so (`WellbeingPage`). The server refuses the calls behind them on its own (`fbi.api.wellbeing_routes`).
+ */
+export const PRICE_ADDRESSES: readonly string[] = [
+  "/picks",
+  "/my-picks",
+  "/parlays",
+  "/odds",
+  "/transparency",
+];
+
+/** Whether a path is one of `PRICE_ADDRESSES` or under one. */
+export function isPriceAddress(path: string): boolean {
+  const p = path.replace(/\/+$/, "") || "/";
+  return PRICE_ADDRESSES.some((a) => p === a || p.startsWith(`${a}/`));
+}
+
+function withoutPrices<T extends { to: string }>(items: readonly T[], f: NavFlags): T[] {
+  return f.noPrices ? items.filter((i) => !isPriceAddress(i.to)) : [...items];
 }
 
 export const NAV_V1: NavFlags = { v2: false, news: false, profiles: false };
@@ -100,6 +124,10 @@ export const NAV_V1: NavFlags = { v2: false, news: false, profiles: false };
  * while Noticias is closed, the bar of always.
  */
 export function barNav(f: NavFlags = NAV_V1): NavItem[] {
+  return withoutPrices(barNavOf(f), f);
+}
+
+function barNavOf(f: NavFlags): NavItem[] {
   if (!f.v2 || !f.news) return userNav;
   return [
     { to: "/home", label: "nav.home", icon: House },
@@ -137,6 +165,11 @@ export const MORE_HIDE: Record<DeskFrom, string> = {
  * Noticias from 1280 px).
  */
 export function deskExtras(f: NavFlags = NAV_V1): DeskExtra[] {
+  const all = deskExtrasOf(f);
+  return f.noPrices ? all.filter((x) => !isPriceAddress(x.item.to)) : all;
+}
+
+function deskExtrasOf(f: NavFlags): DeskExtra[] {
   if (!f.v2 || !f.news)
     return DESK_BAR.map((to) => ({
       item: moreNav.find((m) => m.to === to)!,
@@ -251,13 +284,16 @@ export function moreItems(
   const base = moreNav.filter(
     (item) => (!item.transparency || showTransparency) && (!item.news || showNews),
   );
-  if (!f.v2 || !f.news) return base;
+  if (!f.v2 || !f.news) return withoutPrices(base, f);
   // Noticias is in the bar now; Mis picks (and Equipos, while the profiles are open) come into «Más».
-  return [
-    MY_PICKS_MORE,
-    ...(f.profiles ? [TEAMS_MORE] : []),
-    ...base.filter((item) => item.to !== "/news"),
-  ];
+  return withoutPrices(
+    [
+      MY_PICKS_MORE,
+      ...(f.profiles ? [TEAMS_MORE] : []),
+      ...base.filter((item) => item.to !== "/news"),
+    ],
+    f,
+  );
 }
 
 /**

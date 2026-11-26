@@ -11,6 +11,7 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { History, ShieldCheck } from "lucide-react";
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { live } from "@/lib/api/v1/queries";
@@ -244,6 +245,8 @@ export function PicksTab({
   ctx: MatchCtx;
   why?: ((pickId: number) => ReactNode) | undefined;
 }) {
+  // «solo fútbol» or a pause (PM-14-07): the picks of the match are not shown (and not asked for: their route answers 403)
+  if (useNoPrices()) return null;
   if (ctx.phase === "scheduled") return <UpcomingPicks ctx={ctx} />;
   return (
     <div className="space-y-4">

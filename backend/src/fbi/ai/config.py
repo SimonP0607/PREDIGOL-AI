@@ -43,6 +43,10 @@ from a request, never sent to a client.
                                 which keep counting the other matches -, with one more search (press conference, squad) in
                                 the competition's language: at most two searches per match and pass, and never once Exa's
                                 own envelope is spent. ``0`` goes back to the caps alone (restart the worker)
+    FBI_AI_RESEARCH_ORDER       off (default) | on - RP-5.4 (``research-order-v1``): the matches that read the web are ranked by the level of
+                                their competition (A the owner's, B tiers 1-2 and followed, C the rest with a market) and then by the pick
+                                candidate as a tie-break; level D is never searched. Off keeps ``web_rank`` as it was. Only the order
+                                changes: the caps, the budget and Exa's envelope stay (restart the worker)
     FBI_AI_MULTIMODAL           off (default) | on - images only for selected matches, each one logged
     FBI_AI_HORIZON_HOURS        default 96 - how far ahead the free part (packets, rules, analyses) looks
     FBI_AI_SEARCH               exa | brave | tavily | none (default exa when EXA_API_KEY is set, else none)
@@ -100,6 +104,9 @@ IA-123 (plan pieces AD-D09 and AD-D11) - when the specialist readers speak, and 
     FBI_AI_READERS              default passes | e1. passes: the readers of the shadow (Match, Statistics, Player) speak in every pass the
                                 orchestrator runs, as before. e1: only in E1 (24 h to 12 h before the kick-off) and in a later pass with a
                                 material finding of contra-v1 (``fbi.ai.readers``, ``readers-v1``). Any other word is passes.
+    FBI_AI_REVIEW_PREFILTER     off (default) | on - RP-12.2 (``fbi.ai.review_prefilter``, ``review-prefilter-v1``): a selection the rules
+                                (``rules-review-v1``) already rejected is not sent to the model, because the combined review is REJECT
+                                whatever it answers; a fixed 10 % of them is still reviewed, as the control. The owner's D1 (restart the worker)
     FBI_REVIEW_V2               default on | no_opus | sample | off - the steps of the conditioned retirement of the production review
                                 (``fbi.ai.review_retirement``, ``review-retire-v1``). on: today's path. no_opus: the review never escalates to
                                 the strong model. sample: the model reviews only a fixed random share of the selections (the control). off:
@@ -332,6 +339,10 @@ class AiSettings:
     news_priority: bool = True
     """IA-016: the matches of the owner's priority competitions (groups 1-3) are searched at their first and pre passes outside the web caps
     (``FBI_AI_NEWS_PRIORITY``, on unless it says ``0``/``off``/``false``/``no``)."""
+    research_order: bool = False
+    """RP-5.4 (``research-order-v1``): the matches the web search reaches are ranked by level of importance - the owner's competitions first
+    (``fbi.ai.research_order``) - and not by whether they have a pick candidate (``FBI_AI_RESEARCH_ORDER``, OFF unless it says ``1``/``on``/
+    ``true``/``yes``: it is the owner's decision D1, after reading the simulation of ``scripts/ia_research_order.py``)."""
     multimodal: bool = False
     horizon_hours: int = 96
     search: str | None = None
@@ -389,6 +400,9 @@ class AiSettings:
     ``default`` (each surface its own), ``shadow`` (nothing refused, every finding marked in the ledger) or ``enforce`` (every surface refuses)."""
     readers: str = "passes"
     """IA-123 (AD-D09): when the specialist readers speak (``FBI_AI_READERS``, ``fbi.ai.readers.schedule_of``): ``passes`` or ``e1``."""
+    review_prefilter: bool = False
+    """RP-12.2 (``review-prefilter-v1``): the model does not review a selection the rules already rejected, except a fixed control share
+    (``FBI_AI_REVIEW_PREFILTER``, OFF unless it says ``1``/``on``/``true``/``yes``; the owner's D1)."""
     review_v2: str = "on"
     """IA-123 (AD-D11): the step of the retirement of ``review-v2`` (``FBI_REVIEW_V2``, ``fbi.ai.review_retirement.step_of``): ``on`` (today),
     ``no_opus``, ``sample`` or ``off``."""
@@ -429,6 +443,7 @@ class AiSettings:
             max_web_pre=_int("FBI_AI_MAX_WEB_PRE", 12, env),
             max_watch_per_day=_int("FBI_AI_MAX_WATCH_PER_DAY", 8, env),
             news_priority=(env.get("FBI_AI_NEWS_PRIORITY") or "1").strip().lower() not in ("0", "off", "false", "no"),
+            research_order=(env.get("FBI_AI_RESEARCH_ORDER") or "").strip().lower() in ("1", "on", "true", "yes"),
             multimodal=(env.get("FBI_AI_MULTIMODAL") or "").strip().lower() in ("1", "on", "true", "yes"),
             horizon_hours=max(1, _int("FBI_AI_HORIZON_HOURS", 96, env)),
             search=None if search_raw in ("", "none", "off") else search_raw,
@@ -456,6 +471,7 @@ class AiSettings:
             unified_max_per_day=max(0, _int("FBI_AI_RESEARCH_UNIFIED_MAX_PER_DAY", 60, env)),
             output_guard=_output_guard(env.get("FBI_AI_OUTPUT_GUARD")),
             readers=_readers(env.get("FBI_AI_READERS")),
+            review_prefilter=(env.get("FBI_AI_REVIEW_PREFILTER") or "").strip().lower() in ("1", "on", "true", "yes"),
             review_v2=_review_v2(env.get("FBI_REVIEW_V2")),
             pm_reviewer=_on(env.get("FBI_AI_PM_REVIEWER")),
             learning_analyst=_on(env.get("FBI_AI_LEARNING_ANALYST")),
@@ -521,6 +537,7 @@ class AiSettings:
             "max_web_pre": self.max_web_pre,
             "max_watch_per_day": self.max_watch_per_day,
             "news_priority": self.news_priority,
+            "research_order": self.research_order,
             "multimodal": self.multimodal,
             "horizon_hours": self.horizon_hours,
             "search": self.search,
@@ -541,6 +558,7 @@ class AiSettings:
             "extractor": self.extractor,
             "output_guard": self.output_guard,
             "readers": self.readers,
+            "review_prefilter": self.review_prefilter,
             "review_v2": self.review_v2,
             "engines": list(self.engines),
             "shadow_engines": list(self.shadow_engines),

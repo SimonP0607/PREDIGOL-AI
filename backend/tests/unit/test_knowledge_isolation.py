@@ -49,6 +49,7 @@ NAMES_IT = {
                             "core.fixture_event_kinds in the same transaction as the row they belong to",
     "knowledge/layers.py": "the pure part: it names core.fixture_event_kinds in a docstring (where the lines of the events are kept) and reads no table",
     "ingestion/match_knowledge.py": "the worker's job: one pass of the builder as a run of the ledger",
+    "ops/flow.py": "the state of the stages of the path of a pick (RP-1.2): lists the job type of Match Knowledge (match_knowledge) under the stage it belongs to, as a name, and reads only the book of runs",
     "ops/run_watchdog.py": "the watchdog: how long a run of the job may stay open before it is closed (the job's name, nothing else)",
     "api/services/knowledge.py": "the page of a match: reads the newest row of intel.match_knowledge, for users once the owner decides and for the preview",
     "api/routers/knowledge.py": "the route of the page: GET /matches/{id}/knowledge, which calls the service",

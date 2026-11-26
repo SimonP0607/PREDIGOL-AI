@@ -22,7 +22,7 @@ from fbi.auth import passwords, store, tokens
 from fbi.auth.db import write_connection
 from fbi.auth.roles import Role
 from fbi.auth.service import AuthError, Principal, _lock_streak_of, normalize_email
-from fbi.customer import calendar_feed, lifecycle, push
+from fbi.customer import calendar_feed, lifecycle, push, wellbeing
 
 log = structlog.get_logger("auth.anonymize")
 
@@ -69,6 +69,7 @@ def anonymise(actor: Principal, user_id: int, *, confirm: str, ip: str | None) -
         lifecycle.forget(conn, user_id)  # the states of its days (plan UX, B11)
         push.forget(conn, user_id)  # the devices, the bells and the notices (plan UX, B7)
         calendar_feed.forget(conn, user_id)  # the secret calendar links (PM-14-06)
+        wellbeing.forget(conn, user_id)  # the choice to see no prices (PM-14-07)
         # Their support tickets still open (plan UX, A14): nobody is left to answer. The thread stays, as a privacy
         # request's does.
         tickets = conn.execute("UPDATE customer.support_tickets SET status = 'closed', closed_at = now() "

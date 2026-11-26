@@ -1,6 +1,6 @@
 {
   "contract": "C-11",
-  "contract_version": "1.1.0",
+  "contract_version": "1.3.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T16:42:00Z",
@@ -1201,6 +1201,417 @@
       }
     ],
     "notice_es": "Una firma no activa nada: deja constancia de que el protocolo es el que el dueño aprobó antes de mirar los datos. Ningún veredicto enciende, promociona ni cambia un umbral por estar firmado (AD-K07)."
+  },
+  "flow": {
+    "cycle": {
+      "rule_version": "freshness-v1",
+      "stopped": 2,
+      "stages": [
+        {
+          "number": 1,
+          "key": "observacion",
+          "name_es": "Observación",
+          "alarm_es": "Sin filas en 36 horas",
+          "status": "al_dia",
+          "detail_es": "Último post-mortem de partido: hace 6.2 horas (límite 36.0).",
+          "value": 6.2,
+          "limit": 36.0,
+          "unit": "horas",
+          "last_at": "2026-11-24T08:48:00Z"
+        },
+        {
+          "number": 2,
+          "key": "patron",
+          "name_es": "Patrón",
+          "alarm_es": "Sin corrida en 8 días",
+          "status": "parada",
+          "detail_es": "Última corrida de la investigación semanal: hace 211.4 horas (límite 192.0).",
+          "value": 211.4,
+          "limit": 192.0,
+          "unit": "horas",
+          "last_at": "2026-11-15T19:36:00Z"
+        },
+        {
+          "number": 3,
+          "key": "hipotesis",
+          "name_es": "Hipótesis",
+          "alarm_es": "Más de 20 propuestas sin triage",
+          "status": "parada",
+          "detail_es": "23 hipótesis propuestas sin triage (límite 20).",
+          "value": 23.0,
+          "limit": 20.0,
+          "unit": "hipótesis",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 4,
+          "key": "triage",
+          "name_es": "Triage",
+          "alarm_es": "Hipótesis propuesta sin triage hace más de 31 días",
+          "status": "al_dia",
+          "detail_es": "La propuesta más antigua espera hace 12.0 días (límite 31).",
+          "value": 12.0,
+          "limit": 31.0,
+          "unit": "días",
+          "last_at": "2026-11-12T15:00:00Z"
+        },
+        {
+          "number": 5,
+          "key": "experimento",
+          "name_es": "Experimento",
+          "alarm_es": "Aceptada sin protocolo pasadas 24 horas",
+          "status": "al_dia",
+          "detail_es": "0 hipótesis aceptadas sin experimento pasadas 24 horas.",
+          "value": 0.0,
+          "limit": 0.0,
+          "unit": "hipótesis",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 6,
+          "key": "validacion_historica",
+          "name_es": "Validación histórica",
+          "alarm_es": "Experimento sin resultado",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.3.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 7,
+          "key": "sombra_prospectiva",
+          "name_es": "Sombra prospectiva",
+          "alarm_es": "Sombra sin condición de decisión",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-9.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 8,
+          "key": "comparacion",
+          "name_es": "Comparación",
+          "alarm_es": "Muestra alcanzada sin comparar",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.3.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 9,
+          "key": "veredicto",
+          "name_es": "Veredicto",
+          "alarm_es": "Comparación sin veredicto",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 10,
+          "key": "propuesta_de_cambio",
+          "name_es": "Propuesta de cambio",
+          "alarm_es": "Éxito sin propuesta",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 11,
+          "key": "aprobacion",
+          "name_es": "Aprobación y promoción o descarte",
+          "alarm_es": "Propuesta sin decidir",
+          "status": "informativa",
+          "detail_es": "0 propuestas de cambio esperan tu decisión. El plan no fija plazo: se informa la cifra.",
+          "value": 0.0,
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": "propuestas",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 12,
+          "key": "seguimiento",
+          "name_es": "Seguimiento",
+          "alarm_es": "Promoción sin vigilancia",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-12.2.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        }
+      ]
+    },
+    "panel": {
+      "rule_version": "flow-v1",
+      "window_hours": 24,
+      "stages": [
+        {
+          "stage": "sources",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 3,
+          "runs": 108,
+          "completed": 108,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "ingest",
+          "state": "error",
+          "reason": "ultima_abortada",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 11,
+          "completed": 7,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 3,
+          "interrupted": 1,
+          "stale": 0,
+          "errors": 4,
+          "worst_job": "period_backfill"
+        },
+        {
+          "stage": "validation",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "models",
+          "state": "late",
+          "reason": "fallos_en_24h",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 14,
+          "completed": 13,
+          "partial": 0,
+          "failed": 1,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 1,
+          "worst_job": "elo_refresh"
+        },
+        {
+          "stage": "calibration",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 7,
+          "completed": 7,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "value",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 96,
+          "completed": 96,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "intelligence",
+          "state": "late",
+          "reason": "parciales_en_24h",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 46,
+          "completed": 37,
+          "partial": 9,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": "chronicle_v4"
+        },
+        {
+          "stage": "selection",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "publication",
+          "state": "closed",
+          "reason": "cerrada_por_decision",
+          "last_run_at": {
+            "missing_reason": "sin_datos"
+          },
+          "jobs": 0,
+          "runs": 0,
+          "completed": 0,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "settlement",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "learning",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 25,
+          "completed": 25,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        }
+      ],
+      "unmapped_jobs": [
+        "an_unclaimed_job"
+      ]
+    }
   },
   "news_engine": {
     "missing_reason": "no_entregado",

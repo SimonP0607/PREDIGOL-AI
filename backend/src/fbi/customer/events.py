@@ -1,7 +1,7 @@
 """Product analytics (plan UX, A6 and section 39): the events of a closed catalog, their daily aggregate, their purge
 and the owner's view of them.
 
-* **The catalog** (``events_catalog.json``, the same in ``web/src/lib/track.ts``): 40 events, each with the only
+* **The catalog** (``events_catalog.json``, the same in ``web/src/lib/track.ts``): 41 events, each with the only
   properties it may carry - an enumeration, a bounded integer, a boolean, a slug or an id. Anything else is refused:
   an unknown event, an unknown property, a value out of its kind. No free text, no address, no IP.
 * **Who:** a pseudonym (``fbi.auth.crypto.product_id``: an HMAC of the account's id under its own key), never the id.
@@ -50,6 +50,8 @@ log = structlog.get_logger(__name__)
 CATALOG_FILE = Path(__file__).resolve().parent / "events_catalog.json"
 BOGOTA = ZoneInfo("America/Bogota")
 SLUG = re.compile(r"^[A-Za-z0-9_.+-]{1,40}$")
+WORD = re.compile(r"^[a-z]{3,20}$")
+"""One normalised word of what a reader asked the help (AP-H02): lower-case letters only - never a number, an address or a name with a dot."""
 MAX_ID = 2**53 - 1
 MAX_BATCH = 20
 RAW_DAYS = 90
@@ -63,7 +65,7 @@ PurgeMode = Literal["off", "dry", "on"]
 
 @dataclass(frozen=True, slots=True)
 class PropSpec:
-    kind: Literal["enum", "int", "bool", "slug", "id"]
+    kind: Literal["enum", "int", "bool", "slug", "word", "id"]
     values: tuple[str, ...] = ()
     lo: int = 0
     hi: int = 0
@@ -90,7 +92,7 @@ def _prop(name: str, raw: Mapping[str, Any]) -> PropSpec:
     if "int" in raw:
         lo, hi = raw["int"]
         return PropSpec("int", lo=int(lo), hi=int(hi))
-    for kind in ("bool", "slug", "id"):
+    for kind in ("bool", "slug", "word", "id"):
         if raw.get(kind) is True:
             return PropSpec(kind)
     raise ValueError(f"events_catalog.json: property {name!r} has no kind")
@@ -130,6 +132,7 @@ def check(name: object, props: object, *, source: Source) -> dict[str, Any]:
                 and prop.lo <= value <= prop.hi)
             or (prop.kind == "bool" and isinstance(value, bool))
             or (prop.kind == "slug" and isinstance(value, str) and SLUG.fullmatch(value) is not None)
+            or (prop.kind == "word" and isinstance(value, str) and WORD.fullmatch(value) is not None)
             or (prop.kind == "id" and isinstance(value, int) and not isinstance(value, bool) and 0 < value <= MAX_ID)
         )
         if not ok:
@@ -288,6 +291,7 @@ class Overview:
     markets: list[dict[str, Any]] = field(default_factory=list)
     leagues: list[dict[str, Any]] = field(default_factory=list)
     teams: list[dict[str, Any]] = field(default_factory=list)
+    unanswered: list[dict[str, Any]] = field(default_factory=list)
     guides: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -329,6 +333,13 @@ SELECT t.id::text AS key, t.name AS label, count(*) AS events_30d, count(DISTINC
  WHERE e.at >= %(s30)s AND e.name = 'match_opened' AND e.props ? 'match_id'
  GROUP BY t.id, t.name HAVING count(DISTINCT e.subject) >= %(floor)s ORDER BY count(*) DESC, t.name LIMIT %(rows)s
 """
+UNANSWERED_SQL = """
+SELECT props->>'term' AS key, NULL::text AS label, count(*) AS events_30d, count(DISTINCT subject) AS subjects_30d
+  FROM customer.product_events WHERE at >= %(s30)s AND name = 'help_unanswered' AND props ? 'term'
+ GROUP BY 1 HAVING count(DISTINCT subject) >= %(floor)s ORDER BY count(DISTINCT subject) DESC, 1 LIMIT %(rows)s
+"""
+"""The words of what the readers asked the help and it had no answer for (AP-H02): a word stands only with ``min_subjects`` different
+readers behind it, like every other breakdown - one reader's words are never shown."""
 GUIDES_SQL = """
 SELECT props->>'guide' AS guide, (props->>'version')::int AS version,
        count(DISTINCT subject) FILTER (WHERE name = 'guide_started') AS started,
@@ -450,7 +461,7 @@ def overview(conn: psycopg.Connection[Any], *, at: datetime) -> Overview:
         base.errors_per_active = round(errors / base.active["d7"], 3) if base.active["d7"] else None
         window = {"s30": since30, "floor": floor, "rows": BREAKDOWN_ROWS}
         for attr, sql in (("screens", SCREENS_SQL), ("markets", MARKETS_SQL), ("leagues", LEAGUES_SQL),
-                          ("teams", TEAMS_SQL)):
+                          ("teams", TEAMS_SQL), ("unanswered", UNANSWERED_SQL)):
             cur.execute(sql, window)
             setattr(base, attr, [{"key": str(r["key"]), "label": r["label"], "events_30d": int(r["events_30d"]),
                                   "subjects_30d": int(r["subjects_30d"])} for r in cur.fetchall()])

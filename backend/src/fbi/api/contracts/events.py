@@ -97,6 +97,9 @@ class ProductOverview(Contract):
                                                                            "from nothing.")
     teams: list[BreakdownRow] = Field(default_factory=list, description="Teams of the matches opened in 30 days: "
                                                                          "worked out from the match.")
+    unanswered: list[BreakdownRow] = Field(default_factory=list, description="The words of what readers asked the help "
+                                                                              "that had no answer, in 30 days (AP-H02): "
+                                                                              "a word stands with enough different readers.")
     guides: list[GuideRow] = Field(default_factory=list, description="What came of each guide and version in 30 days "
                                                                     "(UX-054): groups only, never one reader.")
     lifecycle: LifecycleMetrics | None = Field(default=None, description="The customers' lifecycle (B11).")

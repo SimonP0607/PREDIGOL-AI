@@ -31,12 +31,12 @@ const BACKEND = join(
 );
 
 describe("the catalog of product events", () => {
-  test("is the backend's: the same 40 events, groups, sources and properties", () => {
+  test("is the backend's: the same 41 events, groups, sources and properties", () => {
     const backend = JSON.parse(readFileSync(BACKEND, "utf8")) as {
       events: Record<string, { group: string; source: string; props: Record<string, unknown> }>;
     };
     expect(Object.keys(EVENTS).sort()).toEqual(Object.keys(backend.events).sort());
-    expect(Object.keys(EVENTS)).toHaveLength(40);
+    expect(Object.keys(EVENTS)).toHaveLength(41);
     for (const [name, spec] of Object.entries(backend.events)) {
       const mine = (EVENTS as Record<string, { group: string; source: string; props: unknown }>)[
         name
@@ -92,6 +92,23 @@ describe("the catalog of product events", () => {
     expect(validEvent("account_activated", {})).toBeNull();
     expect(validEvent("no_such_event", {})).toBeNull();
     expect(validEvent("pick_removed", { origin: undefined })).toEqual({});
+  });
+
+  test("a word the help could not answer is 3 to 20 lower-case letters: never a number, an address or a phrase (AP-H02)", () => {
+    expect(validEvent("help_unanswered", { term: "reembolso" })).toEqual({ term: "reembolso" });
+    for (const term of [
+      "ab",
+      "a".repeat(21),
+      "Reembolso",
+      "mi clave",
+      "juan.perez",
+      "123",
+      "a@b",
+      "año",
+    ]) {
+      expect(validEvent("help_unanswered", { term }), term).toBeNull();
+    }
+    expect(validEvent("help_unanswered", { text: "reembolso" })).toBeNull();
   });
 
   test("a pick's or a leg's market is one of the five, and a screen is a group of a closed list", () => {

@@ -9,7 +9,7 @@ were all there was. The expansion batches of ``config/expansion.yaml`` take the 
 
 WHAT CHANGES
 ------------
-The same check, named as it was, now reads ``tier BETWEEN 1 AND 30``. It is wider, never narrower: every row that satisfied the old check
+The same check, named as it was, now reads ``tier BETWEEN 1 AND 13``. It is wider, never narrower: every row that satisfied the old check
 satisfies the new one, and the code that ran before keeps working (it never writes a tier above 9). The new check is added ``NOT VALID`` and
 validated at once (a scan that takes a ``SHARE UPDATE EXCLUSIVE`` lock, not one that blocks reads or writes); ``lock_timeout`` is 10 s. No row
 is read or written, no table or column is added or dropped. Downgrade puts back the 1 to 9 range, which is refused (the check would fail on its
@@ -40,7 +40,7 @@ def _swap(upper: int) -> None:
 
 
 def upgrade() -> None:
-    _swap(30)
+    _swap(13)
 
 
 def downgrade() -> None:

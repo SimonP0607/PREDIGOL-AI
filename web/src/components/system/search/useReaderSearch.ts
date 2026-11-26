@@ -1,12 +1,12 @@
 /**
  * The readers' search (AP-B07): `GET /search/v2` (C-10) in groups, from two characters, kept a minute. If v2 does not answer
  * (the route off, an error), the earlier `GET /search` answers instead, so the search never goes dark; going back is this hook
- * reading `useSearchHits` alone. «España» also asks for «Spain» (AP-B02) until C-10 1.1 carries the Spanish names.
+ * reading `useSearchHits` alone. The Spanish names of countries and competitions come from C-10 1.1 itself (the table of
+ * AP-B02 is no longer asked here; the earlier `GET /search`, which has no aliases, still uses it).
  */
 import { useQuery } from "@tanstack/react-query";
 import { v1 } from "@/lib/api/v1/client";
 import { useProfilesOpen, usePmReaderSwitches } from "@/lib/auth/AuthProvider";
-import { useCountryAliases } from "@/lib/i18n/useCountryAliases";
 import { entriesOfV2, MIN_QUERY, suggestionsOfV2, type Entry } from "./model";
 import { useSearchHits } from "./useSearchHits";
 
@@ -31,14 +31,6 @@ export function useReaderSearch(term: string, enabled = true): ReaderAnswer {
     staleTime: 60_000,
     retry: false,
   });
-  const { aliases, merge } = useCountryAliases(q, on);
-  const aliased = useQuery({
-    queryKey: ["v1", "search-v2-aliased", ...aliases],
-    queryFn: () => Promise.all(aliases.map((a) => v1.searchV2(a))),
-    enabled: on && aliases.length > 0 && res.isSuccess,
-    staleTime: 60_000,
-    retry: false,
-  });
   // the earlier search answers only while v2 cannot
   const older = useSearchHits(term, enabled && res.isError);
   const opened = { profiles, competitionPage };
@@ -52,21 +44,11 @@ export function useReaderSearch(term: string, enabled = true): ReaderAnswer {
     };
   }
   const own = res.data ? entriesOfV2(res.data.data, opened) : undefined;
-  const hits = !on
-    ? []
-    : own
-      ? merge(
-          own,
-          (aliased.data ?? []).map((a) => entriesOfV2(a.data, opened)),
-          aliases,
-          (h) => `${h.type}:${h.id}`,
-          (h) => (h.type === "team" || h.type === "national_team" ? h.label : ""),
-        )
-      : undefined;
+  const hits = !on ? [] : own;
   return {
     hits,
     suggestions: own && own.length === 0 ? suggestionsOfV2(res.data?.data) : [],
-    pending: on && (res.isPending || (aliases.length > 0 && aliased.isPending)),
+    pending: on && res.isPending,
     error: false,
     refetch: () => void res.refetch(),
   };

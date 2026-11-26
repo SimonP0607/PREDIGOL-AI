@@ -28,6 +28,7 @@ const base: ProductOverview = {
   markets: [],
   leagues: [],
   teams: [],
+  unanswered: [],
   guides: [],
   lifecycle: null,
 };
@@ -43,6 +44,30 @@ describe("the console's Product page", () => {
       renderToStaticMarkup(<SwitchState o={{ ...base, mode: "on", purge: "on" }} />),
     ).toContain("Measuring on");
     setLocale("es");
+  });
+
+  test("what the help could not answer is listed by word, in both languages, with the floor said (AP-H02)", () => {
+    const o: ProductOverview = {
+      ...base,
+      status: "ok",
+      unanswered: [{ key: "reembolso", label: null, events_30d: 41, subjects_30d: 26 }],
+    };
+    setLocale("es");
+    const es = renderToStaticMarkup(<Breakdowns o={o} />);
+    expect(es).toContain("Lo que la Ayuda no supo responder");
+    expect(es).toContain("reembolso");
+    expect(es).toContain("nunca se guarda la pregunta entera");
+    expect(es).toContain("al menos 20 lectores distintos");
+    setLocale("en");
+    const en = renderToStaticMarkup(<Breakdowns o={o} />);
+    expect(en).toContain("What the Help could not answer");
+    expect(en).toContain("at least 20 different readers");
+    setLocale("es");
+    // an older API without the list: the page still draws, with the empty line
+    const { unanswered: _gone, ...older } = o;
+    expect(renderToStaticMarkup(<Breakdowns o={older as ProductOverview} />)).toContain(
+      "Lo que la Ayuda no supo responder",
+    );
   });
 
   test("what readers look at is listed by group, with its names in both languages and the floor said", () => {

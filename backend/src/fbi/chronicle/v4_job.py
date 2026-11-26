@@ -45,7 +45,7 @@ from fbi.ai import capability_budget, gates
 from fbi.ai.batch import BatchQueue, Resolved, Task, estimate_cost, register
 from fbi.ai.calendar import day_start, local_day, month_start
 from fbi.ai.config import AiSettings, Tier
-from fbi.ai.providers.base import JsonRequest, LlmProvider
+from fbi.ai.providers.base import CUT_PREFIX, JsonRequest, LlmProvider
 from fbi.ai.usage import CallOutcome, UsageLedger, call_json, with_effort
 from fbi.chronicle import inputs, repetition, verify
 from fbi.chronicle import plan as cp
@@ -69,9 +69,11 @@ AFTER_KICKOFF: Final = timedelta(hours=2)
 MAX_PER_RUN: Final = 10
 MAX_PER_DAY: Final = 3
 CANDIDATES: Final = 120
-TYPICAL_OUTPUT: Final = 1800
-"""Tokens a chronicle is expected to write (its reservation in a batch, and the estimate of a call)."""
+TYPICAL_OUTPUT: Final = 4500
+"""Tokens a chronicle is expected to write, thinking included (its reservation in a batch, and the estimate of a call): measured 26 Nov 2026,
+~2,000 thinking + ~1,500 visible for the answers that fitted, and more for the ones that did not."""
 ANSWERED: Final = ("ok", "partial", "rejected", "invalid_output")
+CUT_MARK: Final = CUT_PREFIX.strip().rstrip(":")
 
 Mode = Literal["off", "shadow"]
 
@@ -145,11 +147,18 @@ def store(conn: psycopg.Connection[Any], plan: cp.ContentPlan, *, at: datetime, 
             "packet": plan.packet_id, "plan_hash": plan.hash, "input_hash": input_hash, "plan": Jsonb(plan.as_json()), "status": status,
             "abstention": abstention, "content": None if content is None else Jsonb(content),
             "dropped": Jsonb([d.as_json() for d in (verdict.dropped if verdict is not None else [])][:60]),
-            "metrics": Jsonb(verdict.metrics if verdict is not None else {"version": verify.VERSION}), "route": route,
+            "metrics": Jsonb(verdict.metrics if verdict is not None else
+                             {"version": verify.VERSION} | ({"cut": True} if was_cut(error) else {})), "route": route,
             "provider": provider, "model": model, "usage_id": usage_id, "custom_id": custom_id, "cost": cost,
             "error": None if error is None else error[:300], "code": code_version})
         row = cur.fetchone()
     return None if row is None else int(row[0])
+
+
+def was_cut(error: str | None) -> bool:
+    """The answer was stopped at the cap of output tokens (RP-1.3): ``fbi.ai.providers.base.CUT_PREFIX`` is in its error. Kept as ``cut`` in
+    the row's metrics so the cut ones are counted apart from the answers that were really invalid."""
+    return error is not None and CUT_MARK in error
 
 
 def spent_today(conn: psycopg.Connection[Any], at: datetime) -> Decimal:
@@ -409,4 +418,4 @@ def run_job(conn: psycopg.Connection[Any], *, at: datetime, settings: AiSettings
 
 
 __all__ = ["CAPABILITY", "DAY_CAP_USD", "JOB", "PURPOSE", "SWITCH", "TIER", "RunReport", "caller", "day_cap", "every_minutes", "mode", "run", "run_job",
-           "settle", "spent_this_month", "spent_today", "store", "task_of"]
+           "settle", "spent_this_month", "spent_today", "store", "task_of", "was_cut"]

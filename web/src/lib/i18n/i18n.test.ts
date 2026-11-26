@@ -10,11 +10,15 @@ import { CATALOGS, type Catalog } from "./catalogs";
 import { hasKey, setLocale, translate } from "./index";
 // The namespaces added when their screen loads (`addCatalog`): imported here so every check below sees them.
 import "@/product/shared/availabilityText";
+import "@/product/wellbeing/wellbeingText";
 import "@/components/analytics/evidenceText";
 import "@/components/analytics/stats/readText";
 import "@/admin/userText";
 import "@/admin/usageText";
+import "@/live/researchReasonText";
+import "@/product/picks/pickWhyText";
 import "@/admin/emailText";
+import "@/admin/helpGapsText";
 import "@/product/news/storyText";
 import "@/product/match/marketsV3Text";
 import "@/live/pipelineText";

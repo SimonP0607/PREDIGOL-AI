@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
 import { live } from "@/lib/api/v1/queries";
 import { shiftDay, todayKey } from "@/lib/time";
-import { useAuth, usePreviewParam, useUxFixSwitches } from "@/lib/auth/AuthProvider";
+import { useAuth, useNoPrices, usePreviewParam, useUxFixSwitches } from "@/lib/auth/AuthProvider";
 import type { Envelope } from "@/lib/api/v1/types";
 import type { Home } from "@/lib/api/v1/types_product";
 import type { DailyBoard, ParlayRecord, RecordKind } from "@/lib/api/v1/types_records";
@@ -113,8 +113,11 @@ function built(p: ParlayRecord | null | undefined): boolean {
  * card's own empty state is there), never two empty cards in the way of the day's matches.
  */
 function HomeParlays({ board }: { board: BoardQuery }) {
+  // «solo fútbol» or a pause (PM-14-07): PrediGol's parlays are bets, not shown
+  const noPrices = useNoPrices();
   const data = board.data?.data;
   const [active, setActive] = useState<RecordKind>("daily");
+  if (noPrices) return null;
   if (data && !built(data.daily_parlay) && !built(data.multiday_parlay)) {
     return (
       <p

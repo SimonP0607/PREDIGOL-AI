@@ -1,0 +1,10 @@
+[Unit]
+Description=PrediGol: weekly research V2 in the operations container (one at a time, with a memory and time ceiling)
+Requires=docker.service
+After=docker.service predigol.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/predigol/backend/deploy/vps/bin/research-run.sh
+TimeoutStartSec=8400
+Nice=10

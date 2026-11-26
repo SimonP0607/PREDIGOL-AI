@@ -10,6 +10,10 @@ export interface SearchEntityHitV2 {
   label: string;
   /** Country (team, competition), current team (player), city (stadium); may be empty. */
   sublabel: string;
+  /** C-10 1.1: the name that matched what was typed (the Spanish one for «España»); absent in an answer of 1.0. */
+  matched?: string;
+  /** C-10 1.1: where that name comes from; `localized` is the name in the reader's language. */
+  alias_type?: string;
 }
 
 export interface SearchFixtureHitV2 {

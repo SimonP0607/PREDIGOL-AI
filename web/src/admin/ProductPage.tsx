@@ -16,6 +16,7 @@ import { fmtInt } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { Card, ErrorState } from "@/product/shared/States";
 import { FeedbackCard } from "./FeedbackCard";
+import { t as tGaps } from "./helpGapsText";
 import { LifecycleView } from "./LifecycleCard";
 import { PushCard } from "./PushCard";
 
@@ -102,7 +103,16 @@ export function Breakdowns({ o }: { o: ProductOverview }) {
           rows={o.teams}
           name={(r) => r.label ?? r.key}
         />
+        <BreakdownList
+          id="unanswered"
+          title={tGaps("helpgaps.title")}
+          rows={o.unanswered ?? []}
+          name={(r) => r.key}
+        />
       </div>
+      <p className="text-caption text-muted-foreground">
+        {tGaps("helpgaps.hint", { min: o.min_subjects })}
+      </p>
     </section>
   );
 }

@@ -33,6 +33,7 @@ import {
   cleanQuery,
   deviceStore,
   groupHits,
+  leadOf,
   hitKickoff,
   hitLink,
   MIN_QUERY,
@@ -118,7 +119,7 @@ export default function ReaderSearch({
   const term = cleanQuery(raw);
   const typing = term.length >= MIN_QUERY;
   const { hits, suggestions, pending, error, refetch } = useReaderSearch(term, open);
-  const groups = useMemo(() => groupHits(hits ?? []), [hits]);
+  const groups = useMemo(() => groupHits(hits ?? [], leadOf(hits ?? [])), [hits]);
 
   function close() {
     onOpenChange(false);

@@ -4,7 +4,8 @@
  * Never padded: a day with two picks shows two, a day with none says so - and, for today, why
  * (plan UX, A9: the honest sentence and the reason from the published set's own funnel).
  */
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { Segmented } from "@/components/ui/segmented";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowRight, Target, Trophy } from "lucide-react";
@@ -75,7 +76,13 @@ function Skeleton({ count, home = false }: { count: number; home?: boolean }) {
   );
 }
 
-export function DailySetBlock({
+/** The picks of the day: none for a reader in «solo fútbol» or a pause (PM-14-07), and its route is not asked. */
+export function DailySetBlock(props: ComponentProps<typeof DailySetBlockBody>) {
+  if (useNoPrices()) return null;
+  return <DailySetBlockBody {...props} />;
+}
+
+function DailySetBlockBody({
   query,
   variant = "page",
   title,

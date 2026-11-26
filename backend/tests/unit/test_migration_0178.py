@@ -1,4 +1,4 @@
-"""Migration 0178 (PM-03-07): the tier check of ``raw.backfill_tasks`` becomes wider (1 to 30), under the same name, validated, with a bounded
+"""Migration 0178 (PM-03-07): the tier check of ``raw.backfill_tasks`` becomes wider (1 to 13), under the same name, validated, with a bounded
 lock wait and no row read or written; the downgrade restores the range of 0023 and refuses, by its own validation, to hide history."""
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def test_upgrade_widens_the_check_under_its_own_name_and_validates_it() -> None:
     statements = render("upgrade")
     assert statements[0] == "SET LOCAL lock_timeout = '10s'"
     assert statements[1] == "ALTER TABLE raw.backfill_tasks DROP CONSTRAINT IF EXISTS backfill_tasks_tier_check"
-    assert statements[2] == "ALTER TABLE raw.backfill_tasks ADD CONSTRAINT backfill_tasks_tier_check CHECK (tier BETWEEN 1 AND 30) NOT VALID"
+    assert statements[2] == "ALTER TABLE raw.backfill_tasks ADD CONSTRAINT backfill_tasks_tier_check CHECK (tier BETWEEN 1 AND 13) NOT VALID"
     assert statements[3] == "ALTER TABLE raw.backfill_tasks VALIDATE CONSTRAINT backfill_tasks_tier_check"
     assert len(statements) == 4
     sql = " ".join(statements)
@@ -64,4 +64,4 @@ def test_downgrade_puts_back_the_range_of_0023() -> None:
 def test_the_old_range_is_the_one_0023_wrote_and_the_new_one_covers_every_expansion_tier() -> None:
     assert "tier            SMALLINT    CHECK (tier BETWEEN 1 AND 9)" in ORIGIN.read_text(encoding="utf-8")
     tiers = [int(t) for t in re.findall(r"^\s*tier:\s*(\d+)", CONFIG.read_text(encoding="utf-8"), re.M)]
-    assert tiers and max(tiers) <= 30, tiers
+    assert tiers and max(tiers) <= 13, tiers

@@ -43,14 +43,19 @@ from fbi.api.contracts.intelligence.console import (
     ConsoleProtocols,
     CostPart,
     Costs,
+    Cycle,
     Declared,
     EnvelopeView,
+    Flow,
+    FlowStage,
     GateReading,
     Gates,
     GateView,
     JointCeiling,
     LeakAudit,
     LeakRule,
+    Panel,
+    PanelStage,
     ReadFailure,
     Schema,
     Security,
@@ -68,6 +73,8 @@ from fbi.core.clock import now
 from fbi.core.config.picks import INTELLIGENCE, PicksSourceSettings
 from fbi.core.env import environment
 from fbi.intel import capabilities as registry
+from fbi.ops import flow as flow_book
+from fbi.ops import freshness
 from fbi.protosign import NOTICE as PROTOCOLS_NOTICE
 from fbi.protosign import VERSION as PROTOCOLS_VERSION
 from fbi.protosign import store as protocol_signatures
@@ -472,6 +479,38 @@ def protocols(conn: Conn) -> ConsoleProtocols | Missing:
     return protocols_of(protocol_signatures.overview(conn))
 
 
+# ── flow of the learning cycle ────────────────────────────────────────────────────────────────────────────
+
+def _or_missing[T](value: T | None) -> T | Missing:
+    return NO_DATA if value is None else value
+
+
+def cycle_of(readings: Iterable[freshness.Reading]) -> Cycle:
+    """The twelve readings of ``fbi.ops.freshness`` in the contract's words. A figure the stage does not have is ``sin_datos``."""
+    stages = [FlowStage(number=r.stage.number, key=r.stage.key, name_es=r.stage.name_es, alarm_es=r.stage.alarm_es, status=r.status,
+                        detail_es=r.detail_es, value=_or_missing(r.value), limit=_or_missing(r.limit), unit=_or_missing(r.unit),
+                        last_at=_or_missing(r.last_at)) for r in readings]
+    return Cycle(rule_version=freshness.VERSION, stopped=sum(x.status == "parada" for x in stages), stages=stages)
+
+
+def panel_of(stages: Iterable[flow_book.StageFlow], unmapped: Iterable[str]) -> Panel:
+    """The eleven stages of the book's reading (``fbi.ops.flow``) in the contract's words."""
+    return Panel(rule_version=flow_book.VERSION, unmapped_jobs=list(unmapped), stages=[
+        PanelStage(stage=x.stage, state=x.state, reason=x.reason, last_run_at=_or_missing(x.last_run_at), jobs=x.jobs, runs=x.runs,
+                   completed=x.completed, partial=x.partial, failed=x.failed, aborted=x.aborted, interrupted=x.interrupted, stale=x.stale,
+                   errors=x.errors, worst_job=_or_missing(x.worst_job)) for x in stages])
+
+
+def flow_of(readings: Iterable[freshness.Reading], panel: Panel | None = None) -> Flow:
+    return Flow(cycle=cycle_of(readings), panel=panel)
+
+
+def flow(conn: Conn, at: datetime) -> Flow:
+    with conn.transaction():
+        stages, unmapped = flow_book.read(conn, at=at)
+    return flow_of(freshness.read_all(conn, at=at), panel_of(stages, unmapped))
+
+
 # ── the console ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> ConsoleContract:
@@ -484,6 +523,7 @@ def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> Co
         costs=attempt(conn, lambda: costs_of(costs_v3.month_of(conn, at=at, settings=settings), settings)),
         security=security(conn, settings, at),
         protocols=attempt(conn, lambda: protocols(conn)),
+        flow=attempt(conn, lambda: flow(conn, at)),
         news_engine=NEWS_ENGINE, alert_queue=ALERT_QUEUE)
 
 
@@ -491,6 +531,29 @@ def console(conn: Conn) -> Envelope[ConsoleContract]:
     return ok(build(conn, at=now()))
 
 
-__all__ = ["ALERT_QUEUE", "CONSOLE_RELATIONS", "FAMILY_MODES", "NEWS_ENGINE", "SPECS", "STATE_WORDS", "attempt", "build", "capabilities_of",
-           "clear_cache", "code_head", "console", "costs_of", "gates_of", "leak_audit_of", "protocols", "protocols_of", "schema_of", "switch_words",
-           "worker_word"]
+__all__ = [
+    "ALERT_QUEUE",
+    "CONSOLE_RELATIONS",
+    "FAMILY_MODES",
+    "NEWS_ENGINE",
+    "SPECS",
+    "STATE_WORDS",
+    "attempt",
+    "build",
+    "capabilities_of",
+    "clear_cache",
+    "code_head",
+    "console",
+    "costs_of",
+    "cycle_of",
+    "flow",
+    "flow_of",
+    "gates_of",
+    "leak_audit_of",
+    "panel_of",
+    "protocols",
+    "protocols_of",
+    "schema_of",
+    "switch_words",
+    "worker_word",
+]

@@ -198,7 +198,7 @@ from fbi.odds.live_cadence import (
 )
 from fbi.odds.partitions import ensure_partitions
 from fbi.odds.schedule import NEAR_CLOSE_TOLERANCE_MINUTES
-from fbi.ops import memwatch
+from fbi.ops import job_book, memwatch
 from fbi.ops.heartbeat import (
     HeartbeatWriter,
     LivenessPulse,
@@ -212,6 +212,12 @@ from fbi.ops.run_watchdog import recover_runs, timeout_for
 from fbi.ops.worker_lock import WorkerLock, holder
 
 log = structlog.get_logger("worker")
+
+
+def _booked(job_type: str) -> Callable[[job_book.F], job_book.F]:
+    """RP-1.1: every pass of the job leaves one row in the ledger (``fbi.ops.job_book``), opened before and closed after, also on failure."""
+    return job_book.booked_job(job_type, lambda: _connect)
+
 
 # Defaults follow the plan. On the free plan the provider shows fixtures about a
 # day ahead and history is a few requests a day; on a paid plan the worker looks
@@ -1110,6 +1116,7 @@ def _family_forecasts_now() -> None:
         run_job(conn, now=now(), code_version=code_version())
 
 
+@_booked("scenarios_shadow")
 def _scenarios_shadow_now() -> None:
     from fbi.competitions.scenario_store import run_shadow
 
@@ -1166,12 +1173,14 @@ CHRONICLE_REVIEW_ENABLED = os.environ.get("FBI_CHRONICLE_REVIEW", "1").strip().l
 showed and appends a row to ``ai.chronicle_reviews``. ``FBI_CHRONICLE_REVIEW=0`` switches it off without a deploy (the rows stay)."""
 
 
+@_booked("lifecycle_shadow")
 def _lifecycle_shadow_now() -> None:
     """The shadow writer of the cycle of states (IA-068): one pass. Never raises: it must never stop the worker, and it changes no
     decision, review, pick or settlement - it only appends to ``intel.selection_lifecycle``."""
     from fbi.lifecycle import store as lifecycle
 
     if lifecycle.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1182,6 +1191,7 @@ def _lifecycle_shadow_now() -> None:
         log.error("lifecycle_shadow.failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
 
+@_booked("signals_ingest")
 def _signals_now() -> None:
     """The ingestion of signals (IA-085): one pass in shadow. Never raises - it must never stop the worker - and writes only ``news.feeds``,
     ``news.items``, ``news.feed_reads`` and ``ai.source_policy_log``."""
@@ -1190,6 +1200,7 @@ def _signals_now() -> None:
     from fbi.news import signals
 
     if signals.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn, httpx.Client() as client:
@@ -1205,12 +1216,14 @@ async def _signals_ingest() -> None:
     await asyncio.to_thread(_signals_now)
 
 
+@_booked("news_stories")
 def _news_stories_now() -> None:
     """The news pipeline (IA-099 to IA-102): one pass in shadow. Never raises - it must never stop the worker - and writes only the
     append-only tables of ``news`` (entities, stories, links, texts, the register of moderation)."""
     from fbi.news import pipeline
 
     if pipeline.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1231,12 +1244,14 @@ async def _lifecycle_shadow() -> None:
     await asyncio.to_thread(_lifecycle_shadow_now)
 
 
+@_booked("decision_v2_shadow")
 def _decision_v2_shadow_now() -> None:
     """decision-v2's kept shadow (IA-093): one pass. Never raises - it must never stop the worker - and writes only its own two tables
     and, through the cycle's API, its chains in ``intel.selection_lifecycle``."""
     from fbi.shadowjobs import decision_v2 as dv2
 
     if dv2.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1313,12 +1328,14 @@ async def _chronicle_review_v2() -> None:
     await asyncio.to_thread(_chronicle_review_v2_now)
 
 
+@_booked("selection_settle_shadow")
 def _selection_settle_shadow_now() -> None:
     """The tracking of loose selections (IA-109): one pass. Never raises; writes only ``intel.selection_settlements`` and, through the
     cycle's API, the chains' moves after kick-off in ``intel.selection_lifecycle``."""
     from fbi.shadowjobs import selection_settle as ss
 
     if ss.settle_mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1334,11 +1351,13 @@ async def _selection_settle_shadow() -> None:
     await asyncio.to_thread(_selection_settle_shadow_now)
 
 
+@_booked("parlay_v6_shadow")
 def _parlay_v6_shadow_now() -> None:
     """``parlay-v6`` in the shadow (IA-110): one pass. Never raises; writes only ``intel.parlays_v6`` and ``intel.parlay_v6_legs``."""
     from fbi.shadowjobs import selection_settle as ss
 
     if ss.parlay_mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1354,11 +1373,13 @@ async def _parlay_v6_shadow() -> None:
     await asyncio.to_thread(_parlay_v6_shadow_now)
 
 
+@_booked("lineup_estimate_shadow")
 def _lineup_estimate_shadow_now() -> None:
     """The estimated starters (IA-094): one pass. Never raises; writes only ``intel.lineup_estimates``."""
     from fbi.shadowjobs import lineup_estimate as les
 
     if les.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1373,11 +1394,13 @@ async def _lineup_estimate_shadow() -> None:
     await asyncio.to_thread(_lineup_estimate_shadow_now)
 
 
+@_booked("player_forecast_shadow")
 def _player_forecast_shadow_now() -> None:
     """player-engine-v2 (IA-129): one pass. Never raises; writes only ``intel.player_forecasts``."""
     from fbi.shadowjobs import player_forecast as pfs
 
     if pfs.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1392,11 +1415,13 @@ async def _player_forecast_shadow() -> None:
     await asyncio.to_thread(_player_forecast_shadow_now)
 
 
+@_booked("stats_documents")
 def _stats_documents_now() -> None:
     """The statistics documents of plan EA (EA-003 to EA-006): one pass. Never raises; writes only ``analytics.stat_documents``."""
     from fbi.stats import job as stats_job
 
     if stats_job.mode() != "on":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1588,12 +1613,14 @@ async def _availability_shadow_retry() -> None:
     await asyncio.to_thread(functools.partial(_availability_shadow_now, retry=True))
 
 
+@_booked("eval_cycle_shadow")
 def _eval_cycle_shadow_now() -> None:
     """The evaluation cycle's main pass (IA-105): the match read again, E1, E2, E4 and the chains. Never raises; writes only the cycle's
     tables, decision-v2's through its own function and the cycle of states through its API."""
     from fbi.shadowjobs import eval_cycle as ec
 
     if ec.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1609,11 +1636,13 @@ async def _eval_cycle_shadow() -> None:
     await asyncio.to_thread(_eval_cycle_shadow_now)
 
 
+@_booked("eval_cycle_e3")
 def _eval_cycle_e3_now() -> None:
     """E3 of the evaluation cycle (IA-106): the official line-ups that arrived, judged by code. Never raises."""
     from fbi.shadowjobs import eval_cycle as ec
 
     if ec.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1628,11 +1657,13 @@ def _eval_cycle_e3_now() -> None:
 async def _eval_cycle_e3() -> None:
     new_run_id()
     await asyncio.to_thread(_eval_cycle_e3_now)
+@_booked("selection_eval_shadow")
 def _selection_eval_shadow_now() -> None:
     """The evaluation after the match (IA-112): one pass. Never raises; writes only ``intel.selection_evaluations``."""
     from fbi.shadowjobs import selection_eval as sev
 
     if sev.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1647,11 +1678,13 @@ async def _selection_eval_shadow() -> None:
     await asyncio.to_thread(_selection_eval_shadow_now)
 
 
+@_booked("council_reduced_shadow")
 def _council_reduced_shadow_now() -> None:
     """The reduced Council (IA-124): one pass. Never raises; writes only ``ai.council_reduced``."""
     from fbi.shadowjobs import council_reduced as crd
 
     if crd.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1664,11 +1697,13 @@ def _council_reduced_shadow_now() -> None:
 async def _council_reduced_shadow() -> None:
     new_run_id()
     await asyncio.to_thread(_council_reduced_shadow_now)
+@_booked("source_credibility_shadow")
 def _source_credibility_shadow_now() -> None:
     """credibility-v2 (IA-126): one snapshot. Never raises; writes only ``ai.source_credibility``."""
     from fbi.shadowjobs import source_credibility as scr
 
     if scr.mode() != "shadow":
+        job_book.skip()
         return
     try:
         with _connect() as conn:
@@ -1719,6 +1754,7 @@ async def _chronicle_review() -> None:
     await asyncio.to_thread(_chronicle_review_now)
 
 
+@_booked("notifier")
 def _notify_now() -> None:
     """Turn new events into messages. Without a Telegram token they are recorded as skipped."""
     from fbi.notify.service import channel_from_env, run_notifier
@@ -1738,6 +1774,7 @@ async def _notify() -> None:
     await asyncio.to_thread(_notify_now)
 
 
+@_booked("ai_daily_report")
 def _ai_report_now() -> None:
     """Today's research report, once, after AI_REPORT_HOUR in Bogotá. Never raises."""
     from fbi.analyst.research import due, run_daily_report
@@ -1757,6 +1794,7 @@ async def _ai_report() -> None:
     await asyncio.to_thread(_ai_report_now)
 
 
+@_booked("ai_pick_review")
 def _ai_review_now() -> None:
     """Flags on today's and tomorrow's pick sets. Never raises."""
     from fbi.analyst.reviewer import review_days, run_pick_review
@@ -1779,6 +1817,7 @@ async def _ai_review() -> None:
     await asyncio.to_thread(_ai_review_now)
 
 
+@_booked("ai_cycle")
 def _ai_cycle_now() -> None:
     """Packets, evidence, reviews, analyses. Never raises: the AI layer must never stop the worker."""
     from fbi.ai.cycle import run_analysis_cycle
@@ -1800,6 +1839,7 @@ async def _ai_cycle() -> None:
     await asyncio.to_thread(_ai_cycle_now)
 
 
+@_booked("ai_day_start")
 def _ai_day_start_now() -> None:
     """00:05 Bogotá: the day opened and its first passes. Never raises."""
     from fbi.ai.cycle import run_day_start
@@ -1823,6 +1863,7 @@ async def _ai_day_start() -> None:
     await asyncio.to_thread(_ai_day_start_now)
 
 
+@_booked("ai_day_close")
 def _ai_day_close_now() -> None:
     """23:59 Bogotá: CIERRE DEL DÍA (fbi.ai.daily_review). Never raises."""
     from fbi.ai.daily_review import close_day
@@ -1841,6 +1882,7 @@ async def _ai_day_close() -> None:
     await asyncio.to_thread(_ai_day_close_now)
 
 
+@_booked("ai_day_follow")
 def _ai_day_follow_now() -> None:
     """The closed days that changed since their last revision (a late match settled, a post-mortem, the morning's
     learning), and yesterday's close if the worker missed 23:59. Never raises."""
@@ -1861,6 +1903,7 @@ async def _ai_day_follow() -> None:
     await asyncio.to_thread(_ai_day_follow_now)
 
 
+@_booked("ai_learn")
 def _ai_learn_now() -> None:
     """Post-mortems, patterns, dependence, the AI's shadow report. Never raises."""
     from fbi.ai.cycle import run_learning_cycle
@@ -1891,6 +1934,7 @@ async def _ai_learn() -> None:
     await asyncio.to_thread(_ai_learn_now)
 
 
+@_booked("ai_requests")
 def _ai_requests_now() -> None:
     """The owner's "run now" from the Admin Console. Never raises."""
     from fbi.ai.cycle import process_requests
@@ -1908,6 +1952,7 @@ async def _ai_requests() -> None:
     await asyncio.to_thread(_ai_requests_now)
 
 
+@_booked("ai_batch_poll")
 def _ai_batch_poll_now() -> None:
     """Collect the Message Batches that ended: validated, stored, priced at half (``fbi.ai.batch.poll``). Never raises. It works on
     whatever is open whatever the Batch switch says: ``FBI_AI_BATCH=0`` stops new batches, never the collection of those paid for."""
@@ -1931,6 +1976,7 @@ async def _ai_batch_poll() -> None:
     await asyncio.to_thread(_ai_batch_poll_now)
 
 
+@_booked("ai_switches")
 def _ai_switches_now() -> None:
     """The owner's words this worker runs with (the switches, the mode, research v2, the models, the envelopes), written down when they are not the
     words of the newest row of the ledger (``fbi.ai.gates.record_switches``): an environment variable changed by hand leaves no row of its own, and
@@ -1954,6 +2000,7 @@ async def _ai_switches() -> None:
     await asyncio.to_thread(_ai_switches_now)
 
 
+@_booked("ai_package")
 def _ai_package_now() -> None:
     """The passes the AI layer has already run, turned into the state of their match (``fbi.ai.match_runs.run``). It calls no model, searches
     nothing and asks the provider for nothing. Never raises. Off with ``FBI_AI_PACKAGE=0`` or ``FBI_AI_MODE=off`` (and then it does not even
@@ -1964,6 +2011,7 @@ def _ai_package_now() -> None:
     try:
         settings = AiSettings.from_env()
         if settings.mode == "off" or not settings.package:
+            job_book.skip()
             return
         with _connect() as conn:
             r = run(conn, settings, at=now())
@@ -2008,6 +2056,7 @@ def _orchestrate_cycle_report(data: dict[str, Any], *, cycle_id: int) -> Any:
     return CycleReport(cycle_id=cycle_id, status=status, cost_usd=cost, detail=data)
 
 
+@_booked("ai_orchestrate")
 def _ai_orchestrate_now() -> None:
     """The shadow engines of phase 3 (``fbi.ai.orchestrator.run``): ``ma-v1``, ``ma-v1-h`` and ``cs-v1`` over the sample of matches the analysis
     cycle has reviewed, in the LAB workspace; what they write never reaches the decision layer. Never raises. Off - and then it does not even open a
@@ -2019,6 +2068,7 @@ def _ai_orchestrate_now() -> None:
     try:
         settings = AiSettings.from_env()
         if not settings.orchestrate:
+            job_book.skip()
             return
         from fbi.ai.cycle import CycleReport, close_cycle, open_cycle
 
@@ -2065,18 +2115,31 @@ async def _research_monitor() -> None:
 
 
 def _research_weekly_now() -> None:
-    """The full research-V2 run when it is due, in a child process. Never raises."""
-    from fbi.research.loop import frozen, v2_due
+    """The full research-V2 run when it is due, in a child process. Never raises. While the research is frozen for audit
+    (``FBI_RESEARCH_FROZEN``) it does not open the database at all - not even for the book of runs - so it leaves nothing until the freeze ends."""
+    from fbi.research.loop import frozen
 
     try:
         why = frozen()
         if why:
             log.info("research.weekly.frozen", reason=why)
             return
+    except Exception as exc:  # research must never stop the worker
+        log.error("research.weekly.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+        return
+    _research_weekly_pass()
+
+
+@_booked("research_v2_weekly")
+def _research_weekly_pass() -> None:
+    from fbi.research.loop import v2_due
+
+    try:
         with _connect() as conn:
             reason = v2_due(conn, at=now())
         if reason is None:
             log.info("research.weekly.skipped", reason="same code, last run under four weeks old")
+            job_book.skip("no_toca_aun")
             return
         proc = subprocess.run([sys.executable, "-m", "scripts.research_v2", "--apply"], cwd=REPO_ROOT,
                               capture_output=True, text=True, timeout=3600, check=False)
@@ -2119,6 +2182,7 @@ def family_nightly_steps(conn: psycopg.Connection[Any], at: datetime) -> dict[st
     }
 
 
+@_booked("intel_decide")
 def _intel_decide_now() -> None:
     """PrediGol Intelligence's decision layer. Never raises: it must never stop the worker."""
     from fbi.intel.cycle import run_decide
@@ -2127,7 +2191,9 @@ def _intel_decide_now() -> None:
         moment = now()
         with _connect() as conn:
             r = run_decide(conn, at=moment, after=family_decide_steps(conn, moment))
-        if r.status != "skipped":
+        if r.status == "skipped":
+            job_book.skip("omitida_por_el_ciclo")
+        else:
             d = r.counts.get("decide") or {}
             log.info("intel.decide", status=r.status, candidates=d.get("candidates"), written=d.get("written"),
                      by_state=d.get("by_state"), select=r.counts.get("select"), families=r.counts.get("families"),
@@ -2141,6 +2207,7 @@ async def _intel_decide() -> None:
     await asyncio.to_thread(_intel_decide_now)
 
 
+@_booked("intel_nightly")
 def _intel_nightly_now() -> None:
     """Outcomes, post-mortems, memory, calibration, leakage audit, the daily learning report. Never raises."""
     from fbi.intel.cycle import run_nightly
@@ -2160,6 +2227,7 @@ async def _intel_nightly() -> None:
     await asyncio.to_thread(_intel_nightly_now)
 
 
+@_booked("intel_weekly")
 def _intel_weekly_now() -> None:
     """The market discovery engine. Never raises."""
     from fbi.intel.cycle import run_weekly
@@ -2208,13 +2276,15 @@ WORKER_JOB_TYPES = frozenset({
     "player_forecast_shadow", "stats_documents", "availability_refresh", "availability_shadow", "period_stats", "period_backfill",
     "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow", "selection_eval_shadow",
     "chronicle_update", "chronicle_review_v2", "council_reduced_shadow", "source_credibility_shadow",
-})
+}) | frozenset(job_book.BOOKED_JOB_TYPES)
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
 WATCHDOG_MINUTES = 5
+STALL_CHECK_MINUTES = 60
 _worker_started_at: datetime | None = None
 
 
+@_booked("run_watchdog")
 def _run_watchdog_now() -> None:
     with _connect() as conn:
         recover_runs(conn, at=now(), worker_started_at=_worker_started_at, worker_job_types=WORKER_JOB_TYPES,
@@ -2224,6 +2294,29 @@ def _run_watchdog_now() -> None:
 async def _run_watchdog() -> None:
     """Close every run whose process is gone or whose deadline passed (fbi.ops.run_watchdog)."""
     await asyncio.to_thread(_run_watchdog_now)
+
+
+@_booked("stall_check")
+def _stall_check_now() -> None:
+    """RP-1.5: read the freshness of the twelve stages of the learning cycle (``fbi.ops.freshness``). A stopped stage is an error line of the
+    run, so the run is ``failed`` and says which one; nothing is decided, changed or written besides the run's own row. Never raises."""
+    from fbi.ops import freshness
+
+    try:
+        with _connect() as conn:
+            readings = freshness.read_all(conn, at=now())
+        job_book.count(len(readings))
+        stopped = freshness.alarms(readings)
+        log.info("ops.stall_check", stages=len(readings), stopped=[r.stage.key for r in stopped])
+        for r in stopped:
+            log.error("ops.stage_stalled", error=f"etapa {r.stage.number} {r.stage.key}: {r.stage.alarm_es}", stage=r.stage.key, detail=r.detail_es)
+    except Exception as exc:
+        log.error("ops.stall_check.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _stall_check() -> None:
+    """Hourly: is any stage of the cycle stopped without a word (fbi.ops.freshness)."""
+    await asyncio.to_thread(_stall_check_now)
 
 
 OWN_LOOP_JOBS = frozenset({"fixtures_sync", "results_sync", "historical_backfill", "reference_refresh",
@@ -2814,6 +2907,9 @@ async def main() -> None:
     scheduler.add_job(_run_watchdog, "interval", minutes=WATCHDOG_MINUTES, id="run_watchdog", max_instances=1,
                       coalesce=True, misfire_grace_time=WATCHDOG_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=WATCHDOG_MINUTES))
+    scheduler.add_job(_stall_check, "interval", minutes=STALL_CHECK_MINUTES, id="stall_check", max_instances=1,
+                      coalesce=True, misfire_grace_time=STALL_CHECK_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=15))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     # PM-13-05 (OPS-010): the memory of each job, by sampling (FBI_WORKER_MEMWATCH=0 turns it off).
