@@ -132,7 +132,7 @@ def read(conn: psycopg.Connection[Any], *, at: datetime, window_days: int = WIND
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("SELECT id, name, country, competition_type AS type FROM core.competitions WHERE is_tracked ORDER BY id")
         competitions = cur.fetchall()
-        cur.execute(" UNION ALL ".join(selects), {"since": since, "at": at})  # type: ignore[arg-type]
+        cur.execute(" UNION ALL ".join(selects), {"since": since, "at": at})
         cells = {(int(r["competition_id"]), str(r["family"])): Cell(int(r["n"]), float(r["total"] or 0.0), float(r["squares"] or 0.0))
                  for r in cur.fetchall()}
     return build(competitions, cells, at=at, window_days=window_days, minimum=minimum)
