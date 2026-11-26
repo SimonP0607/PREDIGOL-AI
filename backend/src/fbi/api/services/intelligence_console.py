@@ -45,6 +45,8 @@ from fbi.api.contracts.intelligence.console import (
     Costs,
     Declared,
     EnvelopeView,
+    Flow,
+    FlowStage,
     GateReading,
     Gates,
     GateView,
@@ -68,6 +70,7 @@ from fbi.core.clock import now
 from fbi.core.config.picks import INTELLIGENCE, PicksSourceSettings
 from fbi.core.env import environment
 from fbi.intel import capabilities as registry
+from fbi.ops import freshness
 from fbi.protosign import NOTICE as PROTOCOLS_NOTICE
 from fbi.protosign import VERSION as PROTOCOLS_VERSION
 from fbi.protosign import store as protocol_signatures
@@ -472,6 +475,24 @@ def protocols(conn: Conn) -> ConsoleProtocols | Missing:
     return protocols_of(protocol_signatures.overview(conn))
 
 
+# ── flow of the learning cycle ────────────────────────────────────────────────────────────────────────────
+
+def _or_missing[T](value: T | None) -> T | Missing:
+    return NO_DATA if value is None else value
+
+
+def flow_of(readings: Iterable[freshness.Reading]) -> Flow:
+    """The twelve readings of ``fbi.ops.freshness`` in the contract's words. A figure the stage does not have is ``sin_datos``."""
+    stages = [FlowStage(number=r.stage.number, key=r.stage.key, name_es=r.stage.name_es, alarm_es=r.stage.alarm_es, status=r.status,
+                        detail_es=r.detail_es, value=_or_missing(r.value), limit=_or_missing(r.limit), unit=_or_missing(r.unit),
+                        last_at=_or_missing(r.last_at)) for r in readings]
+    return Flow(rule_version=freshness.VERSION, stopped=sum(x.status == "parada" for x in stages), stages=stages)
+
+
+def flow(conn: Conn, at: datetime) -> Flow:
+    return flow_of(freshness.read_all(conn, at=at))
+
+
 # ── the console ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> ConsoleContract:
@@ -484,6 +505,7 @@ def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> Co
         costs=attempt(conn, lambda: costs_of(costs_v3.month_of(conn, at=at, settings=settings), settings)),
         security=security(conn, settings, at),
         protocols=attempt(conn, lambda: protocols(conn)),
+        flow=attempt(conn, lambda: flow(conn, at)),
         news_engine=NEWS_ENGINE, alert_queue=ALERT_QUEUE)
 
 
@@ -492,5 +514,5 @@ def console(conn: Conn) -> Envelope[ConsoleContract]:
 
 
 __all__ = ["ALERT_QUEUE", "CONSOLE_RELATIONS", "FAMILY_MODES", "NEWS_ENGINE", "SPECS", "STATE_WORDS", "attempt", "build", "capabilities_of",
-           "clear_cache", "code_head", "console", "costs_of", "gates_of", "leak_audit_of", "protocols", "protocols_of", "schema_of", "switch_words",
+           "clear_cache", "code_head", "console", "costs_of", "flow", "flow_of", "gates_of", "leak_audit_of", "protocols", "protocols_of", "schema_of", "switch_words",
            "worker_word"]

@@ -2280,6 +2280,7 @@ WORKER_JOB_TYPES = frozenset({
 """The ledger job types this worker opens (fbi.ops.run_watchdog: a run of one of these, opened before the current
 worker process and recorded without an owner, belonged to a previous worker)."""
 WATCHDOG_MINUTES = 5
+STALL_CHECK_MINUTES = 60
 _worker_started_at: datetime | None = None
 
 
@@ -2293,6 +2294,29 @@ def _run_watchdog_now() -> None:
 async def _run_watchdog() -> None:
     """Close every run whose process is gone or whose deadline passed (fbi.ops.run_watchdog)."""
     await asyncio.to_thread(_run_watchdog_now)
+
+
+@_booked("stall_check")
+def _stall_check_now() -> None:
+    """RP-1.5: read the freshness of the twelve stages of the learning cycle (``fbi.ops.freshness``). A stopped stage is an error line of the
+    run, so the run is ``failed`` and says which one; nothing is decided, changed or written besides the run's own row. Never raises."""
+    from fbi.ops import freshness
+
+    try:
+        with _connect() as conn:
+            readings = freshness.read_all(conn, at=now())
+        job_book.count(len(readings))
+        stopped = freshness.alarms(readings)
+        log.info("ops.stall_check", stages=len(readings), stopped=[r.stage.key for r in stopped])
+        for r in stopped:
+            log.error("ops.stage_stalled", error=f"etapa {r.stage.number} {r.stage.key}: {r.stage.alarm_es}", stage=r.stage.key, detail=r.detail_es)
+    except Exception as exc:
+        log.error("ops.stall_check.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _stall_check() -> None:
+    """Hourly: is any stage of the cycle stopped without a word (fbi.ops.freshness)."""
+    await asyncio.to_thread(_stall_check_now)
 
 
 OWN_LOOP_JOBS = frozenset({"fixtures_sync", "results_sync", "historical_backfill", "reference_refresh",
@@ -2883,6 +2907,9 @@ async def main() -> None:
     scheduler.add_job(_run_watchdog, "interval", minutes=WATCHDOG_MINUTES, id="run_watchdog", max_instances=1,
                       coalesce=True, misfire_grace_time=WATCHDOG_MINUTES * 60,
                       next_run_time=moment + timedelta(minutes=WATCHDOG_MINUTES))
+    scheduler.add_job(_stall_check, "interval", minutes=STALL_CHECK_MINUTES, id="stall_check", max_instances=1,
+                      coalesce=True, misfire_grace_time=STALL_CHECK_MINUTES * 60,
+                      next_run_time=moment + timedelta(minutes=15))
     scheduler.add_listener(_on_missed, EVENT_JOB_MISSED)
     scheduler.add_listener(_on_error, EVENT_JOB_ERROR)
     # PM-13-05 (OPS-010): the memory of each job, by sampling (FBI_WORKER_MEMWATCH=0 turns it off).

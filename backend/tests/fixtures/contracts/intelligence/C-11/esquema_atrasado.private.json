@@ -1,6 +1,6 @@
 {
   "contract": "C-11",
-  "contract_version": "1.1.0",
+  "contract_version": "1.2.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T16:42:00Z",
@@ -572,6 +572,10 @@
   },
   "protocols": {
     "missing_reason": "sin_datos"
+  },
+  "flow": {
+    "read_failed": true,
+    "error": "UndefinedTable"
   },
   "news_engine": {
     "missing_reason": "no_entregado",

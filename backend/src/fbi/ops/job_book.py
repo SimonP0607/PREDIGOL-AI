@@ -42,10 +42,11 @@ BOOKED_JOB_TYPES: Final = (
     "decision_v2_shadow", "eval_cycle_e3", "eval_cycle_shadow", "intel_decide", "intel_nightly", "intel_weekly",
     "lifecycle_shadow", "lineup_estimate_shadow", "news_stories", "notifier", "parlay_v6_shadow", "player_forecast_shadow",
     "research_v2_weekly", "run_watchdog", "scenarios_shadow", "selection_eval_shadow", "selection_settle_shadow",
-    "signals_ingest", "source_credibility_shadow", "stats_documents",
+    "signals_ingest", "source_credibility_shadow", "stall_check", "stats_documents",
 )
 """The job types that were outside the book (33 of the 46 jobs of the worker's heartbeat the baseline counted without a row; the other 13
-are ids of jobs that already have one: the in-play pair, the sweeps, the retries and the three nightly fills)."""
+are ids of jobs that already have one: the in-play pair, the sweeps, the retries and the three nightly fills). ``stall_check`` is the hourly
+reading of the freshness of the learning cycle (RP-1.5): born inside the book."""
 
 _ID_SUFFIX: Final = re.compile(r"(_sweep|_retry_\d{4}|_\d{4})$")
 _IN_PLAY: Final = {"live_odds": "live_odds_capture", "live_match": "live_match_capture"}
