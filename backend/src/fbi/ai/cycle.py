@@ -48,7 +48,7 @@ import structlog
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
-from fbi.ai import entity_research, gates, research
+from fbi.ai import entity_research, gates, research, research_order
 from fbi.ai import review_retirement as retire
 from fbi.ai.analysis import ValueOption, build_cards, store_analysis
 from fbi.ai.batch import CYCLE_LOCK, BatchClient, BatchQueue, abandon_unsent, open_counts
@@ -551,9 +551,11 @@ def web_choice(dues: Iterable[Due], by_fixture: dict[int, list[Ranked]], *, esca
     pass only for a match with a candidate, escalated or that asked for research, up to ``FBI_AI_MAX_WEB_PRE`` - a covered match takes no place
     of the caps. Nothing here spends: the budget, the pass's share and Exa's envelope are still checked in the pass, so a covered match is not
     searched once they are spent."""
-    def rank(d: Due) -> tuple[int, int, float, float, datetime]:
-        return web_rank(d, by_fixture)
+    def rank(d: Due) -> tuple[Any, ...]:
+        return research_rank(d, by_fixture) if settings.research_order else web_rank(d, by_fixture)
     due = list(dues)
+    if settings.research_order:  # level D (no market, no followers) is not researched: the text says it only has the provider's data
+        due = [d for d in due if research_order.level_of(d.fixture) != "D"]
     covered = {d.fixture.fixture_id for d in due if news_covered(d, settings)}
     rest = [d for d in due if d.fixture.fixture_id not in covered]
     firsts = sorted((d for d in rest if d.pass_kind in ("first", "request")), key=rank)
@@ -564,6 +566,14 @@ def web_choice(dues: Iterable[Due], by_fixture: dict[int, list[Ranked]], *, esca
                         or d.fixture.fixture_id in asked)), key=rank)
     web = covered | {d.fixture.fixture_id for d in firsts[:allow.web_first]} | {d.fixture.fixture_id for d in pres[:allow.web_pre]}
     return web, covered
+
+
+def research_rank(d: Due, by_fixture: dict[int, list[Ranked]]) -> tuple[int, float, datetime]:
+    """RP-5.4 ``research-order-v1``: the level of the competition first, the pick candidate only as a tie-break inside it (pure)."""
+    eligible = [x.elg for x in by_fixture.get(d.fixture.fixture_id, []) if RISK.stop(x) is None]
+    r = research_order.Ranked(d.fixture, research_order.level_of(d.fixture))
+    level, _, _, tie, kickoff = research_order.order_key(r, candidate=max(eligible) if eligible else 0.0)
+    return (level, tie, kickoff)
 
 
 def web_rank(d: Due, by_fixture: dict[int, list[Ranked]]) -> tuple[int, int, float, float, datetime]:
