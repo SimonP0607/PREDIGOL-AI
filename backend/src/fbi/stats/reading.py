@@ -58,6 +58,24 @@ class Reading:
 
 
 @dataclass(frozen=True, slots=True)
+class TrendReading:
+    """One trend row of a team document (EA-006), as the document holds it: how often the team's matches settled a selection, with the league's
+    reference. ``league_pct`` is None when the document has no reference for it (``missing_reason`` says why)."""
+
+    key: str
+    family: str
+    rule_key: str | None
+    line: float | None
+    hits: int
+    n: int
+    pct: int
+    wilson_low: int
+    wilson_high: int
+    league_pct: int | None
+    league_missing_reason: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class Document:
     """A statistics document read for Intelligence: its identity, its calculation, its date and its figures."""
 
@@ -72,6 +90,7 @@ class Document:
     sample: int = 0
     computed_at: datetime | None = None
     readings: tuple[Reading, ...] = ()
+    trends: tuple[TrendReading, ...] = ()
 
     def get(self, key: str) -> Reading | None:
         return next((r for r in self.readings if r.key == key), None)
@@ -127,6 +146,27 @@ def _str(x: Any) -> str | None:
     return x if isinstance(x, str) else None
 
 
+def trends_of(doc: Mapping[str, Any]) -> tuple[TrendReading, ...]:
+    """The trend rows of a team document body (``trends.items``), in the document's own order. A row that does not carry its counts is not read.
+    Pure."""
+    block = doc.get("trends")
+    items = block.get("items") if isinstance(block, Mapping) else None
+    if not isinstance(items, list):
+        return ()
+    out: list[TrendReading] = []
+    for t in items:
+        if not isinstance(t, Mapping) or not isinstance(t.get("key"), str):
+            continue
+        hits, n, pct = _int(t.get("hits")), _int(t.get("n")), _int(t.get("pct"))
+        low, high = _int(t.get("wilson_low")), _int(t.get("wilson_high"))
+        if hits is None or n is None or n < 1 or pct is None or low is None or high is None:
+            continue
+        league = t.get("league_pct")
+        out.append(TrendReading(str(t["key"]), str(t.get("family") or ""), _str(t.get("rule_key")), _number(t.get("line")), hits, n, pct, low, high,
+                                _int(league), None if _int(league) is not None else _missing_reason(league)))
+    return tuple(out)
+
+
 def document_of(row: Mapping[str, Any], *, as_of: datetime | None = None, keys: Iterable[str] | None = None) -> Document:
     """A row of ``analytics.stat_documents`` as a ``Document`` at the cut-off ``as_of`` (None: no cut-off). Pure."""
     kind, entity, cs = str(row["kind"]), int(row["entity_id"]), int(row["competition_season_id"])
@@ -137,7 +177,7 @@ def document_of(row: Mapping[str, Any], *, as_of: datetime | None = None, keys: 
     version = str(row["calc_version"])
     body = row["doc"] if isinstance(row["doc"], Mapping) else {}
     return Document("ok", kind, entity, cs, scope, context, version, document_id(kind, entity, cs, scope, context, version),
-                    int(row.get("sample") or 0), computed_at, readings_of(body, keys))
+                    int(row.get("sample") or 0), computed_at, readings_of(body, keys), trends_of(body))
 
 
 def read(conn: psycopg.Connection[Any], *, kind: str, entity_id: int, competition_season_id: int, scope: str = "season",
@@ -153,4 +193,4 @@ def read(conn: psycopg.Connection[Any], *, kind: str, entity_id: int, competitio
     return document_of(row, as_of=as_of, keys=keys)
 
 
-__all__ = ["DOC_SQL", "KINDS", "VERSION", "Document", "Reading", "document_id", "document_of", "read", "readings_of"]
+__all__ = ["DOC_SQL", "KINDS", "VERSION", "Document", "Reading", "TrendReading", "document_id", "document_of", "read", "readings_of", "trends_of"]

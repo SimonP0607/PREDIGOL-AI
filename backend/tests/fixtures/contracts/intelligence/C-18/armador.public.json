@@ -1,6 +1,6 @@
 {
   "contract": "C-18",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "public",
   "freshness": {
     "generated_at": "2026-11-24T15:00:00Z",
@@ -35,7 +35,9 @@
           "sample": 10,
           "pct": 80.0,
           "low_pct": 49.0,
-          "high_pct": 94.3
+          "high_pct": 94.3,
+          "league_pct": 47.5,
+          "percentile": 90.0
         },
         "settlement_rule": "cards_ft@v1",
         "best_odds": 1.95
@@ -55,7 +57,9 @@
           "sample": 10,
           "pct": 70.0,
           "low_pct": 39.7,
-          "high_pct": 89.2
+          "high_pct": 89.2,
+          "league_pct": 52.0,
+          "percentile": 81.0
         },
         "settlement_rule": "corners_ft@v1",
         "best_odds": 1.85
@@ -99,7 +103,9 @@
           "sample": 10,
           "pct": 70.0,
           "low_pct": 39.7,
-          "high_pct": 89.2
+          "high_pct": 89.2,
+          "league_pct": 52.0,
+          "percentile": 81.0
         },
         "settlement_rule": "corners_ft@v1",
         "best_odds": 1.85
@@ -119,7 +125,9 @@
           "sample": 10,
           "pct": 80.0,
           "low_pct": 49.0,
-          "high_pct": 94.3
+          "high_pct": 94.3,
+          "league_pct": 47.5,
+          "percentile": 90.0
         },
         "settlement_rule": "cards_ft@v1",
         "best_odds": 1.95
