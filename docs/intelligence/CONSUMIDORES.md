@@ -24,7 +24,7 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 | investigación unificada (`unified_research`) | consolidar | 14 | 10 | 0 | 0 | 0 | 0 | 0 |
 | brazo de comparación multiagente ma-v1-h (`haiku_arm`) | retirar | 86 | 47 | 0 | 6 | 1 | 8 | 3 |
 | informe diario ai.shadow_reports (filas not_configured) (`shadow_reports`) | retirar | 10 | 6 | 1 | 2 | 0 | 0 | 0 |
-| revisiones del modelo de lenguaje sobre candidatos (`pick_reviews`) | retirar | 103 | 55 | 2 | 11 | 0 | 2 | 3 |
+| revisiones del modelo de lenguaje sobre candidatos (`pick_reviews`) | retirar | 105 | 56 | 2 | 11 | 0 | 2 | 3 |
 | modelos experimentales hgb y hgb_market (`hgb`) | retirar | 7 | 4 | 0 | 1 | 0 | 0 | 0 |
 
 ## decision-v1 (referencia estable) (`decision_v1`) — conservar
@@ -137,7 +137,7 @@ Escriben: `backend/src/fbi/ai/shadow.py`.
 
 ## revisiones del modelo de lenguaje sobre candidatos (`pick_reviews`) — retirar
 
-Paquetes: `ai` (23), `api` (11), `budgeting` (1), `council` (1), `evalpass` (1), `intel` (6), `lifecycle` (3), `observability` (1), `picks` (1), `protosign` (1), `research` (1), `scripts` (3), `web` (2).
+Paquetes: `ai` (24), `api` (11), `budgeting` (1), `council` (1), `evalpass` (1), `intel` (6), `lifecycle` (3), `observability` (1), `picks` (1), `protosign` (1), `research` (1), `scripts` (3), `web` (2).
 
 Escriben: `backend/src/fbi/ai/orchestrator_store.py`, `backend/src/fbi/ai/review.py`.
 

@@ -104,6 +104,9 @@ IA-123 (plan pieces AD-D09 and AD-D11) - when the specialist readers speak, and 
     FBI_AI_READERS              default passes | e1. passes: the readers of the shadow (Match, Statistics, Player) speak in every pass the
                                 orchestrator runs, as before. e1: only in E1 (24 h to 12 h before the kick-off) and in a later pass with a
                                 material finding of contra-v1 (``fbi.ai.readers``, ``readers-v1``). Any other word is passes.
+    FBI_AI_REVIEW_PREFILTER     off (default) | on - RP-12.2 (``fbi.ai.review_prefilter``, ``review-prefilter-v1``): a selection the rules
+                                (``rules-review-v1``) already rejected is not sent to the model, because the combined review is REJECT
+                                whatever it answers; a fixed 10 % of them is still reviewed, as the control. The owner's D1 (restart the worker)
     FBI_REVIEW_V2               default on | no_opus | sample | off - the steps of the conditioned retirement of the production review
                                 (``fbi.ai.review_retirement``, ``review-retire-v1``). on: today's path. no_opus: the review never escalates to
                                 the strong model. sample: the model reviews only a fixed random share of the selections (the control). off:
@@ -397,6 +400,9 @@ class AiSettings:
     ``default`` (each surface its own), ``shadow`` (nothing refused, every finding marked in the ledger) or ``enforce`` (every surface refuses)."""
     readers: str = "passes"
     """IA-123 (AD-D09): when the specialist readers speak (``FBI_AI_READERS``, ``fbi.ai.readers.schedule_of``): ``passes`` or ``e1``."""
+    review_prefilter: bool = False
+    """RP-12.2 (``review-prefilter-v1``): the model does not review a selection the rules already rejected, except a fixed control share
+    (``FBI_AI_REVIEW_PREFILTER``, OFF unless it says ``1``/``on``/``true``/``yes``; the owner's D1)."""
     review_v2: str = "on"
     """IA-123 (AD-D11): the step of the retirement of ``review-v2`` (``FBI_REVIEW_V2``, ``fbi.ai.review_retirement.step_of``): ``on`` (today),
     ``no_opus``, ``sample`` or ``off``."""
@@ -465,6 +471,7 @@ class AiSettings:
             unified_max_per_day=max(0, _int("FBI_AI_RESEARCH_UNIFIED_MAX_PER_DAY", 60, env)),
             output_guard=_output_guard(env.get("FBI_AI_OUTPUT_GUARD")),
             readers=_readers(env.get("FBI_AI_READERS")),
+            review_prefilter=(env.get("FBI_AI_REVIEW_PREFILTER") or "").strip().lower() in ("1", "on", "true", "yes"),
             review_v2=_review_v2(env.get("FBI_REVIEW_V2")),
             pm_reviewer=_on(env.get("FBI_AI_PM_REVIEWER")),
             learning_analyst=_on(env.get("FBI_AI_LEARNING_ANALYST")),
@@ -551,6 +558,7 @@ class AiSettings:
             "extractor": self.extractor,
             "output_guard": self.output_guard,
             "readers": self.readers,
+            "review_prefilter": self.review_prefilter,
             "review_v2": self.review_v2,
             "engines": list(self.engines),
             "shadow_engines": list(self.shadow_engines),

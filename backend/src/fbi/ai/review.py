@@ -41,6 +41,7 @@ from psycopg.types.json import Jsonb
 from pydantic import ValidationError
 
 from fbi.ai import context as ctxmod
+from fbi.ai import review_prefilter as prefilter
 from fbi.ai.batch import DEADLINE_MARGIN, BatchQueue, Resolved, Task, register
 from fbi.ai.claims import REVIEW_SCHEMA, Checked, ReviewOut, check
 from fbi.ai.config import AiSettings, Tier
@@ -732,6 +733,8 @@ def review_candidate(conn: psycopg.Connection[Any], settings: AiSettings, c: Can
     llm: EngineResult | None = None
     carried: EngineResult | None = None
     pending: EngineResult | None = None
+    if use_llm and settings.review_prefilter and prefilter.skips(rules.decision, c.fixture_id, c.market_key, c.selection, c.line):
+        use_llm = False  # RP-12.2: the rules rejected it, so the combined review is REJECT whatever the model says (a control share is still asked)
     if use_llm:
         asked = llm_review(conn, settings, c, packet, signals, at=at, tier=tier, ledger=ledger, transport=transport,
                            provider=provider, role=role, deferral=deferral)

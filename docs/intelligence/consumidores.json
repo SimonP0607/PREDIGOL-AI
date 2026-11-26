@@ -967,7 +967,7 @@
    "sin_pruebas": 20
   },
   "pick_reviews": {
-   "archivos": 103,
+   "archivos": 105,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -993,6 +993,7 @@
     "backend/src/fbi/ai/r4_readers.py",
     "backend/src/fbi/ai/replay/__init__.py",
     "backend/src/fbi/ai/review.py",
+    "backend/src/fbi/ai/review_prefilter.py",
     "backend/src/fbi/ai/review_retirement.py",
     "backend/src/fbi/ai/shadow.py",
     "backend/src/fbi/api/contracts/ai_shadow.py",
@@ -1032,7 +1033,7 @@
    ],
    "etiqueta": "revisiones del modelo de lenguaje sobre candidatos",
    "paquetes": {
-    "ai": 23,
+    "ai": 24,
     "api": 11,
     "budgeting": 1,
     "council": 1,
@@ -1047,13 +1048,13 @@
     "web": 2
    },
    "por_clase": {
-    "módulo": 39,
-    "prueba": 48,
+    "módulo": 40,
+    "prueba": 49,
     "ruta": 11,
     "script": 3,
     "web": 2
    },
-   "sin_pruebas": 55
+   "sin_pruebas": 56
   },
   "shadow_reports": {
    "archivos": 10,
