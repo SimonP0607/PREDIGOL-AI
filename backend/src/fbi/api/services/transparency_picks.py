@@ -57,7 +57,7 @@ SELECT count(*)::int AS n
 """
 
 
-def _pick(r: dict[str, Any]) -> PublishedPick:
+def pick_of(r: dict[str, Any]) -> PublishedPick:
     result: PickResult = r["status"]
     settled = result != "PENDING" and r["profit_units"] is not None
     return PublishedPick(
@@ -81,5 +81,5 @@ def published_picks(conn: Conn, *, tz: str, limit: int = DEFAULT_LIMIT, cursor: 
     n = int(total["n"]) if total else 0
     next_cursor = encode_cursor(LIST_KIND, rows[-1]["kickoff_at"], int(rows[-1]["position"])) if more else None
     reason = "PrediGol has not published a pick yet." if n == 0 else "No more picks after this one."
-    return listing([_pick(r) for r in rows], empty_reason=reason, total=n, limit=limit,
+    return listing([pick_of(r) for r in rows], empty_reason=reason, total=n, limit=limit,
                    offset=0 if cursor is None else None, next_cursor=next_cursor)

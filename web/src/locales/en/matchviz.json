@@ -113,5 +113,21 @@
     "method": "Bar: PrediGol's probability, only on checked markets and with its seal. │ mark: the bookmakers' average without their margin. ● dot: the selection settled with its rule in the latest matches, with its Wilson interval.",
     "tableCaption": "Probabilities of {market}, selection by selection",
     "selection": "Selection"
+  },
+  "periods": {
+    "title": "Statistics by half",
+    "subtitle": "The match, the first half and the second half",
+    "subject": "Statistics of {home} and {away} by half",
+    "choose": "Period of the match",
+    "total": "Match",
+    "h1": "1st half",
+    "h2": "2nd half",
+    "source": "the provider's statistics by half",
+    "method": "Each figure is the one the provider gives for that half; nothing is added or shared out by us. Only the statistics this competition delivers by half in nearly every match are shown (at least 90 % of those asked, minimum five). A figure the provider did not send is shown as «—», never as zero.",
+    "note": "Figures of each half as the provider delivers them.",
+    "noMatch": "The two halves do not add up to the match total in at least one figure: the provider gives both separately and we do not reconcile them.",
+    "subjectNone": "the statistics by half",
+    "subjectPending": "Statistics by half of this match",
+    "aria": "{label}, {period}: {home} {homeValue} and {away} {awayValue}"
   }
 }

@@ -11,6 +11,7 @@ from fbi.api.contracts.common import Contract
 from fbi.api.contracts.customer import ConsentPurpose
 from fbi.api.contracts.guides import GuideState
 from fbi.api.contracts.membership import MembershipSummary
+from fbi.api.contracts.wellbeing import WellbeingState
 
 Language = Literal["es", "en"]
 Stage = Literal["mfa", "enroll", "password", "full"]
@@ -159,14 +160,17 @@ class Me(Contract):
     what_if: bool = Field(default=False, description="The calculator «¿Qué pasa si…?» of a competition's tables (plan PM, "
                                                      "PM-09-03; FBI_WHAT_IF, off until the owner signs DM-14).")
     home_unified: bool = Field(default=False, description="One Inicio for everyone, with the «Tus favoritos» strip (plan de correcciones UX, AP-I01, decision D1) (FBI_HOME_UNIFIED, off by default).")
+    match_halves: bool = Field(default=False, description="A match's statistics by half in the Match Center (plan PM, PM-10-03) (FBI_MATCH_HALVES, off by default).")
     markets_v3: bool = Field(default=False, description="A match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6) (FBI_MARKETS_V3, off by default).")
     day_highlights: bool = Field(default=False, description="«Lo más interesante de hoy» on days without picks (plan de correcciones UX, AP-K04, decision D2) (FBI_DAY_HIGHLIGHTS, off by default).")
     my_books: bool = Field(default=False, description="«Mis casas»: the bookmakers the reader plays at, in Perfil, Mercados and Cuotas (plan de correcciones UX, AP-P10, decision D5) (FBI_MY_BOOKS, off by default).")
     stakes: bool = Field(default=False, description="Variable units on picks, parlays, Mis picks and Transparencia (plan de correcciones UX, AP-K07, decision D3) (FBI_STAKES, off by default).")
     trend_builder: bool = Field(default=False, description="The parlay builder «Por tendencias» (plan de correcciones UX, AP-L02, decision D7) (FBI_TREND_BUILDER, off by default).")
+    transparency_export: bool = Field(default=False, description="The download of the published picks (CSV and JSON, with the calibration and its uncertainty) in «Cómo le va a PrediGol» (plan PM, PM-14-08; FBI_TRANSPARENCY_EXPORT, off by default; it needs the page open).")
     matrix_modules: MatrixModules = Field(default_factory=MatrixModules, description=(
         "What Cuotas, Picks, Noticias and Mi parlay do with C-16 (plan PM, PM-14-04; FBI_MATRIX_ODDS, FBI_MATRIX_PICKS, FBI_MATRIX_NEWS, "
         "FBI_MATRIX_PARLAY: off by default; show: they read the matrix and only say what it says; on: it replaces their own check)."))
+    wellbeing: WellbeingState = Field(default_factory=WellbeingState, description="What the reader chose about seeing prices (plan PM, PM-14-07; FBI_WELLBEING, off by default): «solo fútbol» and the voluntary pause; ``available`` False while the choice is not open.")
     display: DisplayPrefs = Field(default_factory=DisplayPrefs, description="The reader's settings of presentation "
                                                                             "(decision 8): clock, price format, "
                                                                             "motion and Inicio's view.")

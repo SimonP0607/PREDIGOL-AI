@@ -5,7 +5,7 @@
  * asks the API who it is (/auth/me). Permissions here decide what is PRESENTED; the
  * API enforces them independently on every request.
  */
-import { setDisplay } from "@/lib/display";
+import { setDisplay, setPricesOff } from "@/lib/display";
 import {
   createContext,
   useCallback,
@@ -61,6 +61,8 @@ interface AuthValue {
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
+/** The context itself, for tests that draw a component as a signed-in reader without the whole provider. */
+export const AuthContextForTests = AuthContext;
 const PREVIEW_KEY = "predigol.previewAsUser";
 const SHADOW_KEY = "predigol.shadowPreview";
 
@@ -190,6 +192,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timeZone = user && isValidTimeZone(user.timezone) ? user.timezone : detectTimeZone();
     // how the reader wants PrediGol shown (decision 8): set before anything below is drawn, as the language is
     setDisplay(user?.display);
+    // «solo fútbol» or a pause (PM-14-07): no price is written while it runs
+    setPricesOff(user?.wellbeing?.active === true);
     return {
       status,
       user,
@@ -278,6 +282,13 @@ export function useAvailabilityOn(): boolean {
 }
 
 /**
+ * Whether the download of the published picks is on (plan PM, PM-14-08; FBI_TRANSPARENCY_EXPORT). Safe outside the provider: off.
+ */
+export function useTransparencyExportOn(): boolean {
+  return useContext(AuthContext)?.user?.transparency_export === true;
+}
+
+/**
  * What a module does with the availability matrix (plan PM, PM-14-04; FBI_MATRIX_ODDS, _PICKS, _NEWS, _PARLAY): `off` decides as it
  * always did, `show` reads C-16 and only says what it says, `on` lets it replace the module's own check. It is `off` while C-16 is off
  * (the API says so), while the API says nothing and outside the provider.
@@ -286,6 +297,32 @@ export function useMatrixMode(module: MatrixModule): MatrixMode {
   const u = useContext(AuthContext)?.user;
   if (u?.availability !== true) return "off";
   return u.matrix_modules?.[module] ?? "off";
+}
+
+/**
+ * What the reader chose about seeing prices (plan PM, PM-14-07; FBI_WELLBEING): `active` while «solo fútbol» or a pause runs. Safe
+ * outside the provider (a component drawn alone in a test): nothing chosen, nothing hidden.
+ */
+export function useWellbeing(): {
+  available: boolean;
+  active: boolean;
+  footballOnly: boolean;
+  pausedUntil: string | null;
+  canLift: boolean;
+} {
+  const w = useContext(AuthContext)?.user?.wellbeing;
+  return {
+    available: w?.available === true,
+    active: w?.active === true,
+    footballOnly: w?.football_only === true,
+    pausedUntil: w?.paused_until ?? null,
+    canLift: w?.pause_can_be_lifted === true,
+  };
+}
+
+/** True while this reader sees no price, pick or parlay: every component that draws one asks this and draws nothing. */
+export function useNoPrices(): boolean {
+  return useContext(AuthContext)?.user?.wellbeing?.active === true;
 }
 /** Whether the owner's console of the provider's requests is on (plan PM, PM-04-05; FBI_USAGE_CONSOLE). Off outside the provider. */
 export function useUsageConsoleOn(): boolean {
@@ -305,6 +342,7 @@ export function useMatchVizSwitches(): {
   lineupLayers: boolean;
   coverage: boolean;
   probIcons: boolean;
+  halves: boolean;
 } {
   const u = useContext(AuthContext)?.user;
   return {
@@ -313,6 +351,7 @@ export function useMatchVizSwitches(): {
     lineupLayers: u?.lineup_layers === true,
     coverage: u?.match_coverage === true,
     probIcons: u?.prob_icons === true,
+    halves: u?.match_halves === true,
   };
 }
 

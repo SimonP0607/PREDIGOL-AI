@@ -25,7 +25,7 @@ import psycopg
 import structlog
 from psycopg.rows import dict_row
 
-from fbi.customer import membership
+from fbi.customer import membership, wellbeing
 from fbi.customer import push as rules
 from fbi.messaging import push as protocol
 from fbi.messaging import push_texts as texts
@@ -100,6 +100,10 @@ def pick_result_alerts(conn: psycopg.Connection[Any], *, at: datetime) -> int:
     with conn.cursor(row_factory=dict_row) as cur:
         picks = cur.execute(RESULTS_SQL, params).fetchall()
         parlays = cur.execute(PARLAYS_SQL, params).fetchall()
+    # «Solo fútbol» and the pause (PM-14-07): a result of a saved pick or parlay is a pick and a parlay - not for a reader who sees none
+    quiet = wellbeing.hidden_prices(conn, at)
+    picks = [r for r in picks if int(r["user_id"]) not in quiet]
+    parlays = [r for r in parlays if int(r["user_id"]) not in quiet]
     for r in picks:
         w = texts.pick_result(str(r["status"]), r["home"], r["away"], texts.locale_of(r["language"]))
         if rules.queue(conn, user_id=int(r["user_id"]), category="result", key=f"result:pick:{r['id']}", title=w.title,

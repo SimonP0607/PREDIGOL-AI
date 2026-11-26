@@ -43,7 +43,7 @@ from fbi.families import score as scoreboard
 from fbi.families.fit import MIN_TRAIN, OUTCOME_KNOWN_AFTER, Match
 from fbi.familydecisions import decide as family_decide
 from fbi.familydecisions import preview
-from fbi.market.rules import RULES
+from fbi.market.rules import rules_in_force
 
 DEFAULT_LINES: dict[str, tuple[float, ...]] = {
     "corners_ft": (8.5, 9.5, 10.5, 11.5),
@@ -121,7 +121,7 @@ def grid_of(args: argparse.Namespace) -> tuple[tuple[float, ...], tuple[float, .
 
 def measures_command() -> int:
     print("measure                 columns                                       (rule)")
-    for r in RULES:
+    for r in rules_in_force():
         if r.liquidable and len(r.columns) == 2:
             print(f"{r.measure:<23} {', '.join(r.columns):<45} {r.key}")
     return 0

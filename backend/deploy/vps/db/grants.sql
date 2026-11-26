@@ -255,6 +255,9 @@ BEGIN
     -- revokes the previous), its last reading noted at most once an hour; deleted when the account is anonymised (A7). Only the
     -- SHA-256 of the secret is stored; the worker never reads customer
     'customer.calendar_feeds:INSERT, UPDATE, DELETE',
+    -- a reader's «solo fútbol» mode and voluntary pause (Plan Maestro PM, PM-14-07, migration 0176): chosen by the reader, read by the
+    -- API for every request that shows a price; deleted when the account is anonymised (A7). The worker never reads customer
+    'customer.wellbeing:INSERT, UPDATE, DELETE',
     -- a user's own records (fbi.userdata)
     'picks.user_picks:INSERT, UPDATE, DELETE', 'picks.user_parlays:INSERT, UPDATE, DELETE',
     'picks.user_parlay_legs:INSERT, UPDATE, DELETE',

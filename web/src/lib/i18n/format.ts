@@ -1,5 +1,5 @@
 /** Numbers in the reader's language: decimal odds, percentages, signed values. */
-import { getDisplay, type OddsFormat } from "@/lib/display";
+import { getDisplay, pricesAreOff, type OddsFormat } from "@/lib/display";
 import { getLocale, intlTag } from "./index";
 
 export const DASH = "—";
@@ -56,6 +56,8 @@ export function formatOdds(
   value: number | string | null | undefined,
   format: OddsFormat = getDisplay().odds_format,
 ): string {
+  // «Solo fútbol» (PM-14-07): the one place a price is written, so the one place it is not.
+  if (pricesAreOff()) return DASH;
   const n = num(value);
   if (n === null) return DASH;
   switch (format) {

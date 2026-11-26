@@ -12,6 +12,7 @@ import { t, translateOr } from "@/lib/i18n";
 import { fmtInt, formatOdds, fmtPct } from "@/lib/i18n/format";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { Freshness, LiveMinute } from "@/product/shared/Bits";
 import { GoalDigit } from "@/product/shared/GoalDigit";
 import { marketShort, selectionLabel } from "@/product/shared/markets";
@@ -272,7 +273,9 @@ function QuoteCell({ label, quote }: { label: string; quote: LiveQuote | null })
 }
 
 function Prices({ odds, now }: { odds: LiveOdds; now: number }) {
-  if (!odds.x12 && !odds.ou) return null;
+  // «solo fútbol» or a pause (PM-14-07): the live prices are not drawn
+  const noPrices = useNoPrices();
+  if (noPrices || (!odds.x12 && !odds.ou)) return null;
   return (
     <div className="border-t border-border/60 px-4 py-3">
       <div className="mb-2 flex items-center justify-between gap-2">

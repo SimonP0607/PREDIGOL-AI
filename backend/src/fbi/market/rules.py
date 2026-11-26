@@ -17,16 +17,29 @@ linked to the one that is the best reading of its name; the matrix reports how m
 Why a rule can be "not liquidable". The provider gives corners, shots, fouls, offsides and saves only as totals of the match. A bet on the
 corners of ONE HALF has nothing to be graded on in anything we keep, so its rule exists with ``liquidable = False`` and the reason
 ``no_period_data``: the absence is written down (and tested), so a model of it is never built on a number that cannot exist.
+
+That premise was wrong for corners (PM-05-03): the provider gives them by half (``/fixtures/statistics?half=true``) and PM-05-01 keeps them.
+The first version of those two rules is NOT edited - it still says what it said, and it stays in force while ``FBI_CORNERS_BY_HALF`` is off. A
+second version (``corners_1h@v2``, ``corners_2h@v2``) reads the columns ``market.fixture_outcomes`` got in migration 0177, known only when the
+four figures came and the halves add up to the match total. ``RULES_BY_MEASURE`` answers with the version in force; ``RULES`` and
+``RULES_BY_KEY`` hold every version, because a bet already linked to ``@v1`` keeps its key.
 """
 
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import Final
 
 from fbi.odds.quote_taxonomy import BetSpec
 
 OUTCOMES_VIEW: Final = "market.fixture_outcomes"
+
+CORNERS_BY_HALF: Final = "FBI_CORNERS_BY_HALF"
+"""PM-05-03: the corners of a half are graded with ``corners_1h@v2`` and ``corners_2h@v2`` (read from the provider's statistics by half) instead
+of being «not available». OFF while the line is absent: the bets stay linked to ``@v1`` and nothing offers or grades them. The rules of the new
+version are written to ``market.settlement_rules`` either way (a row is only ever added); the switch decides which version is IN FORCE."""
 
 # Reasons a bet has no rule (``Decision.reason``); "ok" is the reason of a rule that grades.
 OK: Final = "ok"
@@ -55,6 +68,9 @@ class Rule:
     columns: tuple[str, ...]
     reason: str = OK
     note: str = ""
+    switch: str | None = None
+    """The environment switch a version needs to be in force (None: always). Not stored: ``market.settlement_rules`` holds what a rule IS,
+    the code decides which version applies."""
 
     @property
     def key(self) -> str:
@@ -83,6 +99,16 @@ RULES: Final[tuple[Rule, ...]] = (
          "The provider gives corners as a total of the match, never by half: a bet on the corners of the first half cannot be graded."),
     Rule("corners_2h", 1, "corners", "2H", "not available", (), NO_PERIOD_DATA,
          "The provider gives corners as a total of the match, never by half: a bet on the corners of the second half cannot be graded."),
+    # ── corners by half, version 2 (PM-05-03): the provider DOES give them, in ``/fixtures/statistics?half=true`` (``statistics_1h`` and
+    #    ``statistics_2h``, kept in core.fixture_team_stats_period by PM-05-01). Version 1 above stays as it was written: a rule is never edited.
+    Rule("corners_1h", 2, "corners", "1H", "corners of the first half, as the provider gives them for that half; known only when the four "
+         "figures of the match (both teams, both halves) came and the two halves add up to the match total", _pair("corners_1h"),
+         note="NULL when a figure is missing or the halves do not add up to the total: a half is never graded on a figure that contradicts "
+              "the match's own.", switch=CORNERS_BY_HALF),
+    Rule("corners_2h", 2, "corners", "2H", "corners of the second half, as the provider gives them for that half; known only when the four "
+         "figures came and the halves add up to the match total, and never after extra time (the provider does not say whether its second "
+         "half includes the extra half hour)", _pair("corners_2h"),
+         note="NULL after extra time, when a figure is missing or when the halves do not add up to the total.", switch=CORNERS_BY_HALF),
     # ── cards: each convention is its own rule (see the module docstring)
     Rule("cards_lines_ft", 1, "cards", "FT", "every card shown counts one: each yellow and each red, and the red that follows a "
          "second yellow counts as the red it is", _pair("cards_lines_ft"),
@@ -109,9 +135,52 @@ RULES: Final[tuple[Rule, ...]] = (
 )
 
 RULES_BY_KEY: Final[dict[str, Rule]] = {r.key: r for r in RULES}
-RULES_BY_MEASURE: Final[dict[str, Rule]] = {r.measure: r for r in RULES}
-if len(RULES_BY_KEY) != len(RULES) or len(RULES_BY_MEASURE) != len(RULES):  # pragma: no cover - import-time guard
-    raise RuntimeError("two rules share a key or a measure: a changed convention is a new VERSION of the measure, written as a new key")
+if len(RULES_BY_KEY) != len(RULES):  # pragma: no cover - import-time guard
+    raise RuntimeError("two rules share a key: a changed convention is a new VERSION of the measure, written as a new key")
+
+
+def switch_on(name: str | None, env: Mapping[str, str] | None = None) -> bool:
+    """A rule's switch: None is always on; any other is on only when the line says 1, on, true or yes (off by default)."""
+    if name is None:
+        return True
+    e = os.environ if env is None else env
+    return e.get(name, "").strip().lower() in ("1", "on", "true", "yes")
+
+
+class RulesInForce(Mapping[str, Rule]):
+    """The rule each measure is graded with NOW: the highest version whose switch is on. Version 1 of every measure has no switch, so a
+    measure always has a rule; a new version born behind a switch changes nothing until the switch is turned on. Read at each lookup (the
+    environment, not an import-time copy), so a worker started with the switch on and an API started without it each say what they use."""
+
+    def __init__(self, rules: tuple[Rule, ...]) -> None:
+        by_measure: dict[str, list[Rule]] = {}
+        for r in rules:
+            by_measure.setdefault(r.measure, []).append(r)
+        self._versions = {m: sorted(rs, key=lambda r: -r.version) for m, rs in by_measure.items()}
+        for m, rs in self._versions.items():
+            if len({r.version for r in rs}) != len(rs) or all(r.switch is not None for r in rs):  # pragma: no cover - import-time guard
+                raise RuntimeError(f"measure {m}: two rules share a version, or no version is in force without a switch")
+
+    def __getitem__(self, measure: str) -> Rule:
+        for r in self._versions[measure]:
+            if switch_on(r.switch):
+                return r
+        raise KeyError(measure)  # pragma: no cover - the guard above keeps a switchless version of every measure
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._versions)
+
+    def __len__(self) -> int:
+        return len(self._versions)
+
+
+RULES_BY_MEASURE: Final[Mapping[str, Rule]] = RulesInForce(RULES)
+
+
+def rules_in_force() -> tuple[Rule, ...]:
+    """The rules that grade today, one per measure, in the order of ``RULES``: what a reader of «which measures can be graded» lists. The
+    measurements of coverage read every version in ``RULES`` instead - a figure measured is not a bet offered."""
+    return tuple(RULES_BY_MEASURE[m] for m in dict.fromkeys(r.measure for r in RULES))
 
 
 @dataclass(frozen=True, slots=True)
