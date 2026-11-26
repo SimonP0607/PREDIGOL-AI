@@ -49,6 +49,7 @@ Estados: `abierto` · `en curso` · `hecho` · `desplegado` · `descartado`.
 | OPS-016 | Sin usar: el coordinador lo reservó para PM-13-06 (20-nov-2026) por si hacía falta un cambio mínimo de guion; no hizo falta (el arreglo del pronóstico del disco es de la zona de alertas de seguridad: propuesta en DOC-011). No se reutiliza | sin usar | — | PM-13-06 |
 | OPS-017 | La comprobación de salud del servidor (`backend/deploy/vps/bin/healthcheck.sh`, punto 4) deja de contar «en juego» un partido cuyo saque aún no ha llegado: el 24-nov-2026 el proveedor tenía un partido de la Premier League del 22-may-2027 (`core.fixtures` 173871) en `HT` desde el 20-nov y el veredicto quedó en `problem` («1 matches in play, last in-play capture 4566s ago») desde las 03:25 UTC, cuando terminó el último partido real de la noche y la captura en vivo, que solo sigue saques ya pasados (`fbi.odds.live_cadence.possibly_live_count`), se quedó quieta como debe. La ventana es ahora la de la captura: saque entre hace 3 h 30 min y ahora. No borra ni corrige la fila del proveedor. Pruebas: la consulta del guion ejecutada en PostgreSQL con los tres casos de producción (`test_healthcheck_in_play_query.py`) y la de texto de `test_vps_healthcheck.py` | desplegado con la cadena del servidor | este PR | incidencia 24-nov |
 | SEG-002 | Llave de solo lectura para las auditorías del plan PICKS (F1, F2, F6): orden forzada `predigol-audits` (`backend/deploy/release/templates/gate/`) que solo deja lanzar `audit_picks_module`, `audit_settlement` y `research_picks_calibration` con sus opciones numéricas acotadas, dentro del worker y con su conexión `READ ONLY`; rechaza consola, otros scripts, metacaracteres y opciones ajenas, y registra cada llamada en `/var/log/predigol-audits.log`. Pasos para instalarla y quitarla en `PICKS_LINEA_BASE.md`. Suite `test_audits_gate.sh` (37 comprobaciones). No toca la llave de root ni la del despliegue; sin migración | en curso | este PR | Plan PICKS F1, F2, F6 |
+| SEG-003 | La regla de Gitleaks que ya clasifica como falsas las claves de catálogo de mercado (códigos como `result_1x2.FT.match`, identificadores públicos, no credenciales) en los ejemplos del contrato C-14 (`tests/fixtures/contracts/intelligence/C-14/<ejemplo>.json`) cubre también sus copias de versiones anteriores (`C-14/anteriores/<versión>/<ejemplo>.json`), que los contratos de Intelligence guardan al subir de versión (C-14 1.2.0 conserva los ejemplos 1.1.0). Se añade solo la subcarpeta `anteriores/<x.y.z>/` a la ruta de la lista permitida existente; la condición sigue siendo AND con la línea exacta, la regla genérica es la única relajada y cualquier otro valor en esos ficheros se sigue marcando. Sin ningún cambio de código ni de datos. |
 
 ## IA — capa de inteligencia artificial
 
@@ -606,7 +607,7 @@ Todavía sin códigos asignados en el resto. Lo anterior al 3-nov-2026 se identi
 
 ## Siguiente número libre
 
-CI-023 · SEG-003 · UX-253 · BE-114 · FE-011 · OPS-024 · DOC-017
+CI-023 · SEG-004 · UX-253 · BE-114 · FE-011 · OPS-024 · DOC-017
 
 IA-190
 
