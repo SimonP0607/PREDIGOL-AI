@@ -415,7 +415,7 @@
    "sin_pruebas": 14
   },
   "evidence": {
-   "archivos": 183,
+   "archivos": 184,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -423,6 +423,7 @@
     "backend/scripts/ia_players.py",
     "backend/scripts/intel_baseline.sql",
     "backend/src/fbi/ai/assertions.py",
+    "backend/src/fbi/ai/availability_contrast.py",
     "backend/src/fbi/ai/battery/agentworld.py",
     "backend/src/fbi/ai/battery/claims.py",
     "backend/src/fbi/ai/battery/extractor.py",
@@ -533,7 +534,7 @@
    ],
    "etiqueta": "almacén de evidencia: ai.evidence",
    "paquetes": {
-    "ai": 43,
+    "ai": 44,
     "api": 17,
     "chronicle": 4,
     "decision": 1,
@@ -557,14 +558,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 83,
+    "módulo": 84,
     "prueba": 75,
     "ruta": 17,
     "script": 5,
     "trabajo": 2,
     "web": 1
    },
-   "sin_pruebas": 108
+   "sin_pruebas": 109
   },
   "extract_v1": {
    "archivos": 23,
