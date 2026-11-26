@@ -18,6 +18,7 @@ import "@/admin/usageText";
 import "@/live/researchReasonText";
 import "@/product/picks/pickWhyText";
 import "@/admin/emailText";
+import "@/admin/helpGapsText";
 import "@/product/news/storyText";
 import "@/product/match/marketsV3Text";
 import "@/live/pipelineText";

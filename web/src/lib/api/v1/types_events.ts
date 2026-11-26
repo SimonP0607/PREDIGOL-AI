@@ -90,6 +90,8 @@ export interface ProductOverview {
   leagues: BreakdownRow[];
   /** Teams of the matches opened in 30 days: worked out from the match. */
   teams: BreakdownRow[];
+  /** The words of what readers asked the help that had no answer, in 30 days (AP-H02): a word stands with enough different readers. */
+  unanswered?: BreakdownRow[];
   /** What came of each guide and version in 30 days (UX-054): groups only, never one reader. */
   guides: GuideRow[];
   /** The customers' lifecycle (B11). */

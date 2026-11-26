@@ -1,4 +1,4 @@
-"""The closed catalog of product events (plan UX, A6 and section 39; closing plan 3.3): 40 events, each with only the
+"""The closed catalog of product events (plan UX, A6 and section 39; closing plan 3.3): 41 events, each with only the
 properties it may carry - an enumeration, a bounded integer, a boolean, a slug or an id; never free text - and the
 switches. Closing plan 3.3 added the market to «pick saved» and «leg added to the parlay», and the screen viewed,
 by group. UX-032 added the four events of the guides."""
@@ -13,14 +13,14 @@ import pytest
 from fbi.customer import events
 from fbi.customer.events import CATALOG_FILE, EventError, check
 
-GROUPS = {"entry": 10, "use": 8, "picks": 5, "parlays": 3, "news": 2, "notices": 4, "support": 3, "membership": 3,
+GROUPS = {"entry": 10, "use": 9, "picks": 5, "parlays": 3, "news": 2, "notices": 4, "support": 3, "membership": 3,
           "other": 2}
 SERVER = {"account_activated", "ticket_created", "trial_started", "membership_renewed", "membership_expired"}
 
 
 def test_the_catalog_is_the_plans_40_events_in_their_groups() -> None:
     cat = events.catalog()
-    assert len(cat) == 40
+    assert len(cat) == 41
     assert Counter(e.group for e in cat.values()) == GROUPS
     assert {e.name for e in cat.values() if e.source == "server"} == SERVER
     raw = json.loads(CATALOG_FILE.read_text(encoding="utf-8"))
@@ -30,7 +30,7 @@ def test_the_catalog_is_the_plans_40_events_in_their_groups() -> None:
 def test_no_property_can_carry_free_text_an_address_or_a_secret() -> None:
     for spec in events.catalog().values():
         for name, prop in spec.props.items():
-            assert prop.kind in ("enum", "int", "bool", "slug", "id"), (spec.name, name)
+            assert prop.kind in ("enum", "int", "bool", "slug", "id", "word"), (spec.name, name)
             words = set(name.split("_"))
             assert not words & {"text", "query", "email", "mail", "ip", "name", "message", "comment", "token",
                                 "password", "url", "address", "phone"}, (spec.name, name)

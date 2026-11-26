@@ -1,0 +1,4 @@
+{
+  "title": "What the Help could not answer",
+  "hint": "Words from the questions with no answer, lower case and without accents. They are for adding answers: the whole question is never kept, and a word only shows when at least {min} different readers wrote it."
+}

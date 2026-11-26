@@ -99,6 +99,23 @@ export function assistantWords(query: string): string[] {
     .filter((w) => w.length >= 3 && !STOP.has(w));
 }
 
+/** The most words of one question that are counted when the help has no answer for it. */
+export const MAX_UNANSWERED_WORDS = 3;
+
+/**
+ * The words of a question the help could not answer, for the owner's count of what to add (AP-H02): lower-case letters only
+ * (accents and ñ folded to a plain letter), 3 to 20 long, without the connecting words, each once, at most three. A question
+ * that holds a digit or an «@» is not counted at all: it may carry an address, a phone or an order number, and nothing of
+ * it leaves the browser. What is sent is words, never the question; the owner sees a word only when 20 readers wrote it.
+ */
+export function unansweredTerms(query: string): string[] {
+  if (/[0-9@]/.test(query) || /\b(https?:|www\.)/i.test(query)) return [];
+  const words = fold(query)
+    .split(/[^a-z]+/)
+    .filter((w) => w.length >= 3 && w.length <= 20 && !STOP.has(w));
+  return [...new Set(words)].slice(0, MAX_UNANSWERED_WORDS);
+}
+
 export function isBlocked(query: string): boolean {
   const text = fold(query)
     .replace(/[^a-z0-9ñ ]+/g, " ")

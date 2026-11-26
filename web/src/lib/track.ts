@@ -1,5 +1,5 @@
 /**
- * Product analytics (plan UX, A6 and section 39): the closed catalog of 40 events - the same as the backend's
+ * Product analytics (plan UX, A6 and section 39): the closed catalog of 41 events - the same as the backend's
  * (backend/src/fbi/customer/events_catalog.json; a test checks the parity) - and track(), which queues an event and
  * sends the queue in the background: every few seconds, at 20 events, and when the page is hidden. It never blocks
  * the interface, never retries, and an answer that is not 200 empties the queue. A property is an enumeration, a
@@ -13,6 +13,7 @@ type PropKind =
   | { readonly int: readonly [number, number] }
   | { readonly bool: true }
   | { readonly slug: true }
+  | { readonly word: true }
   | { readonly id: true };
 
 interface EventSpec {
@@ -202,6 +203,8 @@ export const EVENTS = {
   forecast_viewed: { group: "use", source: "web", props: { match_id: { id: true } } },
   term_explained: { group: "use", source: "web", props: { term: { slug: true } } },
   explain_opened: { group: "use", source: "web", props: { what: { slug: true } } },
+  /** AP-H02: a word of what the reader asked the help when it had no answer (counted by group, with 20 readers behind it). */
+  help_unanswered: { group: "use", source: "web", props: { term: { word: true } } },
   pick_opened: { group: "picks", source: "web", props: { pick_id: { id: true } } },
   pick_explanation_opened: { group: "picks", source: "web", props: { pick_id: { id: true } } },
   pick_saved: {
@@ -318,7 +321,7 @@ type ValueOf<P> = P extends { enum: readonly (infer E)[] }
   ? E
   : P extends { bool: true }
     ? boolean
-    : P extends { slug: true }
+    : P extends { slug: true } | { word: true }
       ? string
       : number;
 export type PropsOf<K extends WebEvent> = {
@@ -326,6 +329,7 @@ export type PropsOf<K extends WebEvent> = {
 };
 
 const SLUG = /^[A-Za-z0-9_.+-]{1,40}$/;
+const WORD = /^[a-z]{3,20}$/;
 const MAX_ID = Number.MAX_SAFE_INTEGER;
 const BATCH = 20;
 const FLUSH_MS = 4000;
@@ -350,6 +354,7 @@ export function validEvent(
         (value as number) <= kind.int[1]) ||
       ("bool" in kind && typeof value === "boolean") ||
       ("slug" in kind && typeof value === "string" && SLUG.test(value)) ||
+      ("word" in kind && typeof value === "string" && WORD.test(value)) ||
       ("id" in kind &&
         Number.isInteger(value) &&
         (value as number) > 0 &&

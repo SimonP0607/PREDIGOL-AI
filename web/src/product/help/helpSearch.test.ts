@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { setLocale } from "@/lib/i18n";
-import { ask, assistantWords, isBlocked, MAX_ANSWERS } from "./helpSearch";
+import {
+  ask,
+  assistantWords,
+  isBlocked,
+  MAX_ANSWERS,
+  MAX_UNANSWERED_WORDS,
+  unansweredTerms,
+} from "./helpSearch";
 import { FAQ_IDS, faqAnswer, faqQuestion } from "./faq";
 
 afterEach(() => setLocale("es"));
@@ -76,5 +83,42 @@ describe("the help's assistant (decision 5): the help's own texts, and nothing e
 
   test("the words of a question: folded, short ones and filler left out", () => {
     expect(assistantWords("¿Cómo renuevo mi Membresía?")).toEqual(["renuevo", "membresia"]);
+  });
+});
+
+describe("what the help could not answer is counted by word, never as a question (AP-H02)", () => {
+  test("lower-case letters only, without accents or connecting words, each once, three at most", () => {
+    expect(unansweredTerms("¿Cómo CANCELO el reembolso del año?")).toEqual([
+      "cancelo",
+      "reembolso",
+      "ano",
+    ]);
+    expect(unansweredTerms("reembolso reembolso Reembolso")).toEqual(["reembolso"]);
+    expect(unansweredTerms("uno dos tres cuatro cinco seis").length).toBe(MAX_UNANSWERED_WORDS);
+    expect(unansweredTerms("la el de")).toEqual([]);
+    expect(unansweredTerms("")).toEqual([]);
+  });
+
+  test("a question with a digit, an address or a link sends nothing at all", () => {
+    for (const q of [
+      "mi correo es juan@gmail.com y no llega",
+      "pedido 12345 no llega",
+      "llamen al 3001234567",
+      "mira https://example.com/pago",
+      "www.example.com no abre",
+    ]) {
+      expect(unansweredTerms(q), q).toEqual([]);
+    }
+  });
+
+  test("every word it keeps is one the closed catalog accepts", () => {
+    const WORD = /^[a-z]{3,20}$/;
+    for (const q of [
+      "Pagué con tarjeta débito y nada",
+      "I was charged twice, refund please",
+      "ñandú extraordinariamente",
+    ]) {
+      for (const w of unansweredTerms(q)) expect(WORD.test(w), `${q} → ${w}`).toBe(true);
+    }
   });
 });
