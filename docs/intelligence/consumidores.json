@@ -415,7 +415,7 @@
    "sin_pruebas": 14
   },
   "evidence": {
-   "archivos": 175,
+   "archivos": 176,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -554,7 +554,7 @@
    },
    "por_clase": {
     "módulo": 79,
-    "prueba": 71,
+    "prueba": 72,
     "ruta": 17,
     "script": 5,
     "trabajo": 2,

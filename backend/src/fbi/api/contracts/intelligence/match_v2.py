@@ -366,7 +366,7 @@ class MatchIntelligenceV2(IntelligenceContract):
     """C-01 2.0.0, public projection (``GET /api/v1/matches/{fixture_id}/intelligence/v2``, behind ``FBI_MATCH_INTELLIGENCE``)."""
 
     CONTRACT_ID: ClassVar[str] = "C-01"
-    CONTRACT_VERSION: ClassVar[str] = "2.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "2.1.0"
 
     match: MatchInfo
     probabilities: ItemList[OutcomeFigure] = Field(description="One figure per outcome: what a reader is shown (forecast-v1).")

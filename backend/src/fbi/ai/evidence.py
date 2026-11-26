@@ -33,6 +33,7 @@ import psycopg
 from psycopg.rows import dict_row, tuple_row
 from psycopg.types.json import Jsonb
 
+from fbi.ai import factor_schema
 from fbi.ai.contracts.mcp import source_class
 from fbi.analyst.provenance import OFFICIAL_DOMAINS, REPUTABLE_DOMAINS
 
@@ -258,7 +259,7 @@ class EvidenceIn:
     team_id: int | None
     kind: str
     claim: str
-    origin: Literal["provider", "web", "owner"]
+    origin: Literal["provider", "web", "owner", "own_calc"]
     source_name: str
     retrieved_at: datetime
     story_key: str
@@ -280,9 +281,19 @@ class EvidenceIn:
     """Research v2 (migration 0114): what kind of claim it is and about whom (the words of ``claim-v1``), and until when it can be reused
     without asking again. All four stay ``None`` for what v1 writes, and then the row is exactly the row v1 always wrote."""
 
+    side: str | None = None
+    fact_schema: str | None = None
+    """``context-fact-v1`` (migration 0180, plan RP-4.1): whom the fact affects and the mark that it was written under the one schema of a context
+    fact, complete in its seven attributes (``fbi.ai.factor_schema``). Both stay ``None`` for everything written before, and then the row and its
+    hash are exactly what they always were."""
+
     @property
     def typed(self) -> bool:
         return any(v is not None for v in (self.claim_type, self.subject_type, self.subject_id, self.fresh_until))
+
+    def fact_view(self, *, status: str | None = None) -> factor_schema.FactView:
+        return factor_schema.FactView(self.origin, self.kind, status, self.source_name, self.source_url, self.published_at, self.subject_type,
+                                      self.subject_id, self.fresh_until, self.claim, self.payload_hash, self.attributes, self.side, self.fact_schema)
 
     def content_hash(self) -> str:
         body: dict[str, Any] = {"claim": " ".join(self.claim.split()), "url": self.source_url, "source": self.source_name,
@@ -290,13 +301,19 @@ class EvidenceIn:
                 else self.published_at.isoformat(), "attributes": self.attributes}
         if self.typed:  # the hash of an untyped item is what it always was; a typed claim says more, so it is another piece of content
             body["typed"] = [self.claim_type, self.subject_type, self.subject_id]
+        if self.fact_schema is not None:  # the same words under the one schema are another piece of content: whom it affects is part of it
+            body["fact"] = [self.fact_schema, self.side]
         return hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
 
 
 def store(conn: psycopg.Connection[Any], item: EvidenceIn, *, at: datetime) -> tuple[int, bool]:
     """(id, created). An identical item (same story, same content) is stored once."""
+    if item.fact_schema is not None:
+        if item.fact_schema != factor_schema.VERSION:
+            raise ValueError(f"unknown fact schema {item.fact_schema!r}")
+        factor_schema.require(item.fact_view())  # a fact under the one schema is complete or it is not written
     domain = domain_of(item.source_url)
-    tier = item.source_tier or tier_of(conn, domain)
+    tier = item.source_tier or ("provider" if item.origin == "own_calc" else tier_of(conn, domain))
     attributes = dict(item.attributes) | {"assertion": item.assertion}
     published = item.published_at if item.published_at is None or item.published_at <= item.retrieved_at else None
     initial: Status = "PROBABLE" if TIER_RANK.get(tier, 8) <= TIER_RANK["media"] else "RUMOR"
@@ -305,14 +322,15 @@ def store(conn: psycopg.Connection[Any], item: EvidenceIn, *, at: datetime) -> t
             "INSERT INTO ai.evidence (fixture_id, team_id, provider_player_id, kind, claim, origin, source_name, source_url, "
             "source_domain, source_tier, author, published_at, retrieved_at, event_at, story_key, content_hash, "
             "payload_hash, confidence, relevance, attributes, status, status_reason, status_changed_at, "
-            "claim_type, subject_type, subject_id, source_class, fresh_until) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+            "claim_type, subject_type, subject_id, source_class, fresh_until, side, fact_schema) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
             "ON CONFLICT (story_key, content_hash) DO NOTHING RETURNING id",
             (item.fixture_id, item.team_id, item.provider_player_id, item.kind, item.claim[:600], item.origin,
              item.source_name[:200], item.source_url, domain, tier, item.author, published, item.retrieved_at,
              item.event_at, item.story_key, item.content_hash(), item.payload_hash, round(item.confidence, 3),
              round(item.relevance, 3), Jsonb(attributes), initial, "not yet classified", at,
-             item.claim_type, item.subject_type, item.subject_id, source_class(tier, domain) if item.typed else None, item.fresh_until))
+             item.claim_type, item.subject_type, item.subject_id, source_class(tier, domain) if item.typed else None, item.fresh_until,
+             item.side, item.fact_schema))
         row = cur.fetchone()
         if row is not None:
             return int(row[0]), True

@@ -14,7 +14,7 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 | forecast-v1 (cifra por modelo) (`forecast_v1`) | consolidar | 68 | 35 | 1 | 10 | 0 | 0 | 7 |
 | forecast-v2 (cifra única) (`forecast_v2`) | conservar | 33 | 19 | 0 | 5 | 0 | 0 | 2 |
 | circuito de noticias: news.items (`news_items`) | consolidar | 31 | 20 | 2 | 2 | 1 | 1 | 2 |
-| almacén de evidencia: ai.evidence (`evidence`) | conservar | 175 | 104 | 2 | 17 | 2 | 1 | 5 |
+| almacén de evidencia: ai.evidence (`evidence`) | conservar | 176 | 104 | 2 | 17 | 2 | 1 | 5 |
 | texto de los lectores (user-narrative-v3) (`user_narrative`) | consolidar | 25 | 14 | 0 | 4 | 1 | 3 | 0 |
 | resumen del partido (brief-v8) (`brief_v8`) | consolidar | 29 | 15 | 0 | 0 | 0 | 3 | 0 |
 | crónica única (chronicle-v4) (`chronicle_v4`) | conservar | 36 | 25 | 1 | 4 | 3 | 0 | 3 |

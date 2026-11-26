@@ -17,6 +17,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Final, cast, get_args
 
+from fbi.ai import factor_schema
 from fbi.api.contracts.intelligence.base import Freshness, ItemList, Missing
 from fbi.api.contracts.intelligence.projection import to_public
 from fbi.api.contracts.intelligence.sources import (
@@ -99,7 +100,8 @@ def used(rows: Sequence[views.SourceRow], evaluation: str) -> list[UsedFactPriva
         out.append(UsedFactPrivate(
             n=len(out) + 1, fact_es=fact_es(r.entity_name, r.entity_type, r.kind, r.assertion),
             entity=EntityRef(type=cast(EntityKind, r.entity_type), id=r.entity_id, name=r.entity_name or NO_DATA),
-            team=r.team_name or NO_DATA, level=cast(ConfirmationLevel, r.level) if r.level in LEVELS else NO_DATA, warnings=warnings,
+            team=r.team_name or NO_DATA, level=cast(ConfirmationLevel, r.level) if r.level in LEVELS else NO_DATA,
+            category=factor_schema.category_of_level(r.level), warnings=warnings,
             relation=cast(FactRelation, r.relation), contributed_es=CONTRIBUTED_ES[r.relation],
             evaluation=cast(EvaluationStep, evaluation), source=_source(r), quote=NO_QUOTE,
             published_at=r.fact_at if r.fact_at is not None else NO_DATA, known_at=r.fact_known_at, fact_at=NO_DATA,

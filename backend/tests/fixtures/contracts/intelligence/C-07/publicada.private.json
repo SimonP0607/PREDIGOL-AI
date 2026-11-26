@@ -1,6 +1,6 @@
 {
   "contract": "C-07",
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-22T14:30:00Z",
@@ -52,6 +52,7 @@
         },
         "team": "Club Ejemplo Norte",
         "level": "oficial",
+        "category": "hecho_confirmado",
         "warnings": [],
         "relation": "en_contra",
         "contributed_es": "Mueve en contra una selección del análisis (dos puntos o más).",
@@ -103,6 +104,7 @@
         },
         "team": "Club Ejemplo Sur",
         "level": "dos_origenes",
+        "category": "hecho_confirmado",
         "warnings": [],
         "relation": "contexto",
         "contributed_es": "Se tuvo en cuenta como contexto: no movió ninguna selección.",
@@ -146,6 +148,7 @@
         },
         "team": "Club Ejemplo Sur",
         "level": "rumor",
+        "category": "rumor",
         "warnings": [],
         "relation": "no_usada",
         "contributed_es": "No se usó: es un rumor.",

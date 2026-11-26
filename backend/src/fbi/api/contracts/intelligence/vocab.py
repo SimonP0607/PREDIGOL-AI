@@ -32,6 +32,10 @@ SettlementResult = Literal["pending", "win", "loss", "push", "void", "half_win",
 ConfirmationLevel = Literal["oficial", "dos_origenes", "declaracion", "un_medio", "rumor"]
 """How confirmed a fact is (AD-C07, AD-G03). Syndication does not raise the level."""
 
+FactCategory = Literal["hecho_confirmado", "informacion_probable", "rumor", "interpretacion_tactica", "hipotesis"]
+"""The five categories of a context fact (plan RP-4.1, ``fbi.ai.factor_schema``): given by code from the state of the fact; a text and the registry
+of factors write the last two, never evidence."""
+
 StoryWarning = Literal["contradiccion", "desactualizada"]
 """Two notices a story can carry without being a level of confirmation."""
 
@@ -78,6 +82,7 @@ VOCABULARIES: Final[dict[str, tuple[str, ...]]] = {
     "evaluation": get_args(EvaluationStep),
     "settlement_result": get_args(SettlementResult),
     "confirmation_level": get_args(ConfirmationLevel),
+    "fact_category": get_args(FactCategory),
     "story_warning": get_args(StoryWarning),
     "validation_verdict": get_args(ValidationVerdict),
     "market_state": get_args(MarketState),
