@@ -7,7 +7,6 @@
 import type { MatchSummary, TeamDetail, TeamSummary } from "@/lib/api/v1/types";
 import type { PlayerSummary, TableRow } from "@/lib/api/v1/types_center";
 import { t } from "@/lib/i18n";
-import "@/product/competitions/text";
 import { countryFromEnglish } from "@/product/matches/country";
 
 export type ProfileTab = "summary" | "matches" | "squad" | "stats" | "news";
@@ -31,7 +30,7 @@ export function isNation(team: Pick<TeamSummary, "name" | "country">): boolean {
 export function countryName(country: string | null | undefined): string | null {
   const name = (country ?? "").trim();
   if (!name) return null;
-  if (name.toLowerCase() === "world") return t("competitions.world");
+  if (name.toLowerCase() === "world") return t("profiles.teams.world");
   return countryFromEnglish(name) ?? name;
 }
 

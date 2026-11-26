@@ -88,7 +88,7 @@
     "mine": "Tus equipos",
     "mineNone": "Todavía no sigues ningún equipo.",
     "choose": "Elegir en Tu fútbol",
-    "competitions": "Competiciones por país",
+    "competitions": "Todo el fútbol, por región y país",
     "leagueError": "No pudimos cargar los equipos de esta liga.",
     "leagueNone": "Esta competición todavía no tiene equipos cargados.",
     "leagueTable": "Tabla y calendario",
@@ -96,6 +96,7 @@
     "nextNone": "Sin partido a la vista",
     "nations": "Selecciones",
     "nationsHelp": "Toca una selección para buscarla; también puedes escribir su nombre arriba.",
+    "world": "Internacional",
     "countries": "{n} países"
   },
   "teamMissing": "Este equipo no existe o no tiene datos."

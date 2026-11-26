@@ -3,7 +3,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CompetitionSummary, MatchSummary } from "@/lib/api/v1/types";
 import type { PlayerSummary, TableRow } from "@/lib/api/v1/types_center";
-import { setLocale } from "@/lib/i18n";
+import { setLocale, t } from "@/lib/i18n";
 import {
   ageOf,
   countryName,
@@ -14,7 +14,11 @@ import {
   squadGroups,
   teamLabel,
 } from "./model";
-import { byCountry, byRegion, NATION_SHORTCUTS } from "./TeamsPage";
+import { byCountry, byRegion, NATION_SHORTCUTS, nationOf } from "./TeamsPage";
+import { REGIONS } from "@/product/competitions/region";
+import { t as tc } from "@/product/competitions/text";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 const m = (id: number, home: number, away: number, score: [number, number] | null) =>
   ({
@@ -160,5 +164,59 @@ describe("Equipos como portada (AP-E02)", () => {
     setLocale("en");
     expect(countryName("Spain")).toBe("Spain");
     setLocale("es");
+  });
+});
+
+describe("Equipos · las palabras de las regiones (26-nov-2026)", () => {
+  test("cada región y «Mundo» se traducen en es y en en, nunca se muestra la clave", () => {
+    for (const locale of ["es", "en"] as const) {
+      setLocale(locale);
+      for (const r of REGIONS) {
+        const key = `competitions.directory.region.${r}`;
+        expect(tc(key)).not.toBe(key);
+      }
+      expect(countryName("World")).toBe(locale === "es" ? "Internacional" : "International");
+    }
+    setLocale("es");
+  });
+
+  test("ningún módulo registra un catálogo con un `import` sin nombres (package.json dice sideEffects:false y el empaquetador lo descarta)", () => {
+    const bare = /^import\s+"@\/[^"]*";\s*$/m;
+    const bad: string[] = [];
+    const walk = (dir: string) => {
+      for (const f of readdirSync(dir)) {
+        const p = join(dir, f);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(f) && !/\.test\./.test(f) && bare.test(readFileSync(p, "utf8")))
+          bad.push(p);
+      }
+    };
+    walk(join(import.meta.dir, "..", ".."));
+    expect(bad).toEqual([]);
+  });
+});
+
+describe("Equipos · selecciones con escudo y título de la lista por región (UX-249)", () => {
+  const team = (id: number, name: string, country: string | null) =>
+    ({ id, name, country, logo_url: `https://x/${id}.png` }) as never;
+
+  test("la selección es el equipo que se llama como su país, no un club que contiene la palabra", () => {
+    const answers = [
+      team(1, "Colombia U20", "Colombia"),
+      team(2, "Deportivo Colombia", "Colombia"),
+      team(3, "Colombia", "Colombia"),
+    ];
+    expect(nationOf(answers, "Colombia")?.id).toBe(3);
+    expect(nationOf(answers, "colombia ")?.id).toBe(3);
+  });
+
+  test("sin respuesta o sin selección, ninguna: no se inventa un escudo", () => {
+    expect(nationOf([], "Brazil")).toBeNull();
+    expect(nationOf([team(2, "Brazil FC", "Brazil")], "Brazil")).toBeNull();
+  });
+
+  test("cada atajo es un país conocido y el título de la lista nombra región y país", () => {
+    expect(NATION_SHORTCUTS.length).toBe(8);
+    expect(t("profiles.teams.competitions")).toMatch(/región y país|region and country/i);
   });
 });
