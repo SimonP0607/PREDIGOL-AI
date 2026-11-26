@@ -57,6 +57,10 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
                                "DESCRIPTIVE, and the two relations it records as DESCRIPTIVE in the registry (it reads the catalogue's keys and blocks "
                                "and the words DESCRIPTIVE and VALIDATED, and nothing else; it never validates)",
         "intel/leakage.py": "the nightly proof: the rule factors_known (it reads the catalogue's keys and blocks and nothing else)",
+        "intel/factor_block.py": "the typed facts of the structured-context block (RP-4.5): their first row in the registry and the coverage of every "
+                                 "factor's status (it writes DESCRIPTIVE rows by the system and reads statuses; it validates nothing)",
+        "intel/factor_residual.py": "the residual test of a factor against the market (RP-4.5): the names of the two measured states its verdict "
+                                    "supports; it reads no model, no forecast and no packet, and writes nothing",
         "familydecisions/decide.py": "the decision of a family (F11, shadow) writes on its record which context factors could explain the family and "
                                      "the standing each had when it decided (it reads each factor's version and the words DESCRIPTIVE and VALIDATED, and "
                                      "nothing else; the state, the score and the stake of the decision are the same with or without them: held by "
