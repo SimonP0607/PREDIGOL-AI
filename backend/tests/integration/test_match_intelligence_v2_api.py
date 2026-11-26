@@ -60,7 +60,7 @@ def test_the_owner_reads_every_block_and_a_reader_none_of_the_shadow(
     owner = client(db, "SUPER_ADMIN").get(f"/api/v1/admin/intelligence/matches/{fid}/intelligence/v2")
     assert owner.status_code == 200, owner.text
     data = MatchIntelligenceV2Private.model_validate(owner.json()["data"])
-    assert data.contract_version == "2.0.0" and data.projection == "private"
+    assert data.contract_version == "2.1.0" and data.projection == "private"
     assert data.scenarios == data.chronicle == data.evaluations
     assert data.scenarios_shadow.sides[0].objectives.items[0].objective == "titulo"  # type: ignore[union-attr]
     chron = data.chronicle_shadow

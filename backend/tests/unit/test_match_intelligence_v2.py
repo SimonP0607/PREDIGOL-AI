@@ -287,7 +287,7 @@ def test_1x_keeps_its_classes_its_version_its_routes_and_its_examples() -> None:
     assert old.public_routes == ("/api/v1/matches/{fixture_id}/intelligence",)
     assert old.private_routes == ("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence",)
     assert old.examples_dir == "C-01" and sorted(p.name for p in V1_EXAMPLES.glob("*.json"))[0] == "antes_del_partido.private.json"
-    assert (new.private, new.public, new.version, new.key) == (MatchIntelligenceV2Private, MatchIntelligenceV2, "2.0.0", "C-01")
+    assert (new.private, new.public, new.version, new.key) == (MatchIntelligenceV2Private, MatchIntelligenceV2, "2.1.0", "C-01")
     assert new.public_routes == ("/api/v1/matches/{fixture_id}/intelligence/v2",)
     assert new.private_routes == ("/api/v1/admin/intelligence/matches/{fixture_id}/intelligence/v2",)
     assert new.examples_dir == "C-01/v2"
@@ -503,6 +503,6 @@ def test_the_public_route_is_404_while_the_switch_is_off_and_the_projection_when
         answer = c.get(f"/api/v1/matches/{FIXTURE}/intelligence/v2")
         assert answer.status_code == 200, answer.text
         data = answer.json()["data"]
-        assert (data["contract"], data["contract_version"], data["projection"]) == ("C-01", "2.0.0", "public")
+        assert (data["contract"], data["contract_version"], data["projection"]) == ("C-01", "2.1.0", "public")
         assert "scenarios_shadow" not in data and data["scenarios"] == {"missing_reason": "pendiente_derechos"}
         assert c.get(f"/api/v1/admin/intelligence/matches/{FIXTURE}/intelligence/v2").status_code == 403
