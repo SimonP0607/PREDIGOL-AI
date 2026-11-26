@@ -33,9 +33,9 @@ from fbi.proposals import REJECTED, SIGNED, Row, from_board, from_verdicts, prob
 from fbi.proposals import store as register
 from fbi.proposals.drafts import RETIREMENTS
 
-COMMANDS = ("list", "show", "board", "drafts", "verdicts", "sign", "reject", "record")
+COMMANDS = ("list", "show", "board", "drafts", "verdicts", "watch", "sign", "reject", "record")
 OWNER = ("sign", "reject", "record")
-WRITES = ("board", "drafts", "verdicts", *OWNER)
+WRITES = ("board", "drafts", "verdicts", "watch", *OWNER)
 OK, REFUSED, USAGE = 0, 1, 2
 
 
@@ -91,6 +91,20 @@ def run(conn: psycopg.Connection[Any], args: argparse.Namespace) -> tuple[dict[s
             return {"error": f"no proposal {args.proposal_id}"}, REFUSED
         return {**_row(found[0]), "change": found[0].proposal.change, "evidence": found[0].proposal.evidence,
                 "evidence_refs": list(found[0].proposal.evidence_refs)}, OK
+    if args.command == "watch":
+        from fbi.proposals import surveillance as rule
+        from fbi.proposals import watch as surveillance
+
+        report = surveillance.scan(conn, at=datetime.now(UTC))
+        drafted = [p for f in report.findings if (p := rule.withdrawal(f)) is not None]
+        plan = [{"kind": p.kind, "target": p.target, "to": p.proposed_version, "problems": problems(p), "evidence_hash": p.hash} for p in drafted]
+        shown = {"summary": report.summary(), "findings": [f.as_json() for f in report.findings], "not_watched": report.not_watched}
+        if not args.write:
+            return {**shown, "plan": plan, "written": []}, OK
+        waiting = {r.proposal.target for r in register.rows(conn, limit=10_000) if r.decision is None}
+        written = [register.register(conn, p, code_version=code_version()) for p in drafted if not problems(p) and p.target not in waiting]
+        conn.commit()
+        return {**shown, "plan": plan, "written": written}, OK
     if args.command in ("board", "drafts", "verdicts"):
         without: list[int] = []
         if args.command == "verdicts":
