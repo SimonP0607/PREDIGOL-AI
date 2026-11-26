@@ -25,6 +25,7 @@ from fbi.api.contracts.intelligence.base import (
     ItemList,
     Missing,
     UtcDatetime,
+    _absent,
     private,
 )
 
@@ -42,6 +43,14 @@ class Frequency(IntelligenceModel):
     pct: float = Field(ge=0, le=100)
     low_pct: float = Field(ge=0, le=100)
     high_pct: float = Field(ge=0, le=100)
+    league_pct: float | None = Field(
+        default=None, ge=0, le=100, exclude_if=_absent,
+        description="1.1: how often the same line held in the league (same competition, same window); absent without a reference.",
+    )
+    percentile: float | None = Field(
+        default=None, ge=0, le=100, exclude_if=_absent,
+        description="1.1: where this team stands among the teams of the league on this trend (0-100); absent without enough peers.",
+    )
 
     @model_validator(mode="after")
     def _coherent(self) -> Frequency:
@@ -96,7 +105,7 @@ class Trends(IntelligenceContract):
     """C-18, public projection."""
 
     CONTRACT_ID: ClassVar[str] = "C-18"
-    CONTRACT_VERSION: ClassVar[str] = "1.0.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.1.0"
 
     label: Literal["tendencia_no_pick"] = "tendencia_no_pick"
     label_es: Literal["Análisis de tendencias · no es un pick oficial"] = LABEL_ES
