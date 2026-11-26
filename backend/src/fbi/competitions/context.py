@@ -69,6 +69,18 @@ SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, f.leg, f.tie_id,
 """The one place that names ``core.ties``: its ``format`` and nothing else. ``core.competition_stages`` is read for the words of
 the label (stage, kind, role, round_key, is_replay), never for what the build counted over the round."""
 
+FORMAT_SQL: Final = """
+SELECT f.id, f.kickoff_at, f.is_neutral, f.leg, f.tie_id, f.stage_id,
+       s.stage, s.kind, s.role, s.round_key, s.is_replay,
+       t.format AS tie_format
+  FROM core.fixtures f
+  LEFT JOIN core.competition_stages s ON s.id = f.stage_id
+  LEFT JOIN core.ties t ON t.id = f.tie_id
+ WHERE f.id = ANY(%(ids)s)
+"""
+"""RP-3.2: the same structure as ``STAGE_SQL`` for many fixtures at once (and for those with no stage yet, which come back with NULLs), plus
+the fixture's own ``is_neutral``: the words of the label and the format of the tie, never an outcome of it."""
+
 EARLIER_LEGS_SQL: Final = """
 SELECT g.id, g.leg, g.kickoff_at, g.home_team_id, g.away_team_id, g.status_short,
        r.goals_home, r.goals_away, (r.et_goals_home IS NOT NULL OR r.et_goals_away IS NOT NULL) AS extra_time
@@ -303,3 +315,13 @@ def phase_as_of(conn: psycopg.Connection[Any], fixture_id: int, *, at: datetime)
     tie = tie_as_of(home=int(row["home_team_id"]), away=int(row["away_team_id"]), leg=int(row["leg"]),
                     stored_format=str(row["tie_format"]), earlier=earlier)
     return Phase(stage, tie)
+
+
+def structure_rows(conn: psycopg.Connection[Any], fixture_ids: Sequence[int]) -> list[dict[str, Any]]:
+    """The structure of many fixtures (``FORMAT_SQL``), in the order of ``fixture_ids``; a fixture that does not exist is not returned."""
+    if not fixture_ids:
+        return []
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(FORMAT_SQL, {"ids": list(fixture_ids)})
+        by_id = {int(r["id"]): r for r in cur.fetchall()}
+    return [by_id[i] for i in fixture_ids if i in by_id]
