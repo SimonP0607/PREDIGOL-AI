@@ -32,6 +32,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.research import exp_conditions, exp_protocol
+from fbi.research.exp_common import judge_segments
 from fbi.research.exp_protocol import Judgement
 
 KEY: Final = "EXP-E1"
@@ -185,47 +186,20 @@ def differences(matches: Sequence[Match]) -> tuple[list[float], list[date]]:
 
 def judge(matches: Sequence[Match], *, required: int, thresholds: Mapping[str, Any], seed: int) -> tuple[Judgement, dict[str, Any]]:
     """The verdict of the experiment on its matches, and the population it was judged on (every segment with its figures)."""
-    success_below = float(thresholds["success_below"])
     groups = by_segment(matches)
-    ready = {s: v for s, v in groups.items() if len(v) >= required}
-    p_values: dict[str, float] = {}
-    series: dict[str, tuple[list[float], list[date]]] = {}
-    for s, ms in ready.items():
-        values, days = differences(ms)
-        series[s] = (values, days)
-        p_values[s] = exp_protocol.one_sided_p(values, days, below=success_below, seed=seed)
-    adjusted = exp_protocol.holm(p_values) if p_values else {}
-    judged = {s: exp_protocol.difference_verdict(*series[s], success_below=success_below, n_required=required, seed=seed, adjusted_p=adjusted[s])
-              for s in ready}
-    segments: dict[str, Any] = {}
-    for s, ms in groups.items():
-        j = judged.get(s)
-        segments[s] = {"matches": len(ms), "verdict": None if j is None else j.verdict,
-                       "mean": None if j is None else j.mean, "low": None if j is None else j.low, "high": None if j is None else j.high,
-                       "adjusted_p": None if j is None else j.adjusted_p}
+    series = {s: differences(ms) for s, ms in groups.items()}
+    judgement, figures = judge_segments(series, names=SEGMENTS, required=required, thresholds=thresholds, seed=seed,
+                                        abandon_reason="ningún segmento baja de +0,005: el intervalo de cada uno queda por encima del umbral")
     models: dict[str, Any] = {}
     for name in MODELS:
         own = [m for m in matches if name in m.forecasts]
         if own:
             vals = [log_loss(m.forecasts[name], m.outcome) - log_loss(m.close, m.outcome) for m in own]
             models[name] = {"matches": len(own), "mean": float(np.mean(vals))}
-    population = {"segments": segments, "models": models, "matches": len({m.fixture for m in matches}), "primary": "pool of the raw models",
-                  "comparator": "market.near_close_consensus (shin, 2 books or more)", "holm_over": sorted(ready)}
-    wins = {s: j for s, j in judged.items() if j.verdict == "exito"}
-    if wins:
-        best = min(wins, key=lambda s: wins[s].mean)
-        j = wins[best]
-        return Judgement("exito", f"{best}: {j.reason}", j.mean, j.low, j.high, j.n, j.adjusted_p), population
-    if len(judged) == len(SEGMENTS) and all(j.verdict == "abandono" for j in judged.values()):
-        j = min(judged.values(), key=lambda x: x.mean)
-        return Judgement("abandono", "ningún segmento baja de +0,005: el intervalo de cada uno queda por encima del umbral", j.mean, j.low, j.high, j.n,
-                         j.adjusted_p), population
-    if judged:
-        j = min(judged.values(), key=lambda x: x.mean)
-        return Judgement("insuficiente", "con la muestra fijada el intervalo aún admite las dos respuestas, o faltan segmentos con su muestra",
-                         j.mean, j.low, j.high, j.n, j.adjusted_p), population
-    top = max((len(v) for v in groups.values()), default=0)
-    return Judgement("insuficiente", f"muestra {top} de {required}", float("nan"), float("nan"), float("nan"), top), population
+    ready = sorted(s for s, ms in groups.items() if len(ms) >= required)
+    population = {"segments": {s: {**f, "matches": f["n"]} for s, f in figures.items()}, "models": models, "matches": len({m.fixture for m in matches}),
+                  "primary": "pool of the raw models", "comparator": "market.near_close_consensus (shin, 2 books or more)", "holm_over": ready}
+    return judgement, population
 
 
 def run(conn: psycopg.Connection[Any], at: datetime) -> tuple[Judgement, dict[str, Any]]:
