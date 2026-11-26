@@ -1543,8 +1543,11 @@ Making them signable is a change of that zone, with the Intelligence session; un
 
 def require(key: str) -> Protocol:
     """The registered protocol of an experiment; an experiment without one does not run."""
+    # the plan's EXP-E1..E8 (RP-9.0): imported here because that module imports this one
+    from fbi.research.exp_protocol import EXPERIMENTS
+
     try:
-        return PROTOCOLS[key] if key in PROTOCOLS else PM_LAB[key]
+        return PROTOCOLS[key] if key in PROTOCOLS else PM_LAB[key] if key in PM_LAB else EXPERIMENTS[key]
     except KeyError:
         raise LookupError(f"no hay protocolo registrado para {key}: regístralo antes de mirar los datos") from None
 
