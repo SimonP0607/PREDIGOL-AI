@@ -41,12 +41,26 @@ ParlayReason = Literal["ok", "interruptor_apagado", "sin_regla", "no_ofrecer", "
 HistoryWindow = Literal["u10_contexto"]
 
 
+PriceReference = Literal["consenso_vigente"]
+"""What the figure of ``implied`` is the reference of: the consensus of the houses whose price is in force now (not the closing one)."""
+
+
 class Implied(IntelligenceModel):
     value: float = Field(ge=0, le=1)
     pct: int = Field(ge=0, le=100)
     books: int = Field(ge=1)
     as_of: UtcDatetime = Field(description="The newest price among the houses it averages.")
     method: Literal["proporcional_media_casas"] = "proporcional_media_casas"
+    reference: PriceReference | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.3: which reference of the market this is (RP-10.1): the consensus in force now. The previous reference (about three hours "
+                    "before the kick-off) and the real close are other names and never travel here.")
+    fair_odds: float | None = Field(
+        default=None, exclude_if=_absent, gt=1,
+        description="1.3: the fair odds equivalent to ``value`` (one over it), the price without the houses' margin.")
+    age_minutes: int | None = Field(
+        default=None, exclude_if=_absent, ge=0,
+        description="1.3: minutes between ``as_of`` and the moment the answer was built.")
 
 
 class HistoryMark(IntelligenceModel):
@@ -93,6 +107,12 @@ class SelectionMarks(IntelligenceModel):
     implied: Implied | Missing
     history: HistoryMark | Missing
     parlay: ParlayFlag
+    best_implied: float | None = Field(
+        default=None, exclude_if=_absent, gt=0, lt=1,
+        description="1.3: the implied probability of ``best_odds`` (one over them), with the house's margin inside; not a fair probability.")
+    price_age_minutes: int | None = Field(
+        default=None, exclude_if=_absent, ge=0,
+        description="1.3: minutes between the capture of ``best_odds`` and the moment the answer was built.")
     figure_base: FigureBase | None = Field(
         default=None, exclude_if=_absent,
         description="1.2: what the figure in ``model`` rests on (raw, calibrated_no_market or calibrated_with_market); absent when there is no "
@@ -105,6 +125,17 @@ class SelectionMarksPrivate(SelectionMarks):
     shadow_base: FigureBase | None = private(
         default=None, exclude_if=_absent,
         description="1.2: what the figure in ``model_shadow`` rests on, for the owner's evaluation only.")
+
+
+class SettlementRule(IntelligenceModel):
+    """With which convention PrediGol settles the market and whether the reader's own house may count differently (RP-10.4, RP-10.1)."""
+
+    rule: str = Field(min_length=1, description="The rule's key, ``measure@vN``.")
+    text_es: str = Field(min_length=1)
+    text_en: str = Field(min_length=1)
+    may_differ: bool
+    differ_es: str | None = Field(default=None, exclude_if=_absent)
+    differ_en: str | None = Field(default=None, exclude_if=_absent)
 
 
 class MarketMarks(IntelligenceModel):
@@ -121,6 +152,9 @@ class MarketMarks(IntelligenceModel):
     distribution: list[DistBin] | Missing = Field(description="The model's distribution of the total, when it gives one and the "
                                                               "figure is published.")
     selections: list[SelectionMarks] = Field(min_length=1)
+    settlement: SettlementRule | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.3: the settlement rule of the market in the reader's words, and where the houses may count differently (RP-10.4).")
 
     @model_validator(mode="after")
     def _model_only_when_evaluable(self) -> MarketMarks:
@@ -136,7 +170,7 @@ class MarketMarksPrivate(MarketMarks):
 
 class MarketProbs(IntelligenceContract):
     CONTRACT_ID: ClassVar[str] = "C-14"
-    CONTRACT_VERSION: ClassVar[str] = "1.2.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.3.0"
 
     fixture_id: int
     kickoff_at: UtcDatetime

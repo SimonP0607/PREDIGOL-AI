@@ -1,6 +1,6 @@
 {
   "contract": "C-14",
-  "contract_version": "1.2.0",
+  "contract_version": "1.3.0",
   "projection": "public",
   "freshness": {
     "generated_at": "2034-03-01T12:00:00Z",
@@ -61,7 +61,10 @@
               "pct": 45,
               "books": 7,
               "as_of": "2034-03-01T12:00:00Z",
-              "method": "proporcional_media_casas"
+              "method": "proporcional_media_casas",
+              "reference": "consenso_vigente",
+              "fair_odds": 2.222,
+              "age_minutes": 0
             },
             "history": {
               "hits": 12,
@@ -76,7 +79,9 @@
               "allowed": true,
               "reason": "ok"
             },
-            "figure_base": "calibrated_with_market"
+            "figure_base": "calibrated_with_market",
+            "best_implied": 0.4651,
+            "price_age_minutes": 0
           },
           {
             "selection": "Draw",
@@ -104,7 +109,10 @@
               "pct": 29,
               "books": 7,
               "as_of": "2034-03-01T12:00:00Z",
-              "method": "proporcional_media_casas"
+              "method": "proporcional_media_casas",
+              "reference": "consenso_vigente",
+              "fair_odds": 3.448,
+              "age_minutes": 0
             },
             "history": {
               "hits": 4,
@@ -118,7 +126,9 @@
             "parlay": {
               "allowed": true,
               "reason": "ok"
-            }
+            },
+            "best_implied": 0.2941,
+            "price_age_minutes": 0
           },
           {
             "selection": "Away",
@@ -146,7 +156,10 @@
               "pct": 26,
               "books": 7,
               "as_of": "2034-03-01T12:00:00Z",
-              "method": "proporcional_media_casas"
+              "method": "proporcional_media_casas",
+              "reference": "consenso_vigente",
+              "fair_odds": 3.846,
+              "age_minutes": 0
             },
             "history": {
               "hits": 4,
@@ -160,9 +173,17 @@
             "parlay": {
               "allowed": true,
               "reason": "ok"
-            }
+            },
+            "best_implied": 0.2778,
+            "price_age_minutes": 0
           }
-        ]
+        ],
+        "settlement": {
+          "rule": "goals_ft@v1",
+          "text_es": "Goles a los 90 minutos. La prórroga y los penaltis no cuentan.",
+          "text_en": "Goals after 90 minutes. Extra time and penalties never count.",
+          "may_differ": false
+        }
       },
       {
         "key": "corners_over_under.FT.match",
@@ -192,7 +213,10 @@
               "pct": 50,
               "books": 7,
               "as_of": "2034-03-01T12:00:00Z",
-              "method": "proporcional_media_casas"
+              "method": "proporcional_media_casas",
+              "reference": "consenso_vigente",
+              "fair_odds": 2.0,
+              "age_minutes": 0
             },
             "history": {
               "missing_reason": "sin_datos"
@@ -200,7 +224,9 @@
             "parlay": {
               "allowed": false,
               "reason": "interruptor_apagado"
-            }
+            },
+            "best_implied": 0.5128,
+            "price_age_minutes": 0
           },
           {
             "selection": "Under",
@@ -215,7 +241,10 @@
               "pct": 50,
               "books": 7,
               "as_of": "2034-03-01T12:00:00Z",
-              "method": "proporcional_media_casas"
+              "method": "proporcional_media_casas",
+              "reference": "consenso_vigente",
+              "fair_odds": 2.0,
+              "age_minutes": 0
             },
             "history": {
               "missing_reason": "sin_datos"
@@ -223,9 +252,19 @@
             "parlay": {
               "allowed": false,
               "reason": "interruptor_apagado"
-            }
+            },
+            "best_implied": 0.5405,
+            "price_age_minutes": 0
           }
-        ]
+        ],
+        "settlement": {
+          "rule": "corners_ft@v1",
+          "text_es": "Córneres del partido. Si hubo prórroga no se liquida: el proveedor no dice si su total incluye la media hora extra.",
+          "text_en": "Corners of the match. After extra time it is not settled: the provider does not say whether its total includes the extra half hour.",
+          "may_differ": true,
+          "differ_es": "Algunas casas liquidan sobre los córneres de los 90 minutos y otras sobre el total con prórroga.",
+          "differ_en": "Some houses settle on the corners of the 90 minutes and others on the total with extra time."
+        }
       }
     ]
   }

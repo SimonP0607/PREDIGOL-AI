@@ -29,6 +29,7 @@ from fbi.api.contracts.intelligence.market_probs import (
     MarketProbsPrivate,
     ParlayFlag,
     SelectionMarksPrivate,
+    SettlementRule,
 )
 from fbi.api.contracts.intelligence.projection import to_public
 from fbi.api.contracts.intelligence.stats_profile import Ref
@@ -43,6 +44,7 @@ from fbi.market import coherence
 from fbi.market.eligibility import verdict
 from fbi.market.in_force import book as book_in_force
 from fbi.market.in_force import group_key, implied, unify
+from fbi.market.rule_text import TEXT_BY_KEY
 from fbi.market.rules import rule_for
 from fbi.market.settle_coverage import SeasonCoverage
 from fbi.odds.quote_current import CurrentQuote, market_key
@@ -202,6 +204,26 @@ def _one_x_two_unit(cat: MarketCatalogue, family: str, period: str, subject: str
     return None
 
 
+def _age_minutes(captured: datetime, moment: datetime) -> int:
+    return max(0, int((moment - captured).total_seconds() // 60))
+
+
+def _implied(i: tuple[Any, ...], moment: datetime) -> Implied:
+    """The consensus of the houses as a figure, the fair odds it is equivalent to and how old it is (RP-10.1)."""
+    value = float(i[0])
+    return Implied(value=fx.half_up(i[0], 4), pct=fx.pct_int(i[0]), books=i[1], as_of=i[2], reference="consenso_vigente",
+                   fair_odds=round(1 / value, 3) if 0 < value < 1 else None, age_minutes=_age_minutes(i[2], moment))
+
+
+def _settlement(rule_key: str | None) -> SettlementRule | None:
+    """What the settlement rule of the market says, in both languages, or None when the market has no rule or the rule has no text."""
+    text = TEXT_BY_KEY.get(rule_key) if rule_key else None
+    if text is None:
+        return None
+    return SettlementRule(rule=text.key, text_es=text.es, text_en=text.en, may_differ=text.may_differ,
+                          differ_es=text.differ_es or None, differ_en=text.differ_en or None)
+
+
 def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue: MarketCatalogue | None = None,
           shadow: bool = False) -> MarketProbsPrivate:
     moment = at or now()
@@ -285,15 +307,16 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
                         switch_on=switch, covered=coverage.covered)
             selections.append(SelectionMarksPrivate(
                 selection=sel, line=float(line), best_odds=float(top.odds), bookmaker=top.bookmaker, model=model,
-                implied=Implied(value=fx.half_up(i[0], 4), pct=fx.pct_int(i[0]), books=i[1], as_of=i[2]) if i else _missing("sin_datos"),
+                implied=_implied(i, moment) if i else _missing("sin_datos"),
                 history=history(home_rows, away_rows, top), parlay=ParlayFlag(allowed=v.allowed, reason=cast(Any, v.reason)),
-                model_shadow=shadow_p, figure_base=cast(Any, base), shadow_base=cast(Any, shadow_base)))
+                model_shadow=shadow_p, figure_base=cast(Any, base), shadow_base=cast(Any, shadow_base),
+                best_implied=round(1 / float(top.odds), 4), price_age_minutes=_age_minutes(top.captured_at, moment)))
         selections = _coherent(lead.kind, selections)
         markets.append(MarketMarksPrivate(
             key=key, unit=unit, category=lead.family, kind=lead.kind, period=lead.period, subject=lead.subject,
             state=cast(Any, status.state), state_reason=status.reason, rule_key=status.entry.rule_key or _missing("sin_datos"),
             model_origin=origin, distribution=_missing("sin_datos"), selections=selections,
-            distribution_shadow=_missing("sin_datos")))
+            distribution_shadow=_missing("sin_datos"), settlement=_settlement(status.entry.rule_key)))
     items = ItemList[MarketMarksPrivate](items=markets) if markets else ItemList[MarketMarksPrivate](items=[], missing_reason="sin_datos")
     return MarketProbsPrivate(
         fixture_id=fixture_id, kickoff_at=kickoff, home=Ref(id=int(fx_row["home_team_id"]), name=str(fx_row["home_name"])),
