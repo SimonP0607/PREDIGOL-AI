@@ -8,12 +8,18 @@
                                                                 # a person's decision: validate it
     python -m scripts.context_factors retire FACTOR --reason "why" [--by NAME --confirm]
                                                                 # take a validation back (DESCRIPTIVE again)
+    python -m scripts.context_factors coverage                  # the status of every factor of the context, and the typed facts still without a row (read-only)
+    python -m scripts.context_factors load [--confirm]          # give the typed facts of the context block their first row, DESCRIPTIVE (dry run without --confirm)
+    python -m scripts.context_factors measure FACTOR --experiment NAME --result REPORT.json --reason "why" [--confirm]
+                                                                # record what a residual test found (``fbi.intel.factor_residual.report``): with effect, without it;
+                                                                # refuses a report whose verdict is «not enough evidence yet»
 
 A context factor (the weighted head-to-head, the scenarios of a table or a tie, the observable tactics, rest and congestion) is
 DESCRIPTIVE until a person validates it: the brief may describe it, no model reads it, and nothing the system decides changes. VALIDATED
 is a decision about ONE version of the factor's code, with the name of the experiment that tested it and that experiment's result (a JSON
 file); it lets the brief treat the factor as a signal and it is the record a later phase needs before putting the factor into a model.
-Rolling back is ``retire``. Every command that writes is a dry run until ``--by NAME --confirm``; nothing here touches a model, a
+Between the two there are two measured states (RP-4.5): TESTED_NO_EFFECT and TESTED_EFFECT, written from a residual test's report by ``measure``; neither
+lets anything use the factor, only a validation does. Rolling back is ``retire``. Every command that writes is a dry run until ``--by NAME --confirm``; nothing here touches a model, a
 forecast or a pick.
 """
 
@@ -30,7 +36,7 @@ import psycopg
 
 from fbi.core.clock import now
 from fbi.core.config import settings
-from fbi.intel import factors
+from fbi.intel import factor_block, factors
 
 MAX_FILE_BYTES = 4_000_000
 """A result file larger than this is not read: the registry keeps a summary and the file's name (``factors.MAX_RESULT_BYTES``)."""
@@ -43,7 +49,7 @@ def _when(x: datetime) -> str:
 def _decision_line(d: factors.Decision) -> str:
     what = (f"experiment {d.experiment}" if d.status == factors.VALIDATED else
             f"taken back (decision #{d.evidence.get('retired_decision')})" if "retired_decision" in d.evidence else "recorded")
-    return f"#{d.id} {_when(d.decided_at)} {d.status:<11} {what}, by {d.who or d.decided_by}: {d.reason}"
+    return f"#{d.id} {_when(d.decided_at)} {d.status:<16} {what}, by {d.who or d.decided_by}: {d.reason}"
 
 
 # ------------------------------------------------------------------------------------------------------------------ list
@@ -56,13 +62,13 @@ def show(conn: psycopg.Connection[Any], *, at: datetime | None = None) -> list[s
     for f in factors.CATALOGUE:
         s = stands[f.key]
         d = s.decision
-        out.append(f"{f.key:<17} {f.version:<24} {s.status:<11} {f.label}")
+        out.append(f"{f.key:<17} {f.version:<24} {s.status:<16} {f.label}")
         if d is None:
             out.append("    never decided: born DESCRIPTIVE")
         else:
             out.append(f"    {_decision_line(d)}")
         out.append(f"    carried in the packet by: {f.where}. An experiment would have to show {f.claim}.")
-    older = [d for d in factors.history(conn) if (d.factor, d.version) not in {(f.key, f.version) for f in factors.CATALOGUE}]
+    older = [d for d in factors.history(conn) if (d.factor, d.version) not in {(f.key, f.version) for f in (*factors.CATALOGUE, *factor_block.BLOCK)}]
     if older:
         out += ["", "DECISIONS ABOUT OTHER VERSIONS OF THE CODE (they say nothing about the version in force now):"]
         out += [f"  {d.factor} {d.version}: {_decision_line(d)}" for d in older]
@@ -71,7 +77,7 @@ def show(conn: psycopg.Connection[Any], *, at: datetime | None = None) -> list[s
 
 def history_lines(conn: psycopg.Connection[Any], factor: str | None) -> list[str]:
     if factor is not None:
-        factors.known(factor)
+        factors.known_any(factor)
     rows = factors.history(conn, factor)
     if not rows:
         return ["No decision has been taken" + ("." if factor is None else f" about {factor}.") + " Every factor is DESCRIPTIVE."]
@@ -153,25 +159,75 @@ def retire_command(conn: psycopg.Connection[Any], *, factor: str, reason: str, b
     return 0, [f"{f.key} is DESCRIPTIVE again (decision #{change.decision.id}, by {by})."]
 
 
+# ------------------------------------------------------------------------------------------------------- coverage, load, measure
+
+
+def coverage_lines(conn: psycopg.Connection[Any], *, at: datetime | None = None) -> list[str]:
+    cov = factor_block.coverage(conn, at=at or now())
+    out = [f"{cov['with_status']} of {cov['factors']} factors of the context have a status; by status: "
+           + ", ".join(f"{k} {v}" for k, v in cov["by_status"].items()) + "."]
+    out += [f"  {r['factor']:<20} {r['version']:<22} {r['status']:<16} {'row' if r['has_row'] else 'by default'}{'  USABLE' if r['usable'] else ''}" for r in cov["rows"]]
+    if cov["without_row"]:
+        out.append(f"Typed facts without a row yet: {', '.join(cov['without_row'])} (python -m scripts.context_factors load --confirm).")
+    return out
+
+
+def load_command(conn: psycopg.Connection[Any], *, confirm: bool, at: datetime | None = None) -> tuple[int, list[str]]:
+    missing = factor_block.coverage(conn, at=at or now())["without_row"]
+    if not confirm:
+        return 0, [f"DRY RUN - {len(missing)} typed fact(s) without a first row: {', '.join(missing) or 'none'}. Each would be written DESCRIPTIVE by the system.",
+                   "Nothing was written. Add --confirm to write them."]
+    written = factor_block.register(conn, at=at or now())
+    return 0, [f"{written} first row(s) written (DESCRIPTIVE, by the system); the second run writes none."]
+
+
+def measure_command(conn: psycopg.Connection[Any], *, factor: str, experiment: str, result_file: Path, reason: str, by: str | None, confirm: bool,
+                    at: datetime | None = None) -> tuple[int, list[str]]:
+    """Records a residual test's report: the state is the one the report's own verdict supports, never one chosen here."""
+    try:
+        f = factors.known_any(factor)
+        factors.check_reason(reason)
+        report = read_result(result_file)
+        found = report.get("verdict")
+        verdict: dict[str, Any] = found if isinstance(found, dict) else {}
+        state = verdict.get("state")
+        if state not in factors.MEASURED:
+            why = verdict.get("reason") or "the file has no verdict"
+            return 3, [f"refused: the report does not support a state ({why}). Nothing is recorded as measured until the sample could see an effect."]
+        factors.check_evidence(experiment, report)
+        if not confirm:
+            return 0, [f"DRY RUN - recording {f.key} ({f.version}) as {state} on the strength of experiment {experiment!r}: {verdict.get('reason')}",
+                       "It does not make the factor usable: only a validation does. Nothing was written. Add --confirm to record it."]
+        change = factors.record_test(conn, f.key, effect=state == factors.TESTED_EFFECT, experiment=experiment, result=report, reason=reason, who=by, at=at)
+    except (LookupError, PermissionError, ValueError) as exc:
+        return 3, [f"refused: {exc}"]
+    if not change.changed:
+        return 0, [f"{f.key} was already recorded as {change.decision.status} by that experiment: nothing written."]
+    return 0, [f"{f.key} ({f.version}) is {change.decision.status} (decision #{change.decision.id}); nothing may use it until a person validates it."]
+
+
 # ------------------------------------------------------------------------------------------------------------------ main
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=("list", "history", "promote", "retire"))
+    ap.add_argument("command", choices=("list", "history", "promote", "retire", "coverage", "load", "measure"))
     ap.add_argument("factor", nargs="?", help="history / promote / retire: the key of the factor (see `list`)")
     ap.add_argument("--experiment", help="promote: the name of the experiment that tested this version of the factor")
     ap.add_argument("--result", type=Path, help="promote: a JSON file with the result of the experiment")
     ap.add_argument("--reason", help="promote / retire: why, in a sentence a person can look back on")
-    ap.add_argument("--by", help="promote / retire --confirm: who decides")
-    ap.add_argument("--confirm", action="store_true", help="promote / retire: write the decision; without it, a dry run")
+    ap.add_argument("--by", help="promote / retire --confirm: who decides (measure: optional, the system records it otherwise)")
+    ap.add_argument("--confirm", action="store_true", help="promote / retire / measure / load: write; without it, a dry run")
     args = ap.parse_args(argv)
 
     if args.command in ("promote", "retire") and (not args.factor or not args.reason):
         print("promote and retire need the FACTOR and --reason TEXT", file=sys.stderr)
         return 2
-    if args.command == "promote" and (not args.experiment or args.result is None):
-        print("promote needs --experiment NAME and --result FILE.json", file=sys.stderr)
+    if args.command in ("promote", "measure") and (not args.experiment or args.result is None):
+        print(f"{args.command} needs --experiment NAME and --result FILE.json", file=sys.stderr)
+        return 2
+    if args.command == "measure" and (not args.factor or not args.reason):
+        print("measure needs the FACTOR and --reason TEXT", file=sys.stderr)
         return 2
 
     with psycopg.connect(settings.database.psycopg_url) as conn:
@@ -182,6 +238,13 @@ def main(argv: list[str] | None = None) -> int:
                 code, lines = 0, history_lines(conn, args.factor)
             except LookupError as exc:
                 code, lines = 3, [f"refused: {exc}"]
+        elif args.command == "coverage":
+            code, lines = 0, coverage_lines(conn)
+        elif args.command == "load":
+            code, lines = load_command(conn, confirm=args.confirm)
+        elif args.command == "measure":
+            code, lines = measure_command(conn, factor=args.factor, experiment=args.experiment, result_file=args.result, reason=args.reason, by=args.by,
+                                          confirm=args.confirm)
         elif args.command == "promote":
             code, lines = promote_command(conn, factor=args.factor, experiment=args.experiment, result_file=args.result,
                                           reason=args.reason, by=args.by, confirm=args.confirm)

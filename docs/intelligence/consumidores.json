@@ -415,7 +415,7 @@
    "sin_pruebas": 14
   },
   "evidence": {
-   "archivos": 180,
+   "archivos": 181,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -501,6 +501,7 @@
     "backend/src/fbi/factlinks/views.py",
     "backend/src/fbi/ingestion/absence_timing.py",
     "backend/src/fbi/intel/decision.py",
+    "backend/src/fbi/intel/factor_block.py",
     "backend/src/fbi/intel/leakage.py",
     "backend/src/fbi/intel/leakage_v10.py",
     "backend/src/fbi/intel/match_review.py",
@@ -542,7 +543,7 @@
     "evidence": 4,
     "factlinks": 3,
     "ingestion": 1,
-    "intel": 5,
+    "intel": 6,
     "narrative": 1,
     "news": 7,
     "observability": 1,
@@ -556,14 +557,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 81,
+    "módulo": 82,
     "prueba": 74,
     "ruta": 17,
     "script": 5,
     "trabajo": 2,
     "web": 1
    },
-   "sin_pruebas": 106
+   "sin_pruebas": 107
   },
   "extract_v1": {
    "archivos": 23,

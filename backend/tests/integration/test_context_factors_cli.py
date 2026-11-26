@@ -13,7 +13,7 @@ import psycopg
 import pytest
 from scripts import context_factors as cli
 
-from fbi.intel import factors, h2h
+from fbi.intel import factor_block, factors, h2h
 
 pytestmark = pytest.mark.integration
 
@@ -233,3 +233,42 @@ def test_the_command_line_is_wired_to_those_commands(db: psycopg.Connection[Any]
     assert run_main(session, monkeypatch, "retire", factors.H2H, "--reason", "the experiment did not replicate", "--by", "Simon",
                     "--confirm") == 0
     assert "is DESCRIPTIVE again" in capsys.readouterr().out and count(db) == 2
+
+
+# ── RP-4.5: coverage, load and measure ─────────────────────────────────────────────────────────────────────────────────
+
+
+def report_file(tmp_path: Path, state: str | None, reason: str = "x") -> Path:
+    path = tmp_path / "residual.json"
+    path.write_text(json.dumps({"version": "factor-residual-v1", "matches": 3000, "verdict": {"state": state, "reason": reason}}), encoding="utf-8")
+    return path
+
+
+def test_coverage_says_every_factor_has_a_status_and_which_typed_facts_still_lack_a_row(db: psycopg.Connection[Any]) -> None:
+    text = "\n".join(cli.coverage_lines(db, at=T0))
+    assert f"{len(factors.CATALOGUE) + len(factor_block.BLOCK)} of {len(factors.CATALOGUE) + len(factor_block.BLOCK)}" in text
+    assert "Typed facts without a row yet" in text and "USABLE" not in text
+
+
+def test_load_asks_first_and_then_writes_each_typed_fact_once(db: psycopg.Connection[Any]) -> None:
+    code, lines = cli.load_command(db, confirm=False, at=T0)
+    assert code == 0 and "DRY RUN" in lines[0] and db.execute("SELECT count(*) FROM intel.context_factors").fetchone() == (0,)
+    assert cli.load_command(db, confirm=True, at=T0)[1][0].startswith(f"{len(factor_block.BLOCK)} first row")
+    assert cli.load_command(db, confirm=True, at=T0)[1][0].startswith("0 first row")
+    assert "OTHER VERSIONS" not in "\n".join(cli.show(db, at=T0 + timedelta(days=1))), "the typed facts are not decisions about an old version"
+
+
+def test_measure_records_the_state_the_report_supports_and_refuses_one_that_supports_none(db: psycopg.Connection[Any], tmp_path: Path) -> None:
+    code, lines = cli.measure_command(db, factor=factors.CALENDAR, experiment="rp45-01", result_file=report_file(tmp_path, None, "muestra corta"),
+                                      reason=REASON, by=None, confirm=True, at=T0)
+    assert code == 3 and "muestra corta" in "\n".join(lines) and db.execute("SELECT count(*) FROM intel.context_factors").fetchone() == (0,)
+    code, lines = cli.measure_command(db, factor=factors.CALENDAR, experiment="rp45-01", result_file=report_file(tmp_path, factors.TESTED_NO_EFFECT),
+                                      reason=REASON, by=None, confirm=False, at=T0)
+    assert code == 0 and "DRY RUN" in lines[0] and db.execute("SELECT count(*) FROM intel.context_factors").fetchone() == (0,)
+    code, lines = cli.measure_command(db, factor=factors.CALENDAR, experiment="rp45-01", result_file=report_file(tmp_path, factors.TESTED_NO_EFFECT),
+                                      reason=REASON, by=None, confirm=True, at=T0)
+    assert code == 0 and "nothing may use it" in lines[0]
+    assert factors.standings(db, at=T0)[factors.CALENDAR].status == factors.TESTED_NO_EFFECT
+    again = cli.measure_command(db, factor=factors.CALENDAR, experiment="rp45-01", result_file=report_file(tmp_path, factors.TESTED_NO_EFFECT),
+                                reason=REASON, by=None, confirm=True, at=T0)
+    assert again[0] == 0 and "nothing written" in again[1][0]
