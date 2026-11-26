@@ -229,6 +229,16 @@ def user_switch(name: str, *, default: bool) -> bool:
     return raw.strip().lower() in ON
 
 
+TRANSPARENCY_EXPORT: Final = "FBI_TRANSPARENCY_EXPORT"
+"""The download of the published picks (plan PM, PM-14-08): OFF while the line is absent. It rides on the opening of Transparencia: even
+with ``=1`` nothing downloads while ``FBI_TRANSPARENCY`` is off (the owner's preview excepted)."""
+
+
+def transparency_export_on() -> bool:
+    """Whether the download of the published picks, with its calibration and its uncertainty, is on (``FBI_TRANSPARENCY_EXPORT``, off by default)."""
+    return user_switch(TRANSPARENCY_EXPORT, default=False)
+
+
 def transparency_open() -> bool:
     """Whether readers see «Cómo le va a PrediGol» (``FBI_TRANSPARENCY``, off by default)."""
     return user_switch(TRANSPARENCY, default=False)
@@ -364,6 +374,15 @@ def home_unified_on() -> bool:
     return user_switch(HOME_UNIFIED, default=False)
 
 
+MATCH_HALVES: Final = "FBI_MATCH_HALVES"
+
+
+def match_halves_on() -> bool:
+    """Whether a match's statistics by half are shown (plan PM, PM-10-03) (``FBI_MATCH_HALVES``, off by default): ``GET /matches/{id}/period-stats``
+    answers 404 while it is off."""
+    return user_switch(MATCH_HALVES, default=False)
+
+
 def markets_v3_on() -> bool:
     """Whether a match's markets as a bookmaker lays them out (plan de correcciones UX, AP-P08, decision D6) is on (``FBI_MARKETS_V3``, off by default)."""
     return user_switch(MARKETS_V3, default=False)
@@ -406,3 +425,14 @@ def parlay_markets_v2_on() -> bool:
 def player_markets_on() -> bool:
     """Whether readers get the players' markets of a match (``FBI_PLAYER_MARKETS``, off by default)."""
     return user_switch(PLAYER_MARKETS, default=False)
+
+
+WELLBEING: Final = "FBI_WELLBEING"
+"""The reader's «solo fútbol» mode and voluntary pause (plan PM, PM-14-07): OFF while the line is absent - nothing is read, nothing is
+hidden, ``/me/wellbeing`` answers 404 - and ``=1`` lets a reader choose to see no price, pick or parlay anywhere (the routes that carry
+one answer 403 ``wellbeing_active`` for them, the notices that mention one are not sent, and the web hides what draws one)."""
+
+
+def wellbeing_on() -> bool:
+    """Whether readers can choose «solo fútbol» or a pause (``FBI_WELLBEING``, off by default)."""
+    return user_switch(WELLBEING, default=False)

@@ -1520,6 +1520,69 @@ async def _availability_shadow() -> None:
     await asyncio.to_thread(_availability_shadow_now)
 
 
+async def _period_stats() -> None:
+    """PM-05-01 (BE-098): the closing pass of the statistics by half - the finished matches of the last week, settled, of the competitions
+    the availability matrix grades A or B in corners, once each (``fbi.ingestion.period_stats``). Only while ``FBI_STATS_BY_PERIOD`` is on;
+    at most 40 requests a pass and 400 a day, of the lane ``estadisticas_contexto``. Never raises."""
+    from scripts.capture_odds import _client
+
+    from fbi.ingestion import period_stats
+    from fbi.providers.api_football import ApiFootballProvider
+
+    new_run_id()
+    if period_stats.mode() != "on":
+        return
+    try:
+        with _connect() as conn:
+            provider = ApiFootballProvider(_client(max_requests=period_stats.PASS_MAX))
+            try:
+                report = await period_stats.refresh_period_stats(conn, provider)
+            finally:
+                await provider.aclose()
+        if report.requests or report.errors:
+            log.info("period_stats.run", **{k: v for k, v in report.as_json().items() if k != "errors"}, errors=report.errors[:3])
+    except Exception as exc:
+        log.error("period_stats.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+PERIOD_FILL_TIMEOUT = 5 * 3600.0
+"""The night's fill stops by itself at 03:25 UTC (``scripts.period_backfill``): this is the most the worker waits for the process."""
+PERIOD_FILL_MEMORY_MIB = 384
+
+
+def _period_backfill_running() -> bool:
+    with _connect() as conn:
+        row = conn.execute("SELECT 1 FROM raw.ingestion_runs WHERE job_type = 'period_backfill' AND status = 'running' "
+                           "AND started_at > now() - interval '6 hours' LIMIT 1").fetchone()
+    return row is not None
+
+
+def _period_backfill_now() -> None:
+    """PM-05-02 (BE-098): START the night's fill of the statistics by half in a process of its own (``scripts.period_backfill``), never
+    here: its own cap, its own priority, and nothing of the worker's memory. Only while ``FBI_STATS_BY_PERIOD_FILL`` is on and the
+    container has the room; one at a time (a start while the night's process still runs does nothing). Never raises."""
+    from fbi.ingestion import period_stats
+
+    if period_stats.fill_mode() != "on":
+        return
+    try:
+        if _period_backfill_running() or _no_room("period_backfill", False):
+            return
+        done = subprocess.run([sys.executable, "-m", "scripts.period_backfill", "run", "--scheduled", "--max-memory-mib",
+                               str(PERIOD_FILL_MEMORY_MIB)], cwd=APP_DIR, capture_output=True, text=True, timeout=PERIOD_FILL_TIMEOUT,
+                              check=False, env={**os.environ, **LEAN_ENV})
+        log.info("period_backfill.run", exit=done.returncode, last=_tail(done))
+    except subprocess.TimeoutExpired:
+        log.error("period_backfill.timeout", seconds=PERIOD_FILL_TIMEOUT)
+    except Exception as exc:
+        log.error("period_backfill.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+
+
+async def _period_backfill() -> None:
+    new_run_id()
+    await asyncio.to_thread(_period_backfill_now)
+
+
 async def _availability_shadow_retry() -> None:
     new_run_id()
     await asyncio.to_thread(functools.partial(_availability_shadow_now, retry=True))
@@ -2142,7 +2205,7 @@ WORKER_JOB_TYPES = frozenset({
     "competition_structure", "referee_identity", "player_history", "match_knowledge", "family_forecasts",
     "synthetic_journey", "user_narrative", "odds_book_build", "odds_book_refresh", "chronicle_review",
     "lineup_watch", "lifecycle_shadow", "scenarios_shadow", "signals_ingest", "decision_v2_shadow", "lineup_estimate_shadow",
-    "player_forecast_shadow", "stats_documents", "availability_refresh", "availability_shadow",
+    "player_forecast_shadow", "stats_documents", "availability_refresh", "availability_shadow", "period_stats", "period_backfill",
     "news_stories", "chronicle_v4", "eval_cycle_shadow", "eval_cycle_e3", "selection_settle_shadow", "parlay_v6_shadow", "selection_eval_shadow",
     "chronicle_update", "chronicle_review_v2", "council_reduced_shadow", "source_credibility_shadow",
 })
@@ -2165,7 +2228,7 @@ async def _run_watchdog() -> None:
 
 OWN_LOOP_JOBS = frozenset({"fixtures_sync", "results_sync", "historical_backfill", "reference_refresh",
                            "catalogue_refresh", "final_prematch", "context_refresh", "context_due", "results_repair",
-                           "odds_book_refresh", "live_match_capture", "lineup_watch"})
+                           "odds_book_refresh", "live_match_capture", "lineup_watch", "period_stats"})
 """Jobs run on an event loop of their own, in a thread (fbi.core.deadline.run_in_own_loop): their blocking database
 work - a season of 8,327 club friendlies, a page of 40,000 transfers - must not hold the loop the in-play odds capture
 and the pre-match tick run on, which stay on the scheduler's loop.
@@ -2584,6 +2647,23 @@ async def main() -> None:
                                   max_instances=1, coalesce=True, misfire_grace_time=30 * 60)
     else:
         log.info("worker.availability_refresh_off", hint="FBI_AVAILABILITY_REFRESH is off: the availability matrix is not recalculated")
+    from fbi.ingestion import period_stats as period_job
+
+    if period_job.mode() == "on":
+        # PM-05-01 (BE-098): twice an hour, off the :00/:30 of the other passes; never inside the copies' window (it checks itself).
+        scheduler.add_job(_deadline("period_stats", "period_stats", _period_stats), "cron", minute="17,47", timezone="UTC",
+                          id="period_stats", max_instances=1, coalesce=True, misfire_grace_time=20 * 60)
+    else:
+        log.info("worker.period_stats_off", hint="FBI_STATS_BY_PERIOD is off: the statistics by half are not asked for")
+    if period_job.fill_mode() == "on":
+        # PM-05-02 (BE-098): the night's fill starts at 22:30 UTC in a process of its own; the two later starts do nothing while it runs and
+        # pick the night up again when a restart of the worker cut it short.
+        for hour, minute in ((22, 30), (0, 50), (2, 0)):
+            scheduler.add_job(_deadline("period_backfill", "period_backfill", _period_backfill), "cron", hour=hour, minute=minute,
+                              timezone="UTC", id=f"period_backfill_{hour:02d}{minute:02d}", max_instances=1, coalesce=True,
+                              misfire_grace_time=20 * 60)
+    else:
+        log.info("worker.period_backfill_off", hint="FBI_STATS_BY_PERIOD_FILL is off: the fill of the statistics by half does not run")
     from fbi.shadowjobs import eval_cycle as ec
 
     if ec.mode() == "shadow":

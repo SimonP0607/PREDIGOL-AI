@@ -1,0 +1,19 @@
+{
+  "title": "Solo fútbol y pausa",
+  "intro": "Si quieres seguir el fútbol sin precios, PrediGol puede ocultarlos: sin cuotas, sin picks y sin parlays en ninguna pantalla ni aviso. Es una decisión tuya.",
+  "mode": "Solo fútbol",
+  "modeHelp": "Hasta que lo apagues. Seguirás viendo partidos, noticias, equipos y estadísticas.",
+  "pause": "Pausa voluntaria",
+  "pauseHelp": "Lo mismo, hasta una fecha que eliges. Una pausa en marcha no se acorta.",
+  "start": "Pausar {days} días",
+  "extend": "Alargar a {days} días",
+  "lift": "Terminar la pausa",
+  "pausedUntil": "En pausa hasta {date}.",
+  "noCut": "No se puede acortar.",
+  "pauseRunning": "Una pausa en marcha no se puede acortar: llega hasta su fecha.",
+  "failed": "No pudimos guardarlo. Prueba otra vez.",
+  "pageTitle": "Elegiste ver solo fútbol",
+  "pageBody": "Esta pantalla muestra cuotas, picks o parlays, y no la ves mientras dure tu elección. Todo el fútbol sigue aquí.",
+  "toMatches": "Ver partidos",
+  "toChoice": "Cambiar mi elección en Perfil"
+}

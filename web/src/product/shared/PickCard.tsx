@@ -3,7 +3,7 @@
  * the two numbers that justify it (model vs market, expected value) - nothing more.
  * Research fields (model version, lineage, rule) live in the Admin Console.
  */
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -13,6 +13,7 @@ import { CompetitionTag, Matchup } from "@/components/football/Logos";
 import { Hint } from "@/components/system/Hint";
 import { GlossaryTerm } from "@/components/system/GlossaryTerm";
 import { track } from "@/lib/track";
+import { useNoPrices } from "@/lib/auth/AuthProvider";
 import { ExplainButton } from "@/product/explain/ExplainSheet";
 import { WhyPickButton } from "@/product/picks/WhyPick";
 import { PickDetailLink } from "@/product/picks/PickDetailLink";
@@ -31,7 +32,13 @@ import { PickWhyLine } from "./PickWhy";
 import { onGoldCard } from "./userStatus";
 import { UserStatusBadge } from "./UserStatusBadge";
 
-export function PickCard({
+/** A pick is a bet to place: a reader in «solo fútbol» or a pause (PM-14-07) is shown none, wherever the card would be drawn. */
+export function PickCard(props: ComponentProps<typeof PickCardBody>) {
+  if (useNoPrices()) return null;
+  return <PickCardBody {...props} />;
+}
+
+function PickCardBody({
   pick,
   rank,
   shadow = false,

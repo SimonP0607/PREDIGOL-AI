@@ -25,6 +25,22 @@ export const DEFAULT_DISPLAY: Display = {
 };
 
 let current: Display = DEFAULT_DISPLAY;
+let pricesOff = false;
+
+/**
+ * «Solo fútbol» or a pause (plan PM, PM-14-07; FBI_WELLBEING): while it runs this reader sees no price. The account says it (`/auth/me`,
+ * `wellbeing.active`) and the provider sets it here before anything is drawn, as it does the display; `formatOdds` - the one way
+ * any screen writes a price - then writes none. Not on the owner's console (`/admin`), which is not a reader's screen.
+ */
+export function setPricesOff(off: boolean): void {
+  pricesOff = off;
+}
+
+/** Whether a price is not to be written now (see `setPricesOff`). */
+export function pricesAreOff(): boolean {
+  if (!pricesOff) return false;
+  return !(typeof window !== "undefined" && window.location.pathname.startsWith("/admin"));
+}
 
 export function setDisplay(next: Partial<Display> | null | undefined): void {
   current = { ...DEFAULT_DISPLAY, ...(next ?? {}) };
@@ -35,6 +51,6 @@ export function getDisplay(): Display {
 }
 
 /** What tells one way of drawing from another: the root remounts the pages when it changes. */
-export function displayKey(d: Display = current): string {
-  return `${d.time_format}|${d.odds_format}`;
+export function displayKey(d: Display = current, prices: boolean = pricesOff): string {
+  return `${d.time_format}|${d.odds_format}${prices ? "|sinprecios" : ""}`;
 }

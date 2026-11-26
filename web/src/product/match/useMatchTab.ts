@@ -115,9 +115,15 @@ export function useMatchTab(
 const BASE_TABS: readonly TabKey[] = ["summary", "analysis", "stats", "markets", "lineups", "news"];
 
 /** The tabs of a match: always these six (decision 11), whatever its state and whoever reads it. */
-export function tabsFor(): TabKey[] {
-  return [...BASE_TABS];
+export function tabsFor(noPrices = false): TabKey[] {
+  return noPrices ? BASE_TABS.filter((tab) => !PRICE_TABS.includes(tab)) : [...BASE_TABS];
 }
+
+/**
+ * The tabs that ARE a price or a pick (plan PM, PM-14-07): Mercados (every price of the match) and Análisis (the value of the
+ * selections against them). A reader in «solo fútbol» or a pause does not get them; the rest of the match is football.
+ */
+export const PRICE_TABS: readonly TabKey[] = ["markets", "analysis"];
 
 /** What the page may show: the tabs (the six, or the ones the coverage leaves) and, for the owner, the research view behind its button. */
 export function sectionsFor(admin: boolean, tabs: readonly TabKey[] = BASE_TABS): TabKey[] {
@@ -136,9 +142,10 @@ export function sectionsFor(admin: boolean, tabs: readonly TabKey[] = BASE_TABS)
  */
 export function tabsForCoverage(
   availability: Pick<MatchAvailability, "blocks" | "markets"> | null,
-  opts: { pricesShown: boolean },
+  opts: { pricesShown: boolean; noPrices?: boolean },
 ): TabKey[] {
-  if (!availability) return tabsFor();
+  const noPrices = opts.noPrices === true;
+  if (!availability) return tabsFor(noPrices);
   const lineups = availability.blocks.find((b) => b.key === "lineups");
   const lineupsLevel = lineups && lineups.reason !== "sin_medir" ? present(lineups.level) : null;
   const anyMarket = availability.markets.some((m) => m.exists);
@@ -147,6 +154,7 @@ export function tabsForCoverage(
   const noReading =
     result !== undefined && !result.prob_computed && (resultLevel === "C" || resultLevel === "D");
   return BASE_TABS.filter((tab) => {
+    if (noPrices && PRICE_TABS.includes(tab)) return false;
     if (tab === "lineups") return lineupsLevel !== "D";
     if (tab === "markets") return anyMarket || opts.pricesShown;
     if (tab === "analysis") return !noReading;

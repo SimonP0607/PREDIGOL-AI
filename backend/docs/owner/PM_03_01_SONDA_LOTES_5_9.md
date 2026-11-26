@@ -199,7 +199,7 @@ Los mismos datos que `probes` de `config/expansion.yaml`, en tablas.
 El lote 4 del Plan AD se aplicó el 20-nov-2026 y se midió el 21 y el 22-nov completos (OPS-014, §6 de `IA_077_COBERTURA_CUATRO_LIGAS.md`):
 dentro del criterio. Con eso, `config/expansion.yaml` lleva el **lote 5** (nivel de migración 9): Superliga (713) y Liga Femenina (712)
 de Colombia, CONMEBOL Recopa (541), OFC Champions League (27), AFC Challenge League (1132) y clasificación de la Copa Africana (36),
-decidido con la sonda `pm-03-01` y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+decidido con la sonda `pm-03-01`, repetida el 24-nov-2026 a las 21:07 UTC para estas 16 (40 peticiones, nada en RAW; `pm0303_sonda_lote6.sh`), y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
 
 Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
 
@@ -212,3 +212,56 @@ Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y
 
 Esperado: ≈ 80 peticiones al día de media y ≈ 720 el día de más carga; Superliga y Recopa quedan en «muestra insuficiente» (una
 eliminatoria al año). Vuelta atrás: `--batch 5 --untrack --apply` (no borra nada).
+
+## 9. Lote 6 escrito (OPS-018, PM-03-03, 2026-11-24)
+
+El lote 5 está seguido y medido (medido por ventana de horas, §7 de IA-077). Con eso, `config/expansion.yaml` lleva el **lote 6** (nivel de migración 10): segundas, copas y supercopas de América (Argentina, Brasil, Chile, Uruguay, México, Estados Unidos y Panamá) — 16 competiciones (129, 130, 517, 810, 1178, 632, 266, 267, 527, 263, 857, 304, 257, 269, 842, 930), decidido con la sonda `pm-03-01` y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+
+Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
+
+1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 6`. Debe listar las 16 con `known` y `tracked False`; si dice `REFUSED`, se para.
+2. Seguimiento: la misma orden con `--apply`.
+3. Medir la ventana (o el día UTC completo) siguiente con el criterio de IA-077 (≤ 1.000 peticiones añadidas), antes del lote siguiente.
+
+Repetición del 24-nov (4 días después): las 16 contestaron y los datos del 20-nov se confirman (mismos partidos y mismas banderas; el nivel esperado sin cuotas solo
+cambia en 304 Liga Panameña, que pasa de D a C* porque ya hay alineaciones en la muestra). Hay **16 partidos por jugar en 14 días** (129: 4, 266: 3, 304: 2, 269: 2, 930: 2, 130: 1, 267: 1, 263: 1), así que el
+lote tendrá partidos propios (cuotas, alineaciones y eventos) desde el primer día de medición.
+
+Esperado: ≈ 320 peticiones al día de media y ≈ 2.000 el día de más carga (2,2 GB al año, sobre todo cuotas). Nivel esperado: 263 Liga de Expansión MX alcanza B* (estadísticas, xG, jugadores y árbitro declarados); 129, 130, 266, 267 y 257 quedan en C*; 304, 269 y 930 en D; los siete partidos únicos (517, 810, 1178, 632, 527, 857, 842) en «muestra insuficiente». Vuelta atrás: `--batch 6 --untrack --apply` (no borra nada).
+
+## 10. Lote 7 escrito (OPS-020, PM-03-04, 2026-11-25)
+
+Condición del alta: el lote 6 se sigue (OPS-018) y se mide por ventana de horas: al menos un ciclo de `fixtures_sync` tras su alta y partidos suyos jugados o en curso, con ≤ 1.000 peticiones añadidas (criterio de IA-077); si aún no hubo ni ciclo ni partido, el alta de este lote espera ese ciclo (horas, no días). Con ese criterio, `config/expansion.yaml` lleva el **lote 7** (nivel de migración 11): segundas, copas y supercopas de Europa (Austria, Bélgica, Dinamarca, Portugal y Escocia) — 9 competiciones (220, 147, 519, 120, 121, 550, 181, 182, 185), decidido con la sonda `pm-03-01`, repetida (si el alta lo pide) justo antes de seguirlo y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+
+Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
+
+1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 7`. Debe listar las 9 con `known` y `tracked False`; si dice `REFUSED`, se para.
+2. Seguimiento: la misma orden con `--apply`.
+3. Medir la ventana (o el día UTC completo) siguiente con el criterio de IA-077 (≤ 1.000 peticiones añadidas), antes del lote siguiente.
+
+Esperado: ≈ 140 peticiones al día de media y ≈ 1.300 el día de más carga (0,3 GB al año). Nivel esperado: 220, 147, 120, 121 y 185 en C*; 181 y 182 en D (sin alineaciones declaradas); 519 y 550 en «muestra insuficiente». Vuelta atrás: `--batch 7 --untrack --apply` (no borra nada).
+
+## 11. Lote 8 escrito (OPS-021, PM-03-05, 2026-11-25)
+
+Condición del alta: el lote 7 se sigue (OPS-020) y se mide por ventana de horas: al menos un ciclo de `fixtures_sync` tras su alta y partidos suyos jugados o en curso, con ≤ 1.000 peticiones añadidas (criterio de IA-077); si aún no hubo ni ciclo ni partido, el alta de este lote espera ese ciclo (horas, no días). Con ese criterio, `config/expansion.yaml` lleva el **lote 8** (nivel de migración 12): Asia, África y Oceanía (Australia, Egipto, India, Japón, Catar, Arabia Saudita, Corea del Sur y Emiratos) — 21 competiciones (874, 1202, 539, 887, 895, 324, 545, 101, 102, 306, 677, 824, 825, 308, 826, 293, 294, 302, 303, 560, 896), decidido con la sonda `pm-03-01`, repetida (si el alta lo pide) justo antes de seguirlo y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+
+Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
+
+1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 8`. Debe listar las 21 con `known` y `tracked False`; si dice `REFUSED`, se para.
+2. Seguimiento: la misma orden con `--apply`.
+3. Medir la ventana (o el día UTC completo) siguiente con el criterio de IA-077 (≤ 1.000 peticiones añadidas), antes del lote siguiente.
+
+Esperado: ≈ 350 peticiones al día de media y ≈ 2.050 el día de más carga (1,6 GB al año). Nivel esperado: nueve en C* (base B), tres o cuatro en C o D, seis en D por falta de alineaciones, cuatro en «muestra insuficiente»; ninguna activación en 03:30-05:00 UTC. Vuelta atrás: `--batch 8 --untrack --apply` (no borra nada).
+
+## 12. Lote 9 escrito (OPS-022, PM-03-06, 2026-11-25)
+
+Condición del alta: el lote 8 se sigue (OPS-021) y se mide por ventana de horas: al menos un ciclo de `fixtures_sync` tras su alta y partidos suyos jugados o en curso, con ≤ 1.000 peticiones añadidas (criterio de IA-077); si aún no hubo ni ciclo ni partido, el alta de este lote espera ese ciclo (horas, no días). Con ese criterio, `config/expansion.yaml` lleva el **lote 9** (nivel de migración 13): pirámide inglesa de los niveles 5 a 7 y FA Trophy — 8 competiciones (43, 47, 50, 51, 58, 59, 60, 931), decidido con la sonda `pm-03-01`, repetida (si el alta lo pide) justo antes de seguirlo y la regla DM-03 (se admiten niveles C y D; la matriz gradúa cada familia). Escribirlo no sigue nada.
+
+Tras el despliegue (0 peticiones, fuera de `fixtures_sync` y nunca entre 03:30 y 05:00 UTC):
+
+1. Ensayo: `docker exec -w /app predigol-worker python -m scripts.expand_leagues --batch 9`. Debe listar las 8 con `known` y `tracked False`; si dice `REFUSED`, se para.
+2. Seguimiento: la misma orden con `--apply`.
+3. Medir la ventana (o el día UTC completo) siguiente con el criterio de IA-077 (≤ 1.000 peticiones añadidas), antes del lote siguiente.
+
+Esperado: ≈ 480 peticiones al día de media y ≈ 3.500 un sábado (4,7 GB al año si se guardan todas las cuotas). Nivel esperado: 43 National League en C*; las otras siete (47, 50, 51, 58, 59, 60 y 931) en D por falta de alineaciones y estadísticas. Vuelta atrás: `--batch 9 --untrack --apply` (no borra nada).
+

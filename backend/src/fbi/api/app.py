@@ -48,6 +48,7 @@ from fbi.api.routers import (
     news_moderation,
     odds_explorer,
     payment_requests,
+    period_stats,
     personal,
     postmatch,
     product,
@@ -61,6 +62,7 @@ from fbi.api.routers import (
     today,
     transparency,
     truth,
+    wellbeing,
 )
 from fbi.api.security import (
     SAFE_METHODS,
@@ -72,6 +74,7 @@ from fbi.api.security import (
     require_admin,
     require_app,
     same_site_only,
+    wellbeing_required,
 )
 from fbi.api.services.ops import VERSION
 from fbi.auth import crypto
@@ -237,7 +240,7 @@ def create_app() -> FastAPI:
     # to renew, and reaches Ayuda. Novedades read (B6) is the reader's own state, like a dismissed hint; so are the reader's
     # devices and categories of notices (B7) - a limited reader is still told their membership ends.
     for r in (auth.router, customer.router, messaging.router, membership.router, payment_requests.router, favorites.router, guides.router,
-              support.router, feedback.updates_router, push.router, push.inbox_router, calendar_feed.router):
+              support.router, feedback.updates_router, push.router, push.inbox_router, calendar_feed.router, wellbeing.router):
         app.include_router(r, prefix="/api/v1", dependencies=app_tier)
     # The product's own analytics (A6), behind the consent gate only: a reader who has not accepted the processing is
     # not measured; a limited one is (what they open while limited is part of renewing). What the reader's own use orders
@@ -248,11 +251,11 @@ def create_app() -> FastAPI:
     # The product, behind the consent gate (plan UX, A4; FBI_CONSENT_GATE, born off: fbi.customer.consents) and the
     # membership's (A8; FBI_MEMBERSHIP_ENFORCE, born off: fbi.customer.membership). «Explícame» (B9) explains the product:
     # the same gates.
-    product_tier = [*measured_tier, Depends(membership_required)]
+    product_tier = [*measured_tier, Depends(membership_required), Depends(wellbeing_required)]
     for r in (product.router, records.router, football.router, market.router, center.router,
               ai_layer.router, forecast.router, match_calendar.router, knowledge.router, postmatch.router,
               reading.router, today.router, news.router, transparency.router, push.alerts_router, explain.router,
-              odds_explorer.router, stats.router, availability.router):
+              odds_explorer.router, stats.router, availability.router, period_stats.router):
         app.include_router(r, prefix="/api/v1", dependencies=product_tier)
     admin_tier = [Depends(same_site_only), Depends(require_admin), Depends(observe_principal)]
     for r in (system.admin_router, football.admin_router, market.admin_router,

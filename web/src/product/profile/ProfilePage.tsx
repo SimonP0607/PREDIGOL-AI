@@ -22,11 +22,12 @@ import {
   Star,
   UserRound,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useWellbeing, useAuth } from "@/lib/auth/AuthProvider";
 import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { Me } from "@/lib/api/v1/types_auth";
 import { LOCALES, t, useI18n, type Locale } from "@/lib/i18n";
+import { t as wellbeingText } from "@/product/wellbeing/wellbeingText";
 import { LOCALE_NAMES } from "@/lib/i18n/catalogs";
 import { detectTimeZone, formatTime, listTimeZones, zoneAbbrev, zoneName } from "@/lib/time";
 import { PageTitle, errorMessage } from "@/product/shared/States";
@@ -41,6 +42,7 @@ import { AccountPanel } from "./AccountPanel";
 import { useGuideScreen } from "@/product/guides/context";
 import { BlockRow, SectionScreen } from "./Block";
 import { DisplaySettings } from "./DisplaySettings";
+import { WellbeingSettings } from "./WellbeingSettings";
 import { RadioCards } from "./RadioCards";
 
 /** What a language changes, said in that language (sheet U03). */
@@ -250,6 +252,7 @@ function Subsection({ title, children }: { title: string; children: React.ReactN
 
 function RegionPanel() {
   const auth = useAuth();
+  const wellbeing = useWellbeing();
   const { locale } = useI18n();
   return (
     <div className="space-y-4" data-testid="region-panel">
@@ -276,6 +279,12 @@ function RegionPanel() {
       <Subsection title={t("profile.display.title")}>
         <DisplaySettings />
       </Subsection>
+      {/* «Solo fútbol» and the voluntary pause (PM-14-07; FBI_WELLBEING): nothing while the owner has not opened it */}
+      {wellbeing.available ? (
+        <Subsection title={wellbeingText("wellbeing.title")}>
+          <WellbeingSettings />
+        </Subsection>
+      ) : null}
     </div>
   );
 }
