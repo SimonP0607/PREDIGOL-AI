@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
 import sys
 import uuid
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from contextvars import ContextVar
 from typing import Any
 
@@ -45,6 +46,28 @@ def _add_run_id(
     _logger: Any, _name: str, event_dict: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
     event_dict["run_id"] = _run_id.get()
+    return event_dict
+
+
+_error_sinks: list[Callable[[str, str | None], None]] = []
+
+
+def add_error_sink(sink: Callable[[str, str | None], None]) -> None:
+    """Hand every error-level line, already redacted, to ``sink(event, error)`` (RP-1.1: the book of runs records the errors a job
+    caught and logged). A sink never raises into the log call."""
+    if sink not in _error_sinks:
+        _error_sinks.append(sink)
+
+
+def _hand_errors_on(
+    _logger: Any, name: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
+    if name in ("error", "critical", "exception") and _error_sinks:
+        raw = event_dict.get("error")
+        detail = raw if isinstance(raw, str) else None
+        for sink in _error_sinks:
+            with contextlib.suppress(Exception):  # a sink must never break the line it was handed
+                sink(str(event_dict.get("event", "")), detail)
     return event_dict
 
 
@@ -180,6 +203,7 @@ def configure(level: str = "INFO") -> None:
             structlog.contextvars.merge_contextvars,
             _add_run_id,
             _redact,
+            _hand_errors_on,
             report_error_logs,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso", utc=True),
