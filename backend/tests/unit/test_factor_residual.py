@@ -121,9 +121,11 @@ def test_every_reader_keeps_a_measured_factor_out(status: str) -> None:
 
 
 def test_the_block_factors_carry_the_versions_of_the_code_that_computes_them() -> None:
-    from fbi.ai import calendar_facts, stakes_facts
+    from fbi.ai import calendar_facts, people_facts, stakes_facts
 
     assert factor_block.BY_KEY[factor_block.STAKES].version == stakes_facts.VERSION
     assert factor_block.BY_KEY[factor_block.CALENDAR_FACTS].version == calendar_facts.VERSION
+    for key in (factor_block.COACH_FACTS, factor_block.FORMATION_FACTS, factor_block.REFEREE_FACTS):
+        assert factor_block.BY_KEY[key].version == people_facts.VERSION
     assert not set(factor_block.BY_KEY) & set(factors.BY_KEY), "a factor is in the packet's catalogue or in the block, not both"
     assert all(re.fullmatch(r"[a-z][a-z0-9_]{1,62}", k) for k in factor_block.BY_KEY), "the table's own check on a factor's name"

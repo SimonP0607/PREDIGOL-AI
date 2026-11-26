@@ -415,7 +415,7 @@
    "sin_pruebas": 14
   },
   "evidence": {
-   "archivos": 181,
+   "archivos": 183,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -453,6 +453,7 @@
     "backend/src/fbi/ai/package.py",
     "backend/src/fbi/ai/packet.py",
     "backend/src/fbi/ai/page_bank_readers.py",
+    "backend/src/fbi/ai/people_facts.py",
     "backend/src/fbi/ai/provider_facts.py",
     "backend/src/fbi/ai/provider_facts_reads.py",
     "backend/src/fbi/ai/quarantine.py",
@@ -532,7 +533,7 @@
    ],
    "etiqueta": "almacén de evidencia: ai.evidence",
    "paquetes": {
-    "ai": 42,
+    "ai": 43,
     "api": 17,
     "chronicle": 4,
     "decision": 1,
@@ -556,14 +557,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 82,
-    "prueba": 74,
+    "módulo": 83,
+    "prueba": 75,
     "ruta": 17,
     "script": 5,
     "trabajo": 2,
     "web": 1
    },
-   "sin_pruebas": 107
+   "sin_pruebas": 108
   },
   "extract_v1": {
    "archivos": 23,
