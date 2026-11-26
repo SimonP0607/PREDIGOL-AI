@@ -1,4 +1,5 @@
-"""The counts the value sheet (``fbi.ai.value_sheet``, RP-12.1) takes from the tables. Reading only: every statement is a SELECT."""
+"""The counts the value sheet (``fbi.ai.value_sheet``, RP-12.1) takes from the tables. Reading only: every statement is a SELECT. A claim of
+research v2 counts only while it is visible (``fbi.ai.gates.typed_visible``), like every reader of ``ai.evidence`` that is not its own."""
 
 from __future__ import annotations
 
@@ -7,11 +8,13 @@ from typing import Any
 
 import psycopg
 
+from fbi.ai.gates import typed_visible
 from fbi.ai.value_sheet import Counts
 
 FIXTURES_SQL = """
 SELECT count(*) AS fixtures,
        count(*) FILTER (WHERE EXISTS (SELECT 1 FROM ai.evidence e WHERE e.fixture_id = f.id AND e.origin = 'web'
+                                         AND (e.subject_type IS NULL OR %(typed)s)
                                          AND e.retrieved_at >= %(since)s AND e.retrieved_at < %(until)s)) AS covered
   FROM core.fixtures f
  WHERE f.kickoff_at >= %(since)s AND f.kickoff_at < %(until)s
@@ -21,7 +24,7 @@ SELECT count(*) AS facts,
        count(*) FILTER (WHERE status = 'CONFIRMED') AS confirmed,
        count(*) FILTER (WHERE status = 'PROBABLE') AS probable
   FROM ai.evidence
- WHERE origin = 'web' AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
+ WHERE origin = 'web' AND (subject_type IS NULL OR %(typed)s) AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
 """
 CHRONICLES_SQL = """
 SELECT count(*) FILTER (WHERE route <> 'none') AS written,
@@ -33,7 +36,7 @@ SELECT count(*) FILTER (WHERE route <> 'none') AS written,
 
 def counts(conn: psycopg.Connection[Any], *, since: datetime, until: datetime) -> Counts:
     """What the sheet counts in ``[since, until)``. Each statement in a savepoint of its own: one that fails leaves its counts at 0."""
-    params = {"since": since, "until": until}
+    params = {"since": since, "until": until, "typed": typed_visible(conn)}
     vals: dict[str, int] = {}
     for name, sql in (("fixtures", FIXTURES_SQL), ("facts", FACTS_SQL), ("chronicles", CHRONICLES_SQL)):
         try:
