@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from fbi.ai import research_order as ro
 from fbi.ai.day import DayFixture
 
@@ -78,3 +80,33 @@ def test_the_coverage_counts_by_level_what_was_searched_and_what_the_new_order_w
     assert cov["B"] == {"matches": 1, "searched": 1, "would_search": 0}
     assert cov["D"] == {"matches": 1, "searched": 0, "would_search": 0}
     assert "would_search" not in ro.coverage(fixtures, searched=set())["A"]
+
+
+# ── the hook in the cycle (off by default) ───────────────────────────────────────────────────────────────────────────
+
+
+def test_the_switch_is_off_unless_it_says_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fbi.ai.config import AiSettings
+
+    for raw, expected in ((None, False), ("", False), ("0", False), ("off", False), ("anything", False), ("1", True), ("on", True), ("Yes", True)):
+        env = {} if raw is None else {"FBI_AI_RESEARCH_ORDER": raw}
+        monkeypatch.setattr("fbi.ai.config.environment", lambda env=env: env)
+        settings = AiSettings.from_env()
+        assert settings.research_order is expected, raw
+        assert settings.public()["research_order"] is expected
+
+
+def test_the_cycle_keeps_its_order_until_the_switch_is_on_and_then_ranks_by_level() -> None:
+    from fbi.ai.config import AiSettings
+    from fbi.ai.cycle import Allowance, web_choice
+    from fbi.ai.day import Due
+
+    assert AiSettings().research_order is False
+    colombia, minor, nomarket = fx(1, league=239), fx(2, league=999999, tier=3), fx(3, league=999998, tier=3, market=False)
+    dues = [Due(x, "first") for x in (minor, nomarket, colombia)]
+    allow = Allowance(llm=1, deep=1, watch=1, web_first=1, web_pre=0)
+    on = web_choice(dues, {}, escalated=set(), asked=set(), allow=allow, settings=AiSettings(research_order=True, news_priority=False))[0]
+    assert on == {1}, "the only slot goes to the Primera A of Colombia (level A), never to level D"
+    wide = Allowance(llm=1, deep=1, watch=1, web_first=5, web_pre=0)
+    got = web_choice(dues, {}, escalated=set(), asked=set(), allow=wide, settings=AiSettings(research_order=True, news_priority=False))[0]
+    assert 3 not in got and {1, 2} <= got
