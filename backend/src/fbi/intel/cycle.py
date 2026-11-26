@@ -314,7 +314,12 @@ def run_weekly(conn: psycopg.Connection[Any], *, at: datetime) -> RunReport:
     def _patterns() -> dict[str, Any]:
         from fbi.research import pattern_search
 
-        return pattern_search.weekly(conn, at=at)
+        out = pattern_search.weekly(conn, at=at)
+        from fbi.research import decision_groups
+
+        if decision_groups.mode() != "off":  # RP-8.5: the fixed groups of decisions go in the same step, so the weekly job keeps its steps and their order
+            out["decision_groups"] = decision_groups.weekly(conn, at=at)
+        return out
 
     def _learning_analyst() -> dict[str, Any]:
         from fbi.ai.agents import analyst

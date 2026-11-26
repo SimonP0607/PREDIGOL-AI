@@ -6,7 +6,7 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 
 | Candidato | Destino | Archivos | Sin pruebas | Escriben | Rutas | Trabajos | Web | Scripts |
 |---|---|---|---|---|---|---|---|---|
-| decision-v1 (referencia estable) (`decision_v1`) | conservar | 122 | 70 | 0 | 10 | 3 | 1 | 9 |
+| decision-v1 (referencia estable) (`decision_v1`) | conservar | 123 | 70 | 0 | 10 | 3 | 1 | 9 |
 | decision-v2 en sombra (`decision_v2`) | consolidar | 98 | 56 | 1 | 8 | 6 | 0 | 1 |
 | decisiones de familias (decision-fam-v1) (`decision_families`) | consolidar | 69 | 36 | 2 | 7 | 1 | 5 | 1 |
 | ciclo de evaluación E1 a E4 (`eval_cycle`) | consolidar | 21 | 14 | 1 | 4 | 2 | 0 | 0 |

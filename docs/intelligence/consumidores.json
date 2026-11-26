@@ -163,7 +163,7 @@
    "sin_pruebas": 36
   },
   "decision_v1": {
-   "archivos": 122,
+   "archivos": 123,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/compare_probabilities.py",
@@ -271,7 +271,7 @@
    },
    "por_clase": {
     "módulo": 47,
-    "prueba": 52,
+    "prueba": 53,
     "ruta": 10,
     "script": 9,
     "trabajo": 3,
