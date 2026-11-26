@@ -46,6 +46,7 @@ Las reglas: `backend/docs/owner/IA_057_CONTRATO_INTELLIGENCE.md`. Las pruebas: `
 | C-17 | `sin_publicados` | Nada publicado: `sin_publicados`, resultados `sin_datos` |
 | C-18 Tendencias (sin ruta) | `armador` | Tres candidatas (córners, tarjetas, goles de la primera parte) con «7 de los últimos 10», frecuencia e intervalo; un boleto de 2 patas a 3,61 bajo el tope; la privada, dos mercados descartados (sin regla, sin dato en la liga) |
 | C-18 | `sin_candidatas` | Ninguna candidata ni boleto: `sin_datos` |
+| C-18 1.1.0 | `armador` | Dos de las tres candidatas (córners, tarjetas) añaden `league_pct` y `percentile` en la frecuencia: cuánto se cumplió la misma línea en la liga y dónde queda el equipo entre sus pares; la tercera no los lleva (sin referencia). Los ejemplos 1.0.0 siguen en `C-18/anteriores/1.0.0/` |
 
 Al añadir un contrato: su carpeta con al menos un caso, una fila aquí y su línea en la coordinación entre sesiones. Al subir la versión menor de uno: copia antes sus ejemplos, sin tocarlos, a `<contrato>/anteriores/<versión anterior>/`; la prueba comprueba que se siguen leyendo.
 | C-02 Selección | `publicada` | Una selección que el dueño autorizó: 57 % `calibrada`, precio vigente con su regla y umbrales, por qué, versiones y fuentes; la privada añade el ciclo, la cifra `sin_calibrar` (78,5 %), la validación `INSUFICIENTE` (0 de 300) y la dependencia de alineación `no_entregado` (`AD-D03`) |
