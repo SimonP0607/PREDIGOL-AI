@@ -61,11 +61,12 @@ from fbi.core.logging import configure as configure_logging
 from fbi.core.version import code_version
 from fbi.features.engine import FEATURE_VERSION
 from fbi.ingestion.ledger import RunCounters, RunLedger
+from fbi.research.dirs import writable
 from fbi.research.experiments import record_session
 from fbi.research.gate import evaluate_gate
 
 REPO = Path(__file__).resolve().parents[1]
-REPORT_DIR = REPO / "data" / "reports"
+REPORT_DIR = writable("reports", REPO / "data" / "reports")
 QUESTION = ("Out of sample and walk-forward, does any model family forecast 1X2 better than the de-vigged "
             "Pinnacle closing line - or at least better than the league base rates?")
 

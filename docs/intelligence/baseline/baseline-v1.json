@@ -1,0 +1,2260 @@
+{
+ "code_version": "527d04d8",
+ "definition_version": "intel-baseline-v1",
+ "indicators": [
+  {
+   "area": "Predicción",
+   "n": 1,
+   "section": "i01_i02_forecast_vs_market"
+  },
+  {
+   "area": "Predicción",
+   "n": 2,
+   "section": "i01_i02_forecast_vs_market"
+  },
+  {
+   "area": "Calibración",
+   "n": 3,
+   "section": "i03_calibration_by_family"
+  },
+  {
+   "area": "Por mercado",
+   "n": 4,
+   "section": "i04_loss_vs_market_by_family"
+  },
+  {
+   "area": "Por competición",
+   "n": 5,
+   "section": "i05_by_competition_level"
+  },
+  {
+   "area": "Coherencia",
+   "n": 6,
+   "section": "i06_coherence"
+  },
+  {
+   "area": "Cierre",
+   "n": 7,
+   "section": "i07_close_minutes"
+  },
+  {
+   "area": "Investigación",
+   "n": 8,
+   "section": "i08_research_coverage_played"
+  },
+  {
+   "area": "Investigación",
+   "n": 9,
+   "section": "i09_researched_before_match_day"
+  },
+  {
+   "area": "Hechos",
+   "n": 10,
+   "section": "i10_facts_per_researched_match"
+  },
+  {
+   "area": "Hechos",
+   "n": 11,
+   "section": "i11_unknown_tier_share"
+  },
+  {
+   "area": "Noticias",
+   "n": 12,
+   "section": "i12_stories_with_own_text"
+  },
+  {
+   "area": "Texto",
+   "n": 13,
+   "section": "i13_complete_texts"
+  },
+  {
+   "area": "Texto",
+   "n": 14,
+   "section": "i14_unsupported_claims"
+  },
+  {
+   "area": "Coste",
+   "n": 15,
+   "section": "i15_cost_per_analyzed_match"
+  },
+  {
+   "area": "Coste",
+   "n": 16,
+   "section": "i16_cost_per_confirmed_fact"
+  },
+  {
+   "area": "Coste",
+   "n": 17,
+   "section": "i17_review_share_of_spend"
+  },
+  {
+   "area": "Aprendizaje",
+   "n": 18,
+   "section": "i18_hypotheses"
+  },
+  {
+   "area": "Aprendizaje",
+   "n": 19,
+   "section": "i19_experiments_since_4_oct"
+  },
+  {
+   "area": "Operación",
+   "n": 20,
+   "section": "i20_runs_by_status_7d"
+  },
+  {
+   "area": "Parlays",
+   "n": 21,
+   "section": "i21_parlays_30d"
+  },
+  {
+   "area": "Operación",
+   "n": 22,
+   "section": "i22_latency"
+  }
+ ],
+ "meta": {
+  "base_before_utc": "2026-11-24 00:00:00",
+  "cut_utc": "2026-11-26 03:00:00",
+  "definition_version": "intel-baseline-v1",
+  "migration": "0177",
+  "read_only": "on"
+ },
+ "run": {
+  "base_before_utc": "2026-11-24T00:00:00Z",
+  "cut_utc": "2026-11-26T03:00:00Z",
+  "host": "vmi3648390",
+  "started_utc": "2026-11-26T03:12:06Z"
+ },
+ "sections": {
+  "competitions_base": {
+   "live": false,
+   "rows": [
+    {
+     "country": "England",
+     "id": "1",
+     "name": "Premier League",
+     "tier": "1"
+    },
+    {
+     "country": "Italy",
+     "id": "2",
+     "name": "Serie A",
+     "tier": "1"
+    },
+    {
+     "country": "Spain",
+     "id": "3",
+     "name": "La Liga",
+     "tier": "1"
+    },
+    {
+     "country": "Germany",
+     "id": "4",
+     "name": "Bundesliga",
+     "tier": "1"
+    },
+    {
+     "country": "England",
+     "id": "5",
+     "name": "Championship",
+     "tier": "2"
+    },
+    {
+     "country": "Brazil",
+     "id": "6",
+     "name": "Serie A",
+     "tier": "2"
+    },
+    {
+     "country": "World",
+     "id": "7",
+     "name": "World Cup",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "8",
+     "name": "CONCACAF Gold Cup",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "9",
+     "name": "UEFA Champions League",
+     "tier": "1"
+    },
+    {
+     "country": "World",
+     "id": "10",
+     "name": "UEFA Europa League",
+     "tier": "2"
+    },
+    {
+     "country": "World",
+     "id": "11",
+     "name": "CONMEBOL Sudamericana",
+     "tier": "2"
+    },
+    {
+     "country": "World",
+     "id": "12",
+     "name": "CONMEBOL Libertadores",
+     "tier": "2"
+    },
+    {
+     "country": "France",
+     "id": "13",
+     "name": "Ligue 1",
+     "tier": "1"
+    },
+    {
+     "country": "France",
+     "id": "14",
+     "name": "Ligue 2",
+     "tier": "2"
+    },
+    {
+     "country": "France",
+     "id": "16",
+     "name": "Coupe de France",
+     "tier": "2"
+    },
+    {
+     "country": "Brazil",
+     "id": "17",
+     "name": "Serie B",
+     "tier": "2"
+    },
+    {
+     "country": "Brazil",
+     "id": "18",
+     "name": "Copa Do Brasil",
+     "tier": "2"
+    },
+    {
+     "country": "Germany",
+     "id": "19",
+     "name": "2. Bundesliga",
+     "tier": "2"
+    },
+    {
+     "country": "Germany",
+     "id": "20",
+     "name": "3. Liga",
+     "tier": "4"
+    },
+    {
+     "country": "Germany",
+     "id": "21",
+     "name": "DFB Pokal",
+     "tier": "2"
+    },
+    {
+     "country": "Netherlands",
+     "id": "22",
+     "name": "Eredivisie",
+     "tier": "2"
+    },
+    {
+     "country": "Netherlands",
+     "id": "23",
+     "name": "Eerste Divisie",
+     "tier": "2"
+    },
+    {
+     "country": "Netherlands",
+     "id": "24",
+     "name": "KNVB Beker",
+     "tier": "3"
+    },
+    {
+     "country": "Portugal",
+     "id": "25",
+     "name": "Primeira Liga",
+     "tier": "2"
+    },
+    {
+     "country": "Portugal",
+     "id": "26",
+     "name": "Segunda Liga",
+     "tier": "4"
+    },
+    {
+     "country": "Norway",
+     "id": "27",
+     "name": "Eliteserien",
+     "tier": "2"
+    },
+    {
+     "country": "Poland",
+     "id": "30",
+     "name": "Ekstraklasa",
+     "tier": "3"
+    },
+    {
+     "country": "Sweden",
+     "id": "33",
+     "name": "Allsvenskan",
+     "tier": "2"
+    },
+    {
+     "country": "Sweden",
+     "id": "34",
+     "name": "Superettan",
+     "tier": "4"
+    },
+    {
+     "country": "Denmark",
+     "id": "36",
+     "name": "Superliga",
+     "tier": "2"
+    },
+    {
+     "country": "Denmark",
+     "id": "37",
+     "name": "1. Division",
+     "tier": "11"
+    },
+    {
+     "country": "Denmark",
+     "id": "38",
+     "name": "DBU Pokalen",
+     "tier": "11"
+    },
+    {
+     "country": "Argentina",
+     "id": "40",
+     "name": "Liga Profesional Argentina",
+     "tier": "2"
+    },
+    {
+     "country": "Argentina",
+     "id": "41",
+     "name": "Primera Nacional",
+     "tier": "10"
+    },
+    {
+     "country": "Argentina",
+     "id": "42",
+     "name": "Copa Argentina",
+     "tier": "10"
+    },
+    {
+     "country": "Italy",
+     "id": "43",
+     "name": "Serie B",
+     "tier": "2"
+    },
+    {
+     "country": "Italy",
+     "id": "44",
+     "name": "Coppa Italia",
+     "tier": "2"
+    },
+    {
+     "country": "Spain",
+     "id": "45",
+     "name": "Segunda División",
+     "tier": "2"
+    },
+    {
+     "country": "Spain",
+     "id": "46",
+     "name": "Copa del Rey",
+     "tier": "2"
+    },
+    {
+     "country": "Belgium",
+     "id": "47",
+     "name": "Jupiler Pro League",
+     "tier": "3"
+    },
+    {
+     "country": "Belgium",
+     "id": "48",
+     "name": "Challenger Pro League",
+     "tier": "4"
+    },
+    {
+     "country": "Colombia",
+     "id": "49",
+     "name": "Primera A",
+     "tier": "2"
+    },
+    {
+     "country": "Colombia",
+     "id": "50",
+     "name": "Primera B",
+     "tier": "7"
+    },
+    {
+     "country": "Colombia",
+     "id": "51",
+     "name": "Copa Colombia",
+     "tier": "8"
+    },
+    {
+     "country": "USA",
+     "id": "52",
+     "name": "Major League Soccer",
+     "tier": "2"
+    },
+    {
+     "country": "USA",
+     "id": "53",
+     "name": "USL Championship",
+     "tier": "5"
+    },
+    {
+     "country": "USA",
+     "id": "54",
+     "name": "US Open Cup",
+     "tier": "10"
+    },
+    {
+     "country": "Mexico",
+     "id": "55",
+     "name": "Liga MX",
+     "tier": "2"
+    },
+    {
+     "country": "Mexico",
+     "id": "56",
+     "name": "Liga de Expansión MX",
+     "tier": "10"
+    },
+    {
+     "country": "Chile",
+     "id": "57",
+     "name": "Primera División",
+     "tier": "2"
+    },
+    {
+     "country": "Chile",
+     "id": "58",
+     "name": "Primera B",
+     "tier": "10"
+    },
+    {
+     "country": "Uruguay",
+     "id": "59",
+     "name": "Primera División",
+     "tier": "8"
+    },
+    {
+     "country": "Uruguay",
+     "id": "60",
+     "name": "Segunda División",
+     "tier": "10"
+    },
+    {
+     "country": "Peru",
+     "id": "61",
+     "name": "Primera División",
+     "tier": "2"
+    },
+    {
+     "country": "Romania",
+     "id": "63",
+     "name": "Liga I",
+     "tier": "3"
+    },
+    {
+     "country": "Serbia",
+     "id": "65",
+     "name": "Super Liga",
+     "tier": "3"
+    },
+    {
+     "country": "South-Africa",
+     "id": "67",
+     "name": "Premier Soccer League",
+     "tier": "4"
+    },
+    {
+     "country": "South-Korea",
+     "id": "69",
+     "name": "K League 1",
+     "tier": "3"
+    },
+    {
+     "country": "Thailand",
+     "id": "73",
+     "name": "Thai League 1",
+     "tier": "4"
+    },
+    {
+     "country": "Venezuela",
+     "id": "76",
+     "name": "Primera División",
+     "tier": "7"
+    },
+    {
+     "country": "World",
+     "id": "81",
+     "name": "Euro Championship",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "82",
+     "name": "UEFA Nations League",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "83",
+     "name": "Africa Cup of Nations",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "84",
+     "name": "Copa America",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "85",
+     "name": "Friendlies",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "87",
+     "name": "CAF Champions League",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "89",
+     "name": "FIFA Club World Cup",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "90",
+     "name": "CONCACAF Champions League",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "91",
+     "name": "AFC Champions League Elite",
+     "tier": "2"
+    },
+    {
+     "country": "World",
+     "id": "92",
+     "name": "AFC Champions League Two",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "93",
+     "name": "CAF Confederation Cup",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "95",
+     "name": "World Cup - Qualification Asia",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "96",
+     "name": "World Cup - Qualification CONCACAF",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "97",
+     "name": "World Cup - Qualification Europe",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "98",
+     "name": "World Cup - Qualification South America",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "99",
+     "name": "World Cup - Qualification Intercontinental Play-offs",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "100",
+     "name": "UEFA U21 Championship",
+     "tier": "4"
+    },
+    {
+     "country": "England",
+     "id": "103",
+     "name": "League One",
+     "tier": "2"
+    },
+    {
+     "country": "England",
+     "id": "104",
+     "name": "League Two",
+     "tier": "2"
+    },
+    {
+     "country": "England",
+     "id": "105",
+     "name": "FA WSL",
+     "tier": "4"
+    },
+    {
+     "country": "England",
+     "id": "106",
+     "name": "FA Cup",
+     "tier": "2"
+    },
+    {
+     "country": "England",
+     "id": "107",
+     "name": "EFL Trophy",
+     "tier": "2"
+    },
+    {
+     "country": "England",
+     "id": "108",
+     "name": "League Cup",
+     "tier": "2"
+    },
+    {
+     "country": "France",
+     "id": "111",
+     "name": "Feminine Division 1",
+     "tier": "4"
+    },
+    {
+     "country": "Germany",
+     "id": "120",
+     "name": "Frauen Bundesliga",
+     "tier": "4"
+    },
+    {
+     "country": "Portugal",
+     "id": "126",
+     "name": "Taça de Portugal",
+     "tier": "3"
+    },
+    {
+     "country": "Portugal",
+     "id": "127",
+     "name": "Taça da Liga",
+     "tier": "3"
+    },
+    {
+     "country": "Japan",
+     "id": "128",
+     "name": "J1 League",
+     "tier": "2"
+    },
+    {
+     "country": "Italy",
+     "id": "138",
+     "name": "Serie A Women",
+     "tier": "4"
+    },
+    {
+     "country": "China",
+     "id": "144",
+     "name": "Super League",
+     "tier": "2"
+    },
+    {
+     "country": "Bulgaria",
+     "id": "145",
+     "name": "First League",
+     "tier": "4"
+    },
+    {
+     "country": "Scotland",
+     "id": "146",
+     "name": "Premiership",
+     "tier": "3"
+    },
+    {
+     "country": "Australia",
+     "id": "147",
+     "name": "A-League",
+     "tier": "2"
+    },
+    {
+     "country": "Greece",
+     "id": "148",
+     "name": "Super League 1",
+     "tier": "3"
+    },
+    {
+     "country": "Turkey",
+     "id": "149",
+     "name": "Süper Lig",
+     "tier": "2"
+    },
+    {
+     "country": "Turkey",
+     "id": "150",
+     "name": "1. Lig",
+     "tier": "2"
+    },
+    {
+     "country": "Turkey",
+     "id": "151",
+     "name": "Türkiye Kupası",
+     "tier": "3"
+    },
+    {
+     "country": "Switzerland",
+     "id": "152",
+     "name": "Super League",
+     "tier": "2"
+    },
+    {
+     "country": "Croatia",
+     "id": "153",
+     "name": "HNL",
+     "tier": "3"
+    },
+    {
+     "country": "Austria",
+     "id": "154",
+     "name": "Bundesliga",
+     "tier": "2"
+    },
+    {
+     "country": "Austria",
+     "id": "155",
+     "name": "2. Liga",
+     "tier": "2"
+    },
+    {
+     "country": "Egypt",
+     "id": "156",
+     "name": "Premier League",
+     "tier": "3"
+    },
+    {
+     "country": "Russia",
+     "id": "157",
+     "name": "Premier League",
+     "tier": "2"
+    },
+    {
+     "country": "Ecuador",
+     "id": "159",
+     "name": "Liga Pro",
+     "tier": "4"
+    },
+    {
+     "country": "USA",
+     "id": "161",
+     "name": "NWSL Women",
+     "tier": "4"
+    },
+    {
+     "country": "Hungary",
+     "id": "164",
+     "name": "NB I",
+     "tier": "4"
+    },
+    {
+     "country": "United-Arab-Emirates",
+     "id": "171",
+     "name": "Pro League",
+     "tier": "4"
+    },
+    {
+     "country": "Qatar",
+     "id": "172",
+     "name": "Stars League",
+     "tier": "4"
+    },
+    {
+     "country": "Saudi-Arabia",
+     "id": "173",
+     "name": "Pro League",
+     "tier": "2"
+    },
+    {
+     "country": "Cyprus",
+     "id": "174",
+     "name": "1. Division",
+     "tier": "4"
+    },
+    {
+     "country": "India",
+     "id": "175",
+     "name": "Indian Super League",
+     "tier": "2"
+    },
+    {
+     "country": "Slovakia",
+     "id": "176",
+     "name": "Super Liga",
+     "tier": "4"
+    },
+    {
+     "country": "Ukraine",
+     "id": "177",
+     "name": "Premier League",
+     "tier": "4"
+    },
+    {
+     "country": "Bolivia",
+     "id": "178",
+     "name": "Primera División",
+     "tier": "4"
+    },
+    {
+     "country": "Czech-Republic",
+     "id": "179",
+     "name": "Czech Liga",
+     "tier": "3"
+    },
+    {
+     "country": "Ireland",
+     "id": "180",
+     "name": "Premier Division",
+     "tier": "4"
+    },
+    {
+     "country": "Israel",
+     "id": "181",
+     "name": "Ligat Ha'al",
+     "tier": "4"
+    },
+    {
+     "country": "Brazil",
+     "id": "182",
+     "name": "Paulista - A1",
+     "tier": "3"
+    },
+    {
+     "country": "Canada",
+     "id": "183",
+     "name": "Canadian Premier League",
+     "tier": "3"
+    },
+    {
+     "country": "Saudi-Arabia",
+     "id": "184",
+     "name": "King's Cup",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "185",
+     "name": "UEFA Champions League Women",
+     "tier": "4"
+    },
+    {
+     "country": "France",
+     "id": "186",
+     "name": "Trophée des Champions",
+     "tier": "3"
+    },
+    {
+     "country": "England",
+     "id": "187",
+     "name": "Community Shield",
+     "tier": "2"
+    },
+    {
+     "country": "Germany",
+     "id": "188",
+     "name": "Super Cup",
+     "tier": "2"
+    },
+    {
+     "country": "World",
+     "id": "189",
+     "name": "UEFA Super Cup",
+     "tier": "2"
+    },
+    {
+     "country": "World",
+     "id": "190",
+     "name": "CAF Super Cup",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "191",
+     "name": "CONCACAF Nations League",
+     "tier": "4"
+    },
+    {
+     "country": "Netherlands",
+     "id": "192",
+     "name": "Super Cup",
+     "tier": "3"
+    },
+    {
+     "country": "Italy",
+     "id": "193",
+     "name": "Super Cup",
+     "tier": "2"
+    },
+    {
+     "country": "Sweden",
+     "id": "194",
+     "name": "Damallsvenskan",
+     "tier": "4"
+    },
+    {
+     "country": "Turkey",
+     "id": "195",
+     "name": "Super Cup",
+     "tier": "3"
+    },
+    {
+     "country": "Spain",
+     "id": "196",
+     "name": "Super Cup",
+     "tier": "2"
+    },
+    {
+     "country": "World",
+     "id": "197",
+     "name": "Friendlies Clubs",
+     "tier": "4"
+    },
+    {
+     "country": "Egypt",
+     "id": "198",
+     "name": "Cup",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "199",
+     "name": "Leagues Cup",
+     "tier": "4"
+    },
+    {
+     "country": "World",
+     "id": "200",
+     "name": "UEFA Europa Conference League",
+     "tier": "3"
+    },
+    {
+     "country": "World",
+     "id": "201",
+     "name": "FIFA Intercontinental Cup",
+     "tier": "4"
+    },
+    {
+     "country": "Japan",
+     "id": "202",
+     "name": "J2 League",
+     "tier": "5"
+    },
+    {
+     "country": "Japan",
+     "id": "203",
+     "name": "J3 League",
+     "tier": "5"
+    },
+    {
+     "country": "Scotland",
+     "id": "204",
+     "name": "Championship",
+     "tier": "5"
+    },
+    {
+     "country": "Scotland",
+     "id": "205",
+     "name": "League One",
+     "tier": "5"
+    },
+    {
+     "country": "Finland",
+     "id": "206",
+     "name": "Veikkausliiga",
+     "tier": "5"
+    },
+    {
+     "country": "Paraguay",
+     "id": "207",
+     "name": "Division Profesional - Apertura",
+     "tier": "5"
+    },
+    {
+     "country": "Paraguay",
+     "id": "208",
+     "name": "Division Profesional - Clausura",
+     "tier": "5"
+    },
+    {
+     "country": "Slovakia",
+     "id": "210",
+     "name": "2. liga",
+     "tier": "5"
+    },
+    {
+     "country": "World",
+     "id": "211",
+     "name": "Asian Cup",
+     "tier": "6"
+    },
+    {
+     "country": "World",
+     "id": "212",
+     "name": "World Cup - Qualification Africa",
+     "tier": "6"
+    },
+    {
+     "country": "World",
+     "id": "213",
+     "name": "World Cup - Qualification Oceania",
+     "tier": "6"
+    }
+   ],
+   "sha256": "720feff4688df45ef4cdbd748e35e2247916a53db7a6c14fe9d1d24cfb31c5e4"
+  },
+  "competitions_new": {
+   "live": false,
+   "rows": [
+    {
+     "tracked_after_base": "23"
+    }
+   ],
+   "sha256": "c42f899a69184d5ee1676e17e456bf456218d11ac20a9a02003c9dac13573fb0"
+  },
+  "i01_i02_forecast_vs_market": {
+   "live": false,
+   "rows": [
+    {
+     "matches": "3165",
+     "raw_minus_market": "0.0378",
+     "raw_se": "0.0041",
+     "shown_minus_market": "0.0113",
+     "shown_se": "0.0020"
+    }
+   ],
+   "sha256": "9295a67fdf0280825b1943497fe6e6e2c2390c0c8c1ba14ee95f4183d30ba9e1"
+  },
+  "i03_calibration_by_family": {
+   "live": false,
+   "rows": [
+    {
+     "family": "cards",
+     "freq": "0.4228",
+     "gap_points": "14.37",
+     "layer": "decision-fam-v1",
+     "mean_p": "0.5665",
+     "n": "149"
+    },
+    {
+     "family": "corners",
+     "freq": "0.4088",
+     "gap_points": "8.44",
+     "layer": "decision-fam-v1",
+     "mean_p": "0.4932",
+     "n": "1688"
+    },
+    {
+     "family": "goals_halves",
+     "freq": "0.3577",
+     "gap_points": "7.49",
+     "layer": "decision-fam-v1",
+     "mean_p": "0.4326",
+     "n": "4811"
+    },
+    {
+     "family": "core",
+     "freq": "0.4038",
+     "gap_points": "-1.43",
+     "layer": "decision-v1",
+     "mean_p": "0.3894",
+     "n": "7928"
+    },
+    {
+     "family": "core",
+     "freq": "0.3884",
+     "gap_points": "-1.10",
+     "layer": "decision-v2",
+     "mean_p": "0.3774",
+     "n": "6362"
+    }
+   ],
+   "sha256": "60bf1143aea117261642465317e1380718c6dd5bb1700bf285a7b33991249a7f"
+  },
+  "i04_loss_vs_market_by_family": {
+   "live": false,
+   "rows": [
+    {
+     "family": "cards",
+     "layer": "decision-fam-v1",
+     "loss_minus_market": "0.0388",
+     "n": "149",
+     "se": "0.0161"
+    },
+    {
+     "family": "corners",
+     "layer": "decision-fam-v1",
+     "loss_minus_market": "0.0192",
+     "n": "1688",
+     "se": "0.0041"
+    },
+    {
+     "family": "goals_halves",
+     "layer": "decision-fam-v1",
+     "loss_minus_market": "0.0199",
+     "n": "4811",
+     "se": "0.0025"
+    },
+    {
+     "family": "core",
+     "layer": "decision-v1",
+     "loss_minus_market": "0.0013",
+     "n": "7928",
+     "se": "0.0005"
+    },
+    {
+     "family": "core",
+     "layer": "decision-v2",
+     "loss_minus_market": "0.0042",
+     "n": "6324",
+     "se": "0.0013"
+    }
+   ],
+   "sha256": "3140e89ea65c5aea95727c4fb34af04ea76d0c0c5e25b58932264db81c66c314"
+  },
+  "i05_by_competition_level": {
+   "live": false,
+   "rows": [
+    {
+     "level": "A",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "1728",
+     "skill": "-0.0637",
+     "skill_high": "-0.0432",
+     "skill_low": "-0.0824",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "A",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "1728",
+     "skill": "-0.0904",
+     "skill_high": "-0.0682",
+     "skill_low": "-0.1151",
+     "source": "forecast",
+     "verdict": "apta"
+    },
+    {
+     "level": "A",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "9",
+     "skill": "-0.1782",
+     "skill_high": "0.2496",
+     "skill_low": "-0.5697",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "A",
+     "market_key": "1X2",
+     "model_name": "poisson",
+     "n": "1736",
+     "skill": "-0.0653",
+     "skill_high": "-0.0449",
+     "skill_low": "-0.0842",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "A",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "1733",
+     "skill": "-0.0638",
+     "skill_high": "-0.0429",
+     "skill_low": "-0.0827",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "B",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "347",
+     "skill": "-0.0675",
+     "skill_high": "-0.0298",
+     "skill_low": "-0.1036",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "B",
+     "market_key": "1X2",
+     "model_name": "poisson",
+     "n": "354",
+     "skill": "-0.0532",
+     "skill_high": "-0.0148",
+     "skill_low": "-0.0904",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "B",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "8",
+     "skill": "-0.1437",
+     "skill_high": "-0.0143",
+     "skill_low": "-0.3339",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "B",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "341",
+     "skill": "-0.0688",
+     "skill_high": "-0.0311",
+     "skill_low": "-0.1078",
+     "source": "forecast",
+     "verdict": "apta"
+    },
+    {
+     "level": "B",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "354",
+     "skill": "-0.0513",
+     "skill_high": "-0.0110",
+     "skill_low": "-0.0906",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "B*",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "8",
+     "skill": "0.2859",
+     "skill_high": "0.4836",
+     "skill_low": "0.1805",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "B*",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "8",
+     "skill": "0.3297",
+     "skill_high": "0.8043",
+     "skill_low": "0.1655",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "B*",
+     "market_key": "1X2",
+     "model_name": "poisson",
+     "n": "8",
+     "skill": "0.2728",
+     "skill_high": "0.5043",
+     "skill_low": "0.1432",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "B*",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "8",
+     "skill": "0.3806",
+     "skill_high": "0.7694",
+     "skill_low": "0.2013",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C",
+     "market_key": "1X2",
+     "model_name": "poisson",
+     "n": "574",
+     "skill": "-0.1163",
+     "skill_high": "-0.0851",
+     "skill_low": "-0.1598",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "C",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "21",
+     "skill": "-0.1308",
+     "skill_high": "0.1259",
+     "skill_low": "-0.3337",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "564",
+     "skill": "-0.1255",
+     "skill_high": "-0.0924",
+     "skill_low": "-0.1758",
+     "source": "forecast",
+     "verdict": "apta"
+    },
+    {
+     "level": "C",
+     "market_key": "1X2",
+     "model_name": "poisson",
+     "n": "1",
+     "skill": "0.0041",
+     "skill_high": "",
+     "skill_low": "",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "572",
+     "skill": "-0.1125",
+     "skill_high": "-0.0843",
+     "skill_low": "-0.1517",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "C",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "569",
+     "skill": "-0.1132",
+     "skill_high": "-0.0842",
+     "skill_low": "-0.1578",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "C*",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "4",
+     "skill": "0.4717",
+     "skill_high": "0.7749",
+     "skill_low": "0.0953",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C*",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "4",
+     "skill": "0.3172",
+     "skill_high": "0.7657",
+     "skill_low": "-0.3114",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C*",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "4",
+     "skill": "0.4891",
+     "skill_high": "1.1175",
+     "skill_low": "-0.1075",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C*",
+     "market_key": "1X2",
+     "model_name": "poisson",
+     "n": "4",
+     "skill": "0.3074",
+     "skill_high": "0.6819",
+     "skill_low": "-0.2126",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "D",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "75",
+     "skill": "-0.2039",
+     "skill_high": "-0.1154",
+     "skill_low": "-0.2825",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "D",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "447",
+     "skill": "-0.0182",
+     "skill_high": "0.0124",
+     "skill_low": "-0.0530",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "D",
+     "market_key": "1X2",
+     "model_name": "dixon_coles",
+     "n": "397",
+     "skill": "-0.0413",
+     "skill_high": "-0.0090",
+     "skill_low": "-0.0801",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "D",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "434",
+     "skill": "-0.0695",
+     "skill_high": "-0.0323",
+     "skill_low": "-0.1056",
+     "source": "forecast",
+     "verdict": "apta"
+    },
+    {
+     "level": "D",
+     "market_key": "1X2",
+     "model_name": "poisson",
+     "n": "398",
+     "skill": "-0.0448",
+     "skill_high": "-0.0116",
+     "skill_low": "-0.0833",
+     "source": "prediction",
+     "verdict": "apta"
+    },
+    {
+     "level": "MI",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "5",
+     "skill": "-0.1292",
+     "skill_high": "0.1695",
+     "skill_low": "-0.2505",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "MI",
+     "market_key": "1X2",
+     "model_name": "elo_ologit",
+     "n": "5",
+     "skill": "-0.1674",
+     "skill_high": "0.1212",
+     "skill_low": "-0.3193",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "A",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "1736",
+     "skill": "-0.0020",
+     "skill_high": "0.0044",
+     "skill_low": "-0.0081",
+     "source": "forecast",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "A",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "1736",
+     "skill": "0.0038",
+     "skill_high": "0.0114",
+     "skill_low": "-0.0043",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "A",
+     "market_key": "BTTS",
+     "model_name": "dixon_coles",
+     "n": "1733",
+     "skill": "0.0029",
+     "skill_high": "0.0107",
+     "skill_low": "-0.0054",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "B",
+     "market_key": "BTTS",
+     "model_name": "dixon_coles",
+     "n": "354",
+     "skill": "0.0097",
+     "skill_high": "0.0395",
+     "skill_low": "-0.0181",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "B",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "348",
+     "skill": "0.0106",
+     "skill_high": "0.0408",
+     "skill_low": "-0.0170",
+     "source": "forecast",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "B",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "354",
+     "skill": "0.0125",
+     "skill_high": "0.0428",
+     "skill_low": "-0.0163",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "B*",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "8",
+     "skill": "0.0823",
+     "skill_high": "0.3095",
+     "skill_low": "-0.0418",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "B*",
+     "market_key": "BTTS",
+     "model_name": "dixon_coles",
+     "n": "8",
+     "skill": "0.0784",
+     "skill_high": "0.3191",
+     "skill_low": "-0.0443",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "B*",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "8",
+     "skill": "0.0832",
+     "skill_high": "0.3194",
+     "skill_low": "-0.0424",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "574",
+     "skill": "0.0138",
+     "skill_high": "0.0400",
+     "skill_low": "-0.0122",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "C",
+     "market_key": "BTTS",
+     "model_name": "dixon_coles",
+     "n": "572",
+     "skill": "0.0135",
+     "skill_high": "0.0394",
+     "skill_low": "-0.0122",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "C",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "567",
+     "skill": "0.0040",
+     "skill_high": "0.0237",
+     "skill_low": "-0.0164",
+     "source": "forecast",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "C*",
+     "market_key": "BTTS",
+     "model_name": "dixon_coles",
+     "n": "4",
+     "skill": "0.0544",
+     "skill_high": "0.2225",
+     "skill_low": "-0.0689",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C*",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "4",
+     "skill": "-0.0331",
+     "skill_high": "0.0682",
+     "skill_low": "-0.1110",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C*",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "4",
+     "skill": "0.0560",
+     "skill_high": "0.2703",
+     "skill_low": "-0.1110",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "D",
+     "market_key": "BTTS",
+     "model_name": "dixon_coles",
+     "n": "397",
+     "skill": "0.0236",
+     "skill_high": "0.0492",
+     "skill_low": "0.0009",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "D",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "378",
+     "skill": "0.0107",
+     "skill_high": "0.0329",
+     "skill_low": "-0.0079",
+     "source": "forecast",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "D",
+     "market_key": "BTTS",
+     "model_name": "poisson",
+     "n": "398",
+     "skill": "0.0230",
+     "skill_high": "0.0494",
+     "skill_low": "-0.0003",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "A",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "1736",
+     "skill": "-0.0021",
+     "skill_high": "0.0087",
+     "skill_low": "-0.0137",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "A",
+     "market_key": "OU",
+     "model_name": "dixon_coles",
+     "n": "1733",
+     "skill": "-0.0024",
+     "skill_high": "0.0085",
+     "skill_low": "-0.0140",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "A",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "1736",
+     "skill": "-0.0204",
+     "skill_high": "-0.0128",
+     "skill_low": "-0.0300",
+     "source": "forecast",
+     "verdict": "apta"
+    },
+    {
+     "level": "B",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "354",
+     "skill": "0.0105",
+     "skill_high": "0.0536",
+     "skill_low": "-0.0296",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "B",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "348",
+     "skill": "-0.0154",
+     "skill_high": "0.0085",
+     "skill_low": "-0.0405",
+     "source": "forecast",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "B",
+     "market_key": "OU",
+     "model_name": "dixon_coles",
+     "n": "354",
+     "skill": "0.0100",
+     "skill_high": "0.0527",
+     "skill_low": "-0.0302",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "B*",
+     "market_key": "OU",
+     "model_name": "dixon_coles",
+     "n": "8",
+     "skill": "0.1131",
+     "skill_high": "0.2120",
+     "skill_low": "0.0757",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "B*",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "8",
+     "skill": "0.1148",
+     "skill_high": "0.2259",
+     "skill_low": "0.0748",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "B*",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "8",
+     "skill": "0.1537",
+     "skill_high": "0.4715",
+     "skill_low": "0.0121",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C",
+     "market_key": "OU",
+     "model_name": "dixon_coles",
+     "n": "572",
+     "skill": "-0.0024",
+     "skill_high": "0.0222",
+     "skill_low": "-0.0276",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "C",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "567",
+     "skill": "-0.0121",
+     "skill_high": "0.0110",
+     "skill_low": "-0.0311",
+     "source": "forecast",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "C",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "574",
+     "skill": "0.0026",
+     "skill_high": "0.0316",
+     "skill_low": "-0.0253",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "C*",
+     "market_key": "OU",
+     "model_name": "dixon_coles",
+     "n": "4",
+     "skill": "0.0663",
+     "skill_high": "0.2519",
+     "skill_low": "-0.3255",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C*",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "4",
+     "skill": "0.0792",
+     "skill_high": "0.3348",
+     "skill_low": "-0.5106",
+     "source": "forecast",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "C*",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "4",
+     "skill": "0.0576",
+     "skill_high": "0.2386",
+     "skill_low": "-0.3304",
+     "source": "prediction",
+     "verdict": "insuficiente"
+    },
+    {
+     "level": "D",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "398",
+     "skill": "0.0076",
+     "skill_high": "0.0533",
+     "skill_low": "-0.0364",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    },
+    {
+     "level": "D",
+     "market_key": "OU",
+     "model_name": "poisson",
+     "n": "378",
+     "skill": "-0.0325",
+     "skill_high": "-0.0109",
+     "skill_low": "-0.0568",
+     "source": "forecast",
+     "verdict": "apta"
+    },
+    {
+     "level": "D",
+     "market_key": "OU",
+     "model_name": "dixon_coles",
+     "n": "397",
+     "skill": "0.0083",
+     "skill_high": "0.0537",
+     "skill_low": "-0.0375",
+     "source": "prediction",
+     "verdict": "sin_habilidad"
+    }
+   ],
+   "sha256": "cdbc838b2e35cc32493846e41794b692f0aa777afe90a98e261986989b8cb5d5"
+  },
+  "i06_coherence": {
+   "live": false,
+   "rows": [
+    {
+     "note": "RP-2.2 adds the nightly audit",
+     "state": "not_measured"
+    }
+   ],
+   "sha256": "488532e54553ab4763ef981db8f1d261729bc5139483acb7261d74460b6bf440"
+  },
+  "i07_close_minutes": {
+   "live": false,
+   "rows": [
+    {
+     "matches": "2676",
+     "median_min": "177.1",
+     "p10_min": "175.0",
+     "p90_min": "179.7",
+     "within_30_min": "2"
+    }
+   ],
+   "sha256": "81360472f3abc7b06170b2fc3b5332fa0497dd1e89c7bd55afbbc2d23d7410b3"
+  },
+  "i08_research_coverage_played": {
+   "live": false,
+   "rows": [
+    {
+     "matches": "698",
+     "pct": "39.1",
+     "with_web_search": "273"
+    }
+   ],
+   "sha256": "63152bcb2c47f315a8b42897df34f929ffe2dcecc54cc87065bae94ca5f4a8cc"
+  },
+  "i09_researched_before_match_day": {
+   "live": false,
+   "rows": [
+    {
+     "matches": "753",
+     "searched_before_day": "0"
+    }
+   ],
+   "sha256": "569fa8d80a51b814df851977da45c14200ecc509a1e0dda2ea2d83b891744bf2"
+  },
+  "i10_facts_per_researched_match": {
+   "live": false,
+   "rows": [
+    {
+     "confirmed_facts": "869",
+     "confirmed_per_match": "1.74",
+     "researched_matches": "500",
+     "web_facts": "7743"
+    }
+   ],
+   "sha256": "4cb3a83d1bc03fb9fe12233be5913fda6dad8f46bf25a00b226e3c199e90d3fa"
+  },
+  "i11_unknown_tier_share": {
+   "live": false,
+   "rows": [
+    {
+     "facts": "7754",
+     "pct": "63.9",
+     "tier": "unknown"
+    },
+    {
+     "facts": "2608",
+     "pct": "21.5",
+     "tier": "media"
+    },
+    {
+     "facts": "1231",
+     "pct": "10.1",
+     "tier": "aggregator"
+    },
+    {
+     "facts": "360",
+     "pct": "3.0",
+     "tier": "club"
+    },
+    {
+     "facts": "150",
+     "pct": "1.2",
+     "tier": "competition"
+    },
+    {
+     "facts": "37",
+     "pct": "0.3",
+     "tier": "official"
+    }
+   ],
+   "sha256": "51fa14aba004ff9ef1a7cc98498222408d1150a02c782ae5f50d2d7acaa4ed52"
+  },
+  "i12_stories_with_own_text": {
+   "live": false,
+   "rows": [
+    {
+     "evidence_with_item": "0",
+     "item_domains": "2",
+     "items": "651",
+     "stories": "565",
+     "stories_with_text": "0"
+    }
+   ],
+   "sha256": "3169952d01f833bac4aebdcc53a1d7a236e3782b3b0b05dc45cc166c74380cb9"
+  },
+  "i13_complete_texts": {
+   "live": false,
+   "rows": [
+    {
+     "n": "1108",
+     "pct_of_total": "50.5",
+     "route": "batch",
+     "status": "invalid_output"
+    },
+    {
+     "n": "479",
+     "pct_of_total": "21.8",
+     "route": "batch",
+     "status": "partial"
+    },
+    {
+     "n": "426",
+     "pct_of_total": "19.4",
+     "route": "none",
+     "status": "ok"
+    },
+    {
+     "n": "141",
+     "pct_of_total": "6.4",
+     "route": "none",
+     "status": "partial"
+    },
+    {
+     "n": "40",
+     "pct_of_total": "1.8",
+     "route": "none",
+     "status": "abstained"
+    },
+    {
+     "n": "2",
+     "pct_of_total": "0.1",
+     "route": "batch",
+     "status": "ok"
+    }
+   ],
+   "sha256": "0798e1a5bd0613704cade8fa48544acc7af0f71bde2df72a4e4c617e1a4596aa"
+  },
+  "i14_unsupported_claims": {
+   "live": false,
+   "rows": [
+    {
+     "note": "RP-7.4 defines the 50-text sample",
+     "state": "not_measured"
+    }
+   ],
+   "sha256": "00f1474685fdb24a66756561f7762e34781ac9dc52ba4e4c4004df0ec27cc9e0"
+  },
+  "i15_cost_per_analyzed_match": {
+   "live": false,
+   "rows": [
+    {
+     "cost_usd": "47.8559",
+     "cost_without_fixture": "0.5933",
+     "fixtures": "669",
+     "usd_per_fixture": "0.0715"
+    }
+   ],
+   "sha256": "e3e498e946bf733bc6ce7aba39ef7cc56a5aa4dda61682ac3182c105fa9bea9b"
+  },
+  "i16_cost_per_confirmed_fact": {
+   "live": false,
+   "rows": [
+    {
+     "confirmed_web_facts": "601",
+     "search_extraction_usd": "10.3294"
+    }
+   ],
+   "sha256": "5d781e6d7f2920c84ea11eeb39669b195ca02488c7755e74a3a54ce7a668bf1b"
+  },
+  "i17_review_share_of_spend": {
+   "live": false,
+   "rows": [
+    {
+     "calls": "866",
+     "cost_usd": "26.2309",
+     "pct": "54.8",
+     "purpose": "pick_review"
+    },
+    {
+     "calls": "638",
+     "cost_usd": "9.1200",
+     "pct": "19.1",
+     "purpose": "web_search"
+    },
+    {
+     "calls": "3245",
+     "cost_usd": "7.3039",
+     "pct": "15.3",
+     "purpose": "match_brief"
+    },
+    {
+     "calls": "807",
+     "cost_usd": "2.1030",
+     "pct": "4.4",
+     "purpose": "other"
+    },
+    {
+     "calls": "1824",
+     "cost_usd": "1.2094",
+     "pct": "2.5",
+     "purpose": "evidence_extraction"
+    },
+    {
+     "calls": "426",
+     "cost_usd": "1.1904",
+     "pct": "2.5",
+     "purpose": "match_analysis"
+    },
+    {
+     "calls": "7",
+     "cost_usd": "0.3851",
+     "pct": "0.8",
+     "purpose": "pattern_review"
+    },
+    {
+     "calls": "103",
+     "cost_usd": "0.2231",
+     "pct": "0.5",
+     "purpose": "postmortem"
+    },
+    {
+     "calls": "7",
+     "cost_usd": "0.0901",
+     "pct": "0.2",
+     "purpose": "learning"
+    }
+   ],
+   "sha256": "4036e7e3b7393f8490cb138bf66c0ee448c8bec64d745ef8000d4e7912f8597a"
+  },
+  "i17b_review_verdicts": {
+   "live": false,
+   "rows": [
+    {
+     "decision": "DOWNGRADE",
+     "n": "348"
+    },
+    {
+     "decision": "REJECT",
+     "n": "247"
+    },
+    {
+     "decision": "APPROVE",
+     "n": "5"
+    },
+    {
+     "decision": "ABSTAIN",
+     "n": "1"
+    }
+   ],
+   "sha256": "9a1bd609f166a84b575d806fac704e671468dc22df8a4ca915fbcc71d6a96250"
+  },
+  "i18_hypotheses": {
+   "live": false,
+   "rows": [
+    {
+     "by_ai": "84",
+     "n": "96",
+     "status": "PROPOSED"
+    },
+    {
+     "by_ai": "0",
+     "n": "7",
+     "status": "ACCEPTED"
+    },
+    {
+     "by_ai": "1",
+     "n": "2",
+     "status": "SHADOW"
+    },
+    {
+     "by_ai": "2",
+     "n": "2",
+     "status": "INVESTIGATING"
+    }
+   ],
+   "sha256": "e849e089a8c3c2aeeda7c4f86e8422e5ddae1f189cfee2164e92dce4de862c1a"
+  },
+  "i19_experiments_since_4_oct": {
+   "live": false,
+   "rows": [
+    {
+     "experiments_total": "65",
+     "last_started": "2026-10-04 11:15:58.440138+00",
+     "since_5_oct": "0",
+     "since_5_oct_with_gate": "0"
+    }
+   ],
+   "sha256": "fd07e1d95c269c43e0f4fc6f738c7eb7be4ea7cef306ad7a0d8e58ec191d610d"
+  },
+  "i20_runs_by_status_7d": {
+   "live": false,
+   "rows": [
+    {
+     "runs": "38279",
+     "status": "completed"
+    },
+    {
+     "runs": "118",
+     "status": "aborted"
+    },
+    {
+     "runs": "71",
+     "status": "interrupted"
+    },
+    {
+     "runs": "33",
+     "status": "partial"
+    },
+    {
+     "runs": "8",
+     "status": "failed"
+    }
+   ],
+   "sha256": "67569541da68c9f7b90fd0a554d0cd93233111cb7b02d680a11406e3d89ef9df"
+  },
+  "i20b_jobs_outside_ledger_live": {
+   "live": true,
+   "rows": [
+    {
+     "jobs_in_heartbeat": "77",
+     "jobs_outside_ledger": "46"
+    }
+   ],
+   "sha256": "c6632ce7d06cc97ca2854cfa2d2246ba30766009feaf657717b79b9c193c7bdc"
+  },
+  "i21_parlays_30d": {
+   "live": false,
+   "rows": [
+    {
+     "calibration_error": "not_measured",
+     "mean_legs": "1.58",
+     "mean_odds": "5.75",
+     "mean_p_joint": "0.2611",
+     "parlays": "24"
+    }
+   ],
+   "sha256": "3dc0fd4a42c7d3f2ca4870f945f4ea5d838bf6661415d980b8ff6b7b504b81d4"
+  },
+  "i22_latency": {
+   "live": false,
+   "rows": [
+    {
+     "note": "baseline_snapshot.py manifest timings_ms",
+     "state": "measured_outside_sql"
+    }
+   ],
+   "sha256": "7ff547f29b00b321f0cdafcc7582b5e5f4fed79ac16aeea76634b46cb2cc5a9d"
+  },
+  "meta": {
+   "live": false,
+   "rows": [
+    {
+     "base_before_utc": "2026-11-24 00:00:00",
+     "cut_utc": "2026-11-26 03:00:00",
+     "definition_version": "intel-baseline-v1",
+     "migration": "0177",
+     "read_only": "on"
+    }
+   ],
+   "sha256": "906e9576aef7b2d8cd37a14558b15b83eca18fc0413cb148a99ae7405f850d2e"
+  },
+  "run": {
+   "live": true,
+   "rows": [
+    {
+     "base_before_utc": "2026-11-24T00:00:00Z",
+     "cut_utc": "2026-11-26T03:00:00Z",
+     "host": "vmi3648390",
+     "started_utc": "2026-11-26T03:12:06Z"
+    }
+   ],
+   "sha256": "185fcb0adb62c600cbd9e2ce2eed61892b90c0d408d487ec0261317a607a8626"
+  }
+ }
+}

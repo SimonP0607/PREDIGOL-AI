@@ -14,6 +14,7 @@ have" has a number, not a memory. Nothing is written to the database.
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -38,6 +39,7 @@ PRODUCT_PREVIEW = ("/api/v1/home", "/api/v1/picks", "/api/v1/parlays/daily", "/a
 class SnapshotReport:
     folder: Path
     endpoints: dict[str, int] = field(default_factory=dict)
+    timings_ms: dict[str, int] = field(default_factory=dict)
     failures: dict[str, str] = field(default_factory=dict)
     tables: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -91,6 +93,7 @@ def snapshot(conn: psycopg.Connection[Any], out_root: Path, *, label: str, clien
     spec = client.get("/openapi.json").json()
     targets = [(p, False) for p in readable_paths(spec)] + [(p, True) for p in PRODUCT_PREVIEW]
     for path, preview in targets:
+        started = time.perf_counter()
         try:
             resp = client.get(path, params={"preview": "shadow"} if preview else None)
         except Exception as exc:  # a page that cannot be computed is recorded, not fatal
@@ -98,10 +101,12 @@ def snapshot(conn: psycopg.Connection[Any], out_root: Path, *, label: str, clien
             continue
         key = _slug(path, preview)
         report.endpoints[key] = resp.status_code
+        report.timings_ms[key] = round((time.perf_counter() - started) * 1000)
         (folder / "api" / f"{key}.json").write_text(json.dumps(resp.json(), indent=1, sort_keys=True, default=str))
     report.tables = table_counts(conn)
     (folder / "counts.json").write_text(json.dumps(report.tables, indent=1, sort_keys=True))
     (folder / "manifest.json").write_text(json.dumps(
-        {"label": label, "taken_at": stamp, "endpoints": report.endpoints, "failures": report.failures},
+        {"label": label, "taken_at": stamp, "endpoints": report.endpoints, "failures": report.failures,
+         "timings_ms": report.timings_ms},
         indent=1, sort_keys=True))
     return report
