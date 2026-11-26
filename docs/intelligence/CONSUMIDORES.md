@@ -77,7 +77,7 @@ Escriben: `backend/src/fbi/news/store.py`, `backend/src/fbi/newsroom/moderation.
 
 ## almacén de evidencia: ai.evidence (`evidence`) — conservar
 
-Paquetes: `ai` (40), `api` (17), `chronicle` (4), `competitions` (2), `decision` (1), `evalcycle` (3), `evalpass` (1), `evaluation` (2), `evidence` (4), `factlinks` (3), `ingestion` (1), `intel` (6), `narrative` (1), `news` (7), `observability` (1), `people` (2), `picks` (1), `players` (1), `proposals` (1), `research` (1), `scripts` (5), `shadowjobs` (2), `web` (1).
+Paquetes: `ai` (42), `api` (17), `chronicle` (4), `decision` (1), `evalcycle` (3), `evalpass` (1), `evaluation` (2), `evidence` (4), `factlinks` (3), `ingestion` (1), `intel` (6), `narrative` (1), `news` (7), `observability` (1), `people` (2), `picks` (1), `players` (1), `proposals` (1), `research` (1), `scripts` (5), `shadowjobs` (2), `web` (1).
 
 Escriben: `backend/src/fbi/ai/evidence.py`, `backend/src/fbi/people/identity/store.py`.
 

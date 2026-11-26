@@ -35,8 +35,8 @@ import psycopg
 from psycopg.rows import dict_row
 
 from fbi.ai import evidence, factor_schema
+from fbi.ai.stakes_facts import AHEAD, MATCHES_SQL, Match
 from fbi.competitions import team_calendar as tc
-from fbi.competitions.stakes_facts import AHEAD, MATCHES_SQL, Match
 
 SWITCH: Final = "FBI_CALENDAR_FACTS"
 VERSION: Final = "calendar-facts-v1"

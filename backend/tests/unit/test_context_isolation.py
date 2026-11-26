@@ -35,7 +35,7 @@ CONTEXT_MODULES: dict[str, dict[str, str]] = {
                              "left (FACT_NO_OBJECTIVE), to authorise that class of sentence; it runs nothing of the engine",
         "chronicle/review_v2.py": "the factual review of the single chronicle (IA-118) reads the same name (FACT_NO_OBJECTIVE) to check "
                                   "«nothing at stake» against the engine's reading after the match; it runs nothing of the engine",
-        "competitions/stakes_facts.py": "what each team plays for as a calculated context fact (RP-4.2): it reads the names of the engine's "
+        "ai/stakes_facts.py": "what each team plays for as a calculated context fact (RP-4.2): it reads the names of the engine's "
                                         "own facts (FACT_NO_OBJECTIVE, NOT_CODED) and says what the stored reading proved; it runs nothing of the engine",
     },
     "fbi.intel.scenarios": {

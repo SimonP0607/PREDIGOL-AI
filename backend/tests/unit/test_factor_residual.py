@@ -121,7 +121,7 @@ def test_every_reader_keeps_a_measured_factor_out(status: str) -> None:
 
 
 def test_the_block_factors_carry_the_versions_of_the_code_that_computes_them() -> None:
-    from fbi.competitions import calendar_facts, stakes_facts
+    from fbi.ai import calendar_facts, stakes_facts
 
     assert factor_block.BY_KEY[factor_block.STAKES].version == stakes_facts.VERSION
     assert factor_block.BY_KEY[factor_block.CALENDAR_FACTS].version == calendar_facts.VERSION

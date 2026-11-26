@@ -6,7 +6,7 @@ packet: they are typed facts in ``ai.evidence``, and the registry also needs to 
 that nobody has tested. ``BLOCK`` lists them and ``register`` gives each its first row, DESCRIPTIVE, written by the system (idempotent), so that
 ``coverage`` can say that every factor of the block has a status as a row and not only by default.
 
-The versions are the ones of the code that computes each fact (``fbi.competitions.stakes_facts.VERSION``, ``fbi.competitions.calendar_facts.VERSION``); they
+The versions are the ones of the code that computes each fact (``fbi.ai.stakes_facts.VERSION``, ``fbi.ai.calendar_facts.VERSION``); they
 are written here as text, not imported, so the registry reads none of the modules that compute (a test holds the text equal to the module's). A fact that a
 later piece adds (the availability of a player, the referee, the coach, the usual formation, the minutes of the starters) is added to ``BLOCK`` in that piece,
 with its version, and its test says so.
