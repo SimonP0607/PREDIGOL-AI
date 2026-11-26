@@ -175,7 +175,7 @@ describe("Equipos · las palabras de las regiones (26-nov-2026)", () => {
         const key = `competitions.directory.region.${r}`;
         expect(tc(key)).not.toBe(key);
       }
-      expect(tc("competitions.world")).not.toBe("competitions.world");
+      expect(countryName("World")).toBe(locale === "es" ? "Internacional" : "International");
     }
     setLocale("es");
   });
