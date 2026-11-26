@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { afterAll, describe, expect, test } from "bun:test";
 import { setLocale } from "@/lib/i18n";
-import { dueReason } from "./evolutionDue";
+import { dueReason, scoreText } from "./evolutionDue";
 
 describe("research due reason", () => {
   afterAll(() => setLocale("es"));
@@ -28,5 +28,14 @@ describe("research due reason", () => {
     setLocale("en");
     expect(dueReason({ v2_due: "the code changed (a -> b)" })).toBe("the code changed (a -> b)");
     expect(dueReason({ v2_due: null })).toBe("");
+  });
+});
+
+describe("regulation score of the detected errors", () => {
+  test("text from the server, the old list and nothing all read without failing", () => {
+    expect(scoreText("2-1")).toBe("2–1");
+    expect(scoreText([0, 3])).toBe("0–3");
+    expect(scoreText(null)).toBe("");
+    expect(scoreText(undefined)).toBe("");
   });
 });
