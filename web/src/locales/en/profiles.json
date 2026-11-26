@@ -96,6 +96,7 @@
     "nextNone": "No match in sight",
     "nations": "National teams",
     "nationsHelp": "Tap a national team to search for it; you can also type its name above.",
+    "world": "International",
     "countries": "{n} countries"
   },
   "teamMissing": "This team does not exist or has no data."
