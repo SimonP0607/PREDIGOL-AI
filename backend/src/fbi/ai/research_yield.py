@@ -23,7 +23,7 @@ from typing import Any, Final
 import psycopg
 from psycopg.rows import dict_row
 
-from fbi.ai import cost_paths, cost_paths_readers, research_order
+from fbi.ai import cost_paths, cost_paths_readers, research_order, value_sheet_readers
 from fbi.ai.day import DayFixture
 
 VERSION: Final = "research-yield-v1"
@@ -38,12 +38,6 @@ SELECT DISTINCT ON (day) day, universe
   FROM ai.day_plans
  WHERE stage = 'opened' AND created_at >= %(since)s AND created_at < %(until)s
  ORDER BY day, created_at DESC
-"""
-FACTS_SQL: Final = """
-SELECT fixture_id, count(*) AS facts, count(*) FILTER (WHERE status = 'CONFIRMED') AS confirmed
-  FROM ai.evidence
- WHERE origin = 'web' AND fixture_id IS NOT NULL AND retrieved_at >= %(since)s AND retrieved_at < %(until)s
- GROUP BY fixture_id
 """
 
 
@@ -174,10 +168,7 @@ def read(conn: psycopg.Connection[Any], *, since: datetime, until: datetime) -> 
             cost_paths_readers.call_of(r)
             for r in cur.execute(cost_paths_readers.CALLS_SQL, window).fetchall()
         ]
-        facts = {
-            int(r["fixture_id"]): (int(r["facts"]), int(r["confirmed"]))
-            for r in cur.execute(FACTS_SQL, window).fetchall()
-        }
+    facts = value_sheet_readers.facts_by_fixture(conn, since=since, until=until)
     return matches(levels(plans), costs(calls), facts)
 
 

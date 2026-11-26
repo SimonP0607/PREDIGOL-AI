@@ -58,7 +58,14 @@ def usage(
     )
 
 
-def fact(db: psycopg.Connection[Any], seed: Seed, tag: str, *, status: str) -> None:
+def fact(
+    db: psycopg.Connection[Any],
+    seed: Seed,
+    tag: str,
+    *,
+    status: str | None = None,
+    typed: bool = False,
+) -> None:
     item = EvidenceIn(
         fixture_id=seed.fixture_id,
         team_id=seed.home_team_id,
@@ -71,15 +78,16 @@ def fact(db: psycopg.Connection[Any], seed: Seed, tag: str, *, status: str) -> N
         source_url=f"https://marca.com/{tag}",
         assertion="info",
         source_tier="media",
+        claim_type="OTHER" if typed else None,
+        subject_type="TEAM" if typed else None,
+        subject_id=seed.home_team_id if typed else None,
         published_at=NOW - timedelta(hours=3),
-        claim_type="OTHER",
-        subject_type="TEAM",
-        subject_id=seed.home_team_id,
         fresh_until=NOW + timedelta(hours=20),
     )
     evidence_id, created = store(db, item, at=NOW - timedelta(hours=2))
     assert created
-    db.execute("UPDATE ai.evidence SET status = %s WHERE id = %s", (status, evidence_id))
+    if status is not None:
+        db.execute("UPDATE ai.evidence SET status = %s WHERE id = %s", (status, evidence_id))
 
 
 def test_the_counters_join_the_plan_the_ledger_and_the_facts(
@@ -107,3 +115,12 @@ def test_the_window_leaves_out_what_is_outside_it(db: psycopg.Connection[Any], s
     plan(db, seed.fixture_id, league=None, created=NOW - timedelta(days=40))
     usage(db, seed.fixture_id, "web_search", "search", "0.02", NOW - timedelta(days=40))
     assert ry.read(db, since=NOW - timedelta(days=30), until=NOW) == []
+
+
+def test_the_claims_of_research_v2_do_not_count_while_they_are_not_visible(
+    db: psycopg.Connection[Any], seed: Seed
+) -> None:
+    plan(db, seed.fixture_id, league=239, created=NOW - timedelta(hours=10))
+    fact(db, seed, "a", typed=True)
+    rows = ry.read(db, since=NOW - timedelta(days=1), until=NOW)
+    assert [(m.facts, m.confirmed) for m in rows] == [(0, 0)]
