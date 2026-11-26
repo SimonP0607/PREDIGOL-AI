@@ -36,8 +36,11 @@ export function TopNav({
   language,
   flags = NAV_V1,
   owner = [],
+  account = null,
 }: {
   pathname: string;
+  /** The account's header at the head of «Más» (UX-251). */
+  account?: { name: string; state: string } | null;
   items: readonly MoreItem[];
   /** The unified plan's bars (FBI_NAV_V2) and the sections they hold. */
   flags?: NavFlags;
@@ -108,6 +111,7 @@ export function TopNav({
         owner={owner}
         unread={unread}
         language={language}
+        account={account}
       />
     </nav>
   );

@@ -11,6 +11,7 @@ import { FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { accountState } from "@/product/profile/centre";
 import { BrandLogo } from "@/components/brand/Brand";
 import { StatusBarSpace } from "@/components/layout/StatusBarSpace";
 import { DataSourcesProvider } from "@/components/system/DataSources";
@@ -110,6 +111,14 @@ export function UserShell({ children }: { children: ReactNode }) {
                     owner={owner}
                     unread={unread ? [UPDATES_PATH] : []}
                     language={{ locale, onChange: (next) => void auth.setLocale(next) }}
+                    account={
+                      auth.user
+                        ? {
+                            name: auth.user.display_name,
+                            state: accountState(auth.showAdmin, auth.user.membership ?? null),
+                          }
+                        : null
+                    }
                   />
                   {/* The language left the bar (plan maestro UX/UI 2026, wave 3): it is in «Más» and in Perfil. The
                   bell of Avisos takes this place when the inbox exists; nothing is drawn while it does not. */}

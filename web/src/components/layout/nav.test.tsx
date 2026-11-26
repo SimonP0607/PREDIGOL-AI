@@ -242,6 +242,31 @@ describe("«Más»", () => {
     expect(await list("/home")).not.toContain("more-language");
   });
 
+  test("the account heads the list: initials, name and state in words, opening Perfil; none without a session (UX-251)", async () => {
+    setLocale("es");
+    const out = await html(
+      <MoreList
+        items={moreItems(true)}
+        pathname="/home"
+        standalone={false}
+        platform="android"
+        onPick={() => {}}
+        onSignOut={() => {}}
+        account={{ name: "Ana Pérez", state: "Activa" }}
+      />,
+    );
+    const head = out.indexOf('data-testid="more-account"');
+    expect(head).toBeGreaterThan(-1);
+    expect(head).toBeLessThan(out.indexOf('data-testid="more-parlays"'));
+    const block = out.slice(head, head + 900);
+    expect(block).toContain("AP");
+    expect(block).toContain("Ana Pérez");
+    expect(block).toContain("Activa");
+    expect(block).toContain('href="/profile"');
+    expect(block).not.toContain("@");
+    expect(await list("/home")).not.toContain("more-account");
+  });
+
   test("its rows in the plan's order, each 56 px tall, the page's own marked", async () => {
     setLocale("es");
     const out = await list("/help/glossary");
