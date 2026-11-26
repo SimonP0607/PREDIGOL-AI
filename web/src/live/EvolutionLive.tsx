@@ -24,6 +24,7 @@ import { v1 } from "@/lib/api/v1/client";
 import { live } from "@/lib/api/v1/queries";
 import type { Hypothesis, HypothesisDecision, HypothesisTarget } from "@/lib/api/v1/types_ai";
 import type { EvolutionDashboard } from "@/lib/api/v1/types_ai_layer";
+import { scoreText } from "./evolutionDue";
 import { DayInput, Note, NoteCard, ProposalCard, Stat, StatGrid } from "./AiBits";
 import { CodePromotionsPanel } from "./CodePromotionsPanel";
 import {
@@ -254,7 +255,7 @@ function Errors({ day }: { day: string }) {
             >
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="font-medium">{e.match}</span>
-                {e.score ? <span className="numeric">{e.score.join("–")}</span> : null}
+                {scoreText(e.score) ? <span className="numeric">{scoreText(e.score)}</span> : null}
                 {e.decision ? (
                   <StatusBadge tone={DECISION_TONE[e.decision]}>
                     {t(`ai.layer.decision.${e.decision}`)}
