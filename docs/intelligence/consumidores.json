@@ -37,7 +37,7 @@
    "sin_pruebas": 15
   },
   "chronicle_v4": {
-   "archivos": 35,
+   "archivos": 36,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/chronicle_stat_check.py",
@@ -45,6 +45,7 @@
     "backend/scripts/intel_baseline.sql",
     "backend/src/fbi/ai/capability_budget.py",
     "backend/src/fbi/ai/outputs.py",
+    "backend/src/fbi/ai/value_sheet_readers.py",
     "backend/src/fbi/api/contracts/intelligence/match_v2.py",
     "backend/src/fbi/api/routers/intelligence.py",
     "backend/src/fbi/api/services/intelligence_console.py",
@@ -70,7 +71,7 @@
    ],
    "etiqueta": "crónica única (chronicle-v4)",
    "paquetes": {
-    "ai": 2,
+    "ai": 3,
     "api": 4,
     "apps": 1,
     "chronicle": 12,
@@ -79,13 +80,13 @@
     "scripts": 3
    },
    "por_clase": {
-    "módulo": 14,
+    "módulo": 15,
     "prueba": 11,
     "ruta": 4,
     "script": 3,
     "trabajo": 3
    },
-   "sin_pruebas": 24
+   "sin_pruebas": 25
   },
   "decision_families": {
    "archivos": 69,
@@ -412,7 +413,7 @@
    "sin_pruebas": 14
   },
   "evidence": {
-   "archivos": 173,
+   "archivos": 174,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -458,6 +459,7 @@
     "backend/src/fbi/ai/text.py",
     "backend/src/fbi/ai/unified_readers.py",
     "backend/src/fbi/ai/unified_research.py",
+    "backend/src/fbi/ai/value_sheet_readers.py",
     "backend/src/fbi/api/contracts/ai_research.py",
     "backend/src/fbi/api/contracts/intelligence/match.py",
     "backend/src/fbi/api/contracts/intelligence/registry.py",
@@ -525,7 +527,7 @@
    ],
    "etiqueta": "almacén de evidencia: ai.evidence",
    "paquetes": {
-    "ai": 39,
+    "ai": 40,
     "api": 17,
     "chronicle": 4,
     "decision": 1,
@@ -549,14 +551,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 78,
+    "módulo": 79,
     "prueba": 70,
     "ruta": 17,
     "script": 5,
     "trabajo": 2,
     "web": 1
    },
-   "sin_pruebas": 103
+   "sin_pruebas": 104
   },
   "extract_v1": {
    "archivos": 23,
