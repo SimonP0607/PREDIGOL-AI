@@ -3,7 +3,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CompetitionSummary, MatchSummary } from "@/lib/api/v1/types";
 import type { PlayerSummary, TableRow } from "@/lib/api/v1/types_center";
-import { setLocale } from "@/lib/i18n";
+import { setLocale, t } from "@/lib/i18n";
 import {
   ageOf,
   countryName,
@@ -14,7 +14,7 @@ import {
   squadGroups,
   teamLabel,
 } from "./model";
-import { byCountry, byRegion, NATION_SHORTCUTS } from "./TeamsPage";
+import { byCountry, byRegion, NATION_SHORTCUTS, nationOf } from "./TeamsPage";
 import { REGIONS } from "@/product/competitions/region";
 import { t as tc } from "@/product/competitions/text";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -193,5 +193,30 @@ describe("Equipos · las palabras de las regiones (26-nov-2026)", () => {
     };
     walk(join(import.meta.dir, "..", ".."));
     expect(bad).toEqual([]);
+  });
+});
+
+describe("Equipos · selecciones con escudo y título de la lista por región (UX-249)", () => {
+  const team = (id: number, name: string, country: string | null) =>
+    ({ id, name, country, logo_url: `https://x/${id}.png` }) as never;
+
+  test("la selección es el equipo que se llama como su país, no un club que contiene la palabra", () => {
+    const answers = [
+      team(1, "Colombia U20", "Colombia"),
+      team(2, "Deportivo Colombia", "Colombia"),
+      team(3, "Colombia", "Colombia"),
+    ];
+    expect(nationOf(answers, "Colombia")?.id).toBe(3);
+    expect(nationOf(answers, "colombia ")?.id).toBe(3);
+  });
+
+  test("sin respuesta o sin selección, ninguna: no se inventa un escudo", () => {
+    expect(nationOf([], "Brazil")).toBeNull();
+    expect(nationOf([team(2, "Brazil FC", "Brazil")], "Brazil")).toBeNull();
+  });
+
+  test("cada atajo es un país conocido y el título de la lista nombra región y país", () => {
+    expect(NATION_SHORTCUTS.length).toBe(8);
+    expect(t("profiles.teams.competitions")).toMatch(/región y país|region and country/i);
   });
 });

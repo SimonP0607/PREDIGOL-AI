@@ -12,7 +12,7 @@ import { ChevronRight, Search, Star } from "lucide-react";
 import { fieldVariants } from "@/components/ui/field";
 import { TeamLogo, TeamName } from "@/components/football/Logos";
 import { live } from "@/lib/api/v1/queries";
-import type { CompetitionSummary } from "@/lib/api/v1/types";
+import type { CompetitionSummary, TeamSummary } from "@/lib/api/v1/types";
 import { useAuth, usePmReaderSwitches } from "@/lib/auth/AuthProvider";
 import { intlTag, t } from "@/lib/i18n";
 import { useCountryAliases } from "@/lib/i18n/useCountryAliases";
@@ -59,6 +59,15 @@ export const NATION_SHORTCUTS = [
   "Netherlands",
   "South Africa",
 ] as const;
+
+/**
+ * The national side a shortcut stands for among the answers of the search: the team named after that country (the provider's
+ * English name), never a club that merely contains the word. None when the search has not answered or knows no such side.
+ */
+export function nationOf(results: readonly TeamSummary[], english: string): TeamSummary | null {
+  const want = english.trim().toLowerCase();
+  return results.find((r) => isNation(r) && r.name.trim().toLowerCase() === want) ?? null;
+}
 
 /** The competitions by country, the reader's own country (Colombia) first, then alphabetical. */
 export function byCountry(list: readonly CompetitionSummary[]): CountryGroup[] {
@@ -122,6 +131,10 @@ export function TeamsPage() {
     aliased.map((a) => a.data?.data ?? []),
     aliases,
   );
+  // «Selecciones»: each shortcut asks the same search the page already has (GET /teams?q) for its shield and its profile
+  const nationQueries = useQueries({
+    queries: NATION_SHORTCUTS.map((en) => ({ ...live.teamSearch(en), enabled: open })),
+  });
   const comps = useQuery({ ...live.competitions, enabled: open });
   const groups = useMemo(() => byCountry(comps.data?.data ?? []), [comps.data]);
   const regions = useMemo(() => byRegion(groups), [groups]);
@@ -247,19 +260,42 @@ export function TeamsPage() {
         <h2 id="teams-nations" className="text-title">
           {t("profiles.teams.nations")}
         </h2>
-        <ul className="flex flex-wrap gap-2">
-          {NATION_SHORTCUTS.map((en) => {
+        <ul
+          className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4"
+          data-testid="teams-nations-grid"
+        >
+          {NATION_SHORTCUTS.map((en, i) => {
             const label = countryName(en) ?? en;
+            const team = nationOf(nationQueries[i]?.data?.data ?? [], en);
+            const card =
+              "card-surface flex h-full min-h-[5.5rem] flex-col items-center justify-center gap-1.5 rounded-card p-3 text-center hover:bg-elevated";
             return (
-              <li key={en}>
-                <button
-                  type="button"
-                  onClick={() => setQ(label)}
-                  data-testid="teams-nation"
-                  className="tap-y relative inline-flex min-h-11 items-center rounded-full border border-border bg-elevated px-3.5 text-sm font-semibold text-foreground-soft hover:text-foreground"
-                >
-                  {label}
-                </button>
+              <li key={en} className="min-w-0">
+                {team ? (
+                  <Link
+                    to="/nations/$teamId"
+                    params={{ teamId: String(team.id) }}
+                    data-testid="teams-nation"
+                    className={card}
+                  >
+                    <TeamLogo src={team.logo_url} name={label} size={36} />
+                    <span className="line-clamp-2 max-w-full break-words text-sm font-semibold leading-tight">
+                      {label}
+                    </span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setQ(label)}
+                    data-testid="teams-nation"
+                    className={cn(card, "w-full")}
+                  >
+                    <TeamLogo src={null} name={label} size={36} />
+                    <span className="line-clamp-2 max-w-full break-words text-sm font-semibold leading-tight">
+                      {label}
+                    </span>
+                  </button>
+                )}
               </li>
             );
           })}
