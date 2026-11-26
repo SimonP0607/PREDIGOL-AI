@@ -54,6 +54,8 @@ from fbi.api.contracts.intelligence.console import (
     JointCeiling,
     LeakAudit,
     LeakRule,
+    Panel,
+    PanelStage,
     ReadFailure,
     Schema,
     Security,
@@ -71,6 +73,7 @@ from fbi.core.clock import now
 from fbi.core.config.picks import INTELLIGENCE, PicksSourceSettings
 from fbi.core.env import environment
 from fbi.intel import capabilities as registry
+from fbi.ops import flow as flow_book
 from fbi.ops import freshness
 from fbi.protosign import NOTICE as PROTOCOLS_NOTICE
 from fbi.protosign import VERSION as PROTOCOLS_VERSION
@@ -490,12 +493,22 @@ def cycle_of(readings: Iterable[freshness.Reading]) -> Cycle:
     return Cycle(rule_version=freshness.VERSION, stopped=sum(x.status == "parada" for x in stages), stages=stages)
 
 
-def flow_of(readings: Iterable[freshness.Reading]) -> Flow:
-    return Flow(cycle=cycle_of(readings))
+def panel_of(stages: Iterable[flow_book.StageFlow], unmapped: Iterable[str]) -> Panel:
+    """The eleven stages of the book's reading (``fbi.ops.flow``) in the contract's words."""
+    return Panel(rule_version=flow_book.VERSION, unmapped_jobs=list(unmapped), stages=[
+        PanelStage(stage=x.stage, state=x.state, reason=x.reason, last_run_at=_or_missing(x.last_run_at), jobs=x.jobs, runs=x.runs,
+                   completed=x.completed, partial=x.partial, failed=x.failed, aborted=x.aborted, interrupted=x.interrupted, stale=x.stale,
+                   errors=x.errors, worst_job=_or_missing(x.worst_job)) for x in stages])
+
+
+def flow_of(readings: Iterable[freshness.Reading], panel: Panel | None = None) -> Flow:
+    return Flow(cycle=cycle_of(readings), panel=panel)
 
 
 def flow(conn: Conn, at: datetime) -> Flow:
-    return flow_of(freshness.read_all(conn, at=at))
+    with conn.transaction():
+        stages, unmapped = flow_book.read(conn, at=at)
+    return flow_of(freshness.read_all(conn, at=at), panel_of(stages, unmapped))
 
 
 # ── the console ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -518,6 +531,29 @@ def console(conn: Conn) -> Envelope[ConsoleContract]:
     return ok(build(conn, at=now()))
 
 
-__all__ = ["ALERT_QUEUE", "CONSOLE_RELATIONS", "FAMILY_MODES", "NEWS_ENGINE", "SPECS", "STATE_WORDS", "attempt", "build", "capabilities_of",
-           "clear_cache", "code_head", "console", "costs_of", "cycle_of", "flow", "flow_of", "gates_of", "leak_audit_of", "protocols", "protocols_of", "schema_of", "switch_words",
-           "worker_word"]
+__all__ = [
+    "ALERT_QUEUE",
+    "CONSOLE_RELATIONS",
+    "FAMILY_MODES",
+    "NEWS_ENGINE",
+    "SPECS",
+    "STATE_WORDS",
+    "attempt",
+    "build",
+    "capabilities_of",
+    "clear_cache",
+    "code_head",
+    "console",
+    "costs_of",
+    "cycle_of",
+    "flow",
+    "flow_of",
+    "gates_of",
+    "leak_audit_of",
+    "panel_of",
+    "protocols",
+    "protocols_of",
+    "schema_of",
+    "switch_words",
+    "worker_word",
+]

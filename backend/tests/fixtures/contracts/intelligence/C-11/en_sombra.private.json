@@ -1,6 +1,6 @@
 {
   "contract": "C-11",
-  "contract_version": "1.2.0",
+  "contract_version": "1.3.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T16:42:00Z",
@@ -1407,6 +1407,209 @@
             "missing_reason": "sin_datos"
           }
         }
+      ]
+    },
+    "panel": {
+      "rule_version": "flow-v1",
+      "window_hours": 24,
+      "stages": [
+        {
+          "stage": "sources",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 3,
+          "runs": 108,
+          "completed": 108,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "ingest",
+          "state": "error",
+          "reason": "ultima_abortada",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 11,
+          "completed": 7,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 3,
+          "interrupted": 1,
+          "stale": 0,
+          "errors": 4,
+          "worst_job": "period_backfill"
+        },
+        {
+          "stage": "validation",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "models",
+          "state": "late",
+          "reason": "fallos_en_24h",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 14,
+          "completed": 13,
+          "partial": 0,
+          "failed": 1,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 1,
+          "worst_job": "elo_refresh"
+        },
+        {
+          "stage": "calibration",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 7,
+          "completed": 7,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "value",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 96,
+          "completed": 96,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "intelligence",
+          "state": "late",
+          "reason": "parciales_en_24h",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 46,
+          "completed": 37,
+          "partial": 9,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": "chronicle_v4"
+        },
+        {
+          "stage": "selection",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "publication",
+          "state": "closed",
+          "reason": "cerrada_por_decision",
+          "last_run_at": {
+            "missing_reason": "sin_datos"
+          },
+          "jobs": 0,
+          "runs": 0,
+          "completed": 0,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "settlement",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "learning",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 25,
+          "completed": 25,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        }
+      ],
+      "unmapped_jobs": [
+        "an_unclaimed_job"
       ]
     }
   },
