@@ -124,8 +124,10 @@ def test_the_hourly_check_books_a_run_with_the_error_naming_the_stopped_stage_an
     ledger = psycopg.connect(migrated_database, autocommit=True)
 
     def last() -> tuple[Any, ...]:
-        return ledger.execute("SELECT status, errors, last_error, rows_written FROM raw.ingestion_runs WHERE job_type = 'stall_check' "
-                              "ORDER BY id DESC LIMIT 1").fetchone()
+        row = ledger.execute("SELECT status, errors, last_error, rows_written FROM raw.ingestion_runs WHERE job_type = 'stall_check' "
+                             "ORDER BY id DESC LIMIT 1").fetchone()
+        assert row is not None
+        return tuple(row)
 
     ledger.execute("DELETE FROM raw.ingestion_runs WHERE job_type = 'stall_check'")
     try:
