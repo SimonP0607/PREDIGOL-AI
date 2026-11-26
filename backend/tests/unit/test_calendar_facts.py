@@ -1,4 +1,4 @@
-"""RP-4.3: rest, congestion and the next match of each side as calculated facts (``fbi.competitions.calendar_facts``). The calendars are built by hand, so every
+"""RP-4.3: rest, congestion and the next match of each side as calculated facts (``fbi.ai.calendar_facts``). The calendars are built by hand, so every
 number is known: the rest counts every competition, the 14 days count the matches outside what PrediGol follows, a calendar that is not whole says so and its numbers
 become «a lo sumo» and «al menos», a side with no previous match has no fact, and no fact judges the condition of a team. The database side is
 ``tests/integration/test_calendar_facts.py``."""
@@ -8,9 +8,9 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime, timedelta
 
+from fbi.ai import calendar_facts as cf
 from fbi.ai import factor_schema
-from fbi.competitions import calendar_facts as cf
-from fbi.competitions import stakes_facts as sf
+from fbi.ai import stakes_facts as sf
 from fbi.competitions import team_calendar as tc
 
 AT = datetime(2026, 11, 26, 12, tzinfo=UTC)

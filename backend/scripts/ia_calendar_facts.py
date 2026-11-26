@@ -19,7 +19,7 @@ from typing import Any
 
 import psycopg
 
-from fbi.competitions import calendar_facts as cf
+from fbi.ai import calendar_facts as cf
 
 OPTIONS = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=90000"
 

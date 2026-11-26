@@ -13,7 +13,7 @@ import pytest
 from psycopg.types.json import Jsonb
 
 from fbi.ai import factor_schema
-from fbi.competitions import stakes_facts as sf
+from fbi.ai import stakes_facts as sf
 
 from .conftest import Seed
 

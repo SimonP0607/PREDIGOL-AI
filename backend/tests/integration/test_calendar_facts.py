@@ -10,7 +10,7 @@ from typing import Any
 import psycopg
 import pytest
 
-from fbi.competitions import calendar_facts as cf
+from fbi.ai import calendar_facts as cf
 
 from .conftest import Seed
 
