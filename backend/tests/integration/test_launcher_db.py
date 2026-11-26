@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -42,7 +43,14 @@ def test_one_launcher_at_a_time(db: Any) -> None:
         assert launcher.try_lock(first) is True
         assert launcher.try_lock(second) is False
         first.close()
-        assert launcher.try_lock(second) is True, "the lock dies with its connection"
+        # The server lets go of a session lock when it has torn the closed session down, a moment after the client closes: wait for it.
+        freed = False
+        for _ in range(50):
+            if launcher.try_lock(second):
+                freed = True
+                break
+            time.sleep(0.1)
+        assert freed, "the lock dies with its connection"
     finally:
         second.close()
 
