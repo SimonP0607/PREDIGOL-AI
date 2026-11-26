@@ -83,8 +83,12 @@ OVERLAP: Final = 0.5
 METRICS: Final = ("calibration", "vs_close", "clv")
 DIMENSIONS: Final = ("market", "market_line", "selection", "model", "calibration_role", "odds_band", "context", "match_type", "competition", "team",
                      "coach", "referee")
+GROUPS: Final = ("reject_reason", "market_distance", "competition_tier", "searched", "lineups", "news")
+"""The dimensions of the groups of decisions of RP-8.5 (``fbi.research.decision_groups``) that the 12 of the search do not have: why the decision was rejected,
+how far from the market's probability it was, the level of the competition, whether a web search was done, whether the line-ups were confirmed and whether a
+piece of news was confirmed. A search may be asked for them (``dimensions=``); the default search is the 12 of ``DIMENSIONS`` and is not changed."""
 STANDS_FOR: Final = ("competition", "team", "referee", "coach", "market", "market_line", "selection", "model", "calibration_role", "odds_band", "context",
-                     "match_type")
+                     "match_type", *GROUPS)
 """The dimensions by how much their name tells a reader. When two groups are made of the very same rows (a competition that is the only one of its type),
 the one of the dimension that comes first in this order is the one the search tests and the report names; the others are said to be the same rows."""
 STRUCTURAL: Final = ("market", "market_line", "selection", "odds_band")
@@ -492,7 +496,7 @@ def search(rows: Sequence[Obs], *, labels: Mapping[tuple[str, str], str] | None 
         if metric not in METRICS:
             raise ValueError(f"{metric!r} is not a measure of the search")
     for dimension in dimensions:
-        if dimension not in DIMENSIONS:
+        if dimension not in DIMENSIONS and dimension not in GROUPS:
             raise ValueError(f"{dimension!r} is not a dimension of the search")
     kickoffs = [r.kickoff_at.timestamp() for r in rows]
     split = (min(kickoffs) + max(kickoffs)) / 2.0 if kickoffs else 0.0
@@ -720,7 +724,8 @@ def run(conn: psycopg.Connection[Any], *, at: datetime, days: int = WINDOW_DAYS,
 DIMENSION_ES: Final = {
     "market": "Mercado", "market_line": "Mercado y línea", "selection": "Selección", "model": "Modelo", "calibration_role": "Calibrador",
     "odds_band": "Rango de cuota", "context": "Contexto", "match_type": "Tipo de partido", "competition": "Competición", "team": "Equipo",
-    "coach": "Entrenador", "referee": "Árbitro",
+    "coach": "Entrenador", "referee": "Árbitro", "reject_reason": "Motivo de rechazo", "market_distance": "Distancia al mercado",
+    "competition_tier": "Nivel de competición", "searched": "Búsqueda web", "lineups": "Alineación", "news": "Noticia",
 }
 MEASURE_ES: Final = {"calibration": "calibración", "vs_close": "frente al cierre", "clv": "valor de cierre (CLV)"}
 TARGET: Final = {"calibration": "models", "vs_close": "models", "clv": "pick_engine"}
@@ -778,7 +783,7 @@ def _difference(f: Mapping[str, Any]) -> str:
     return f"{100 * f['delta']:+.1f} puntos" if f["metric"] == "clv" else f"{f['delta']:+.3f}"
 
 
-def triage(report: Mapping[str, Any], limit: int = MAX_PROPOSALS) -> tuple[list[Mapping[str, Any]], list[tuple[Mapping[str, Any], str]]]:
+def triage(report: Mapping[str, Any], limit: int = MAX_PROPOSALS, *, only_surviving: bool = False) -> tuple[list[Mapping[str, Any]], list[tuple[Mapping[str, Any], str]]]:
     """Which findings of a search become proposals, the largest ``z`` first, and why each of the others that repeat in both halves of the window does not:
     it is DESCRIPTIVE (how the price is built), another finding of the same dimension and measure is larger (the groups of a dimension are each other's
     rest: one tells what the others tell), it shares most of its rows with a larger finding, or the weekly limit is reached. What does not repeat is
@@ -792,6 +797,8 @@ def triage(report: Mapping[str, Any], limit: int = MAX_PROPOSALS) -> tuple[list[
             continue
         if f["descriptive"]:
             left.append((f, "descriptive: how the price is built"))
+        elif only_surviving and not f["survives_correction"]:
+            left.append((f, "does not survive the correction for all the comparisons"))
         elif (f["metric"], f["dimension"]) in seen:
             left.append((f, "a larger finding in the same dimension says it already"))
         elif any(j in taken for j in f["overlaps"]):
@@ -805,12 +812,12 @@ def triage(report: Mapping[str, Any], limit: int = MAX_PROPOSALS) -> tuple[list[
     return chosen, left
 
 
-def proposals(report: Mapping[str, Any], *, limit: int = MAX_PROPOSALS) -> list[Proposal]:
+def proposals(report: Mapping[str, Any], *, limit: int = MAX_PROPOSALS, only_surviving: bool = False) -> list[Proposal]:
     """The hypotheses a search leaves for the owner (see ``triage``). Each says how many comparisons the search made and how many would reach the bar by
     chance, because that is what a reader needs to weigh it; a finding is a question for an experiment, never a rule."""
     tests, expected = int(report["tests"]), float(report["expected_by_chance"])
     out: list[Proposal] = []
-    for f in triage(report, limit)[0]:
+    for f in triage(report, limit, only_surviving=only_surviving)[0]:
         survives = "; sigue siendo significativa corrigiendo por todas las comparaciones" if f["survives_correction"] else ""
         inside = " El CLV se compara dentro del mismo mercado y línea, rango de cuota y antelación de la decisión." if f["within_strata"] else ""
         rationale = (f"En {f['matches']} partidos ({f['n']} decisiones), {_figures(f)}: diferencia {_difference(f)}, z {f['z']:.1f}{survives}. "

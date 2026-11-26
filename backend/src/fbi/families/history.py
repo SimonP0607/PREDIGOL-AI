@@ -108,6 +108,14 @@ def latest_kickoff(cutoff: datetime) -> datetime:
     return cutoff - OUTCOME_KNOWN_AFTER
 
 
+def count_complete(conn: psycopg.Connection[Any], measures: tuple[str, ...]) -> int:
+    """How many finished matches of the followed competitions have EVERY measure in ``measures`` complete (a light count: nothing is returned but the number)."""
+    stats = any(needs_corroboration(m) for m in measures)
+    where = "o.is_tracked AND " + " AND ".join(complete_condition(m) for m in measures)
+    row = conn.execute(f"SELECT count(*) FROM market.fixture_outcomes o {STATS_JOIN if stats else ''} WHERE {where}").fetchone()
+    return 0 if row is None else int(row[0])
+
+
 def load(conn: psycopg.Connection[Any], measure: str, *, since: datetime, cutoff: datetime, use_neutral: bool = False,
          with_referee: bool = False) -> dict[int, list[Match]]:
     """The finished matches of the followed competitions with a kick-off in ``[since, cutoff - OUTCOME_KNOWN_AFTER]``, by competition.

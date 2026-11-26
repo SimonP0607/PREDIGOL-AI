@@ -143,7 +143,7 @@ def test_the_kind_of_bet_of_a_row_is_its_line_its_odds_band_and_its_lead_time() 
     assert ps.stratum(row(3, market_line=("AH -0.5",), odds_band=("2.00-2.49",), lead=0.2)) != ps.stratum(row(3, market_line=("AH -0.5",),
                                                                                                           odds_band=("2.00-2.49",), lead=5.0))
     assert ps.STRATA == ("market_line", "odds_band", "lead")
-    assert sorted(ps.STANDS_FOR) == sorted(ps.DIMENSIONS), "every dimension has its place in the order that says which of two identical groups the search keeps"
+    assert sorted(ps.STANDS_FOR) == sorted((*ps.DIMENSIONS, *ps.GROUPS)), "every dimension has its place in the order that says which of two identical groups the search keeps"
 
 
 def test_which_groups_are_read_inside_the_kind_of_bet_and_which_only_describe_it() -> None:
@@ -995,7 +995,7 @@ def test_two_findings_that_share_most_of_their_rows_are_proposed_as_one() -> Non
 
 
 def test_every_dimension_has_its_name_in_the_hypotheses_and_every_measure_its_target() -> None:
-    assert set(ps.DIMENSION_ES) == set(ps.DIMENSIONS) and set(ps.TARGET) == set(ps.METRICS)
+    assert set(ps.DIMENSION_ES) == {*ps.DIMENSIONS, *ps.GROUPS} and set(ps.TARGET) == set(ps.METRICS)
     from fbi.research.evolution import TARGETS
     assert set(ps.TARGET.values()) <= set(TARGETS)
     for dimension in ps.DIMENSIONS:
