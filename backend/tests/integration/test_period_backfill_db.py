@@ -100,3 +100,34 @@ async def test_a_closed_competition_is_not_in_the_plan_nor_asked_again(conn: psy
     plan = pb.plan(conn, at=NOW)
     assert plan["left"] == 0 and plan["closed_competitions"] == 1
     assert ps.targets(conn, since=ps.FILL_SINCE, until=NOW - ps.SETTLE, limit=10, skip=ps.closed_competitions(ps.competition_state(conn))) == []
+
+
+def test_the_night_counts_what_every_start_asked_since_2230(conn: psycopg.Connection) -> None:  # noqa: F811
+    """OPS-027: the night's cap is the sum of the asks of its starts (a restart, a second slot), not what one process asked."""
+    _, _, fids = league(conn, 26, matches=3, start=OLD)
+    night = pb.night_start(NOW)
+    for fid, when in zip(fids, (night - timedelta(minutes=1), night + timedelta(minutes=5), night + timedelta(hours=2)), strict=True):
+        conn.execute("INSERT INTO core.fixture_period_asks (fixture_id, channel, asked_at, outcome, filled, sums_ok, sums_off) "
+                     "VALUES (%s, 'backfill', %s, 'with_halves', '{}', '{}', '{}')", (fid, when))
+    conn.commit()
+    assert ps.asked_since(conn, since=night, channel="backfill") == 2
+    assert ps.asked_since(conn, since=night, channel="closing") == 0
+    assert pb.night_room(2, 5_000) == 4_998
+
+
+def test_the_report_gives_the_success_by_competition(conn: psycopg.Connection) -> None:  # noqa: F811
+    _, _, fids = league(conn, 27, matches=4, start=OLD)
+    for fid, outcome in zip(fids, ("with_halves", "with_halves", "with_halves", "empty"), strict=True):
+        conn.execute("INSERT INTO core.fixture_period_asks (fixture_id, channel, asked_at, outcome, filled, sums_ok, sums_off) "
+                     "VALUES (%s, 'backfill', %s, %s, '{}', '{}', '{}')", (fid, NOW, outcome))
+    conn.commit()
+    out = pb.by_competition(conn, at=NOW)
+    row = next(r for r in out["competitions"] if r["asked"] == 4)
+    assert (row["with_halves"], row["empty"], row["success_pct"]) == (3, 1, 75.0)
+    assert out["asked"] >= 4 and out["success_pct"] is not None
+
+
+def test_the_plan_gives_the_finish_date(conn: psycopg.Connection) -> None:  # noqa: F811
+    league(conn, 28, matches=3, start=OLD)
+    plan = pb.plan(conn, at=NOW)
+    assert plan["day_max"] == pb.DAY_MAX and plan["finish"]["nights"] == 1 and plan["finish"]["ends_on"] is not None

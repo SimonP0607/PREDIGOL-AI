@@ -64,6 +64,14 @@ DAY_MAX: Final = 400
 QUIET_START: Final = time(3, 30)
 QUIET_END: Final = time(5, 0)
 """No pass inside the window of the server's copies (PM-05-02's ficha: 03:50 to 05:00; the pass keeps 20 minutes more away)."""
+FILL_HEADROOM_MIB: Final = 128
+"""The memory the worker's container must have free before the night's fill starts (OPS-027): the process peaked at 61.7 MiB in the three
+passes measured on 25-nov-2026 (300, 600 and 2,000 requests), so twice that. The 384 MiB of before was the process's address-space cap, not
+what it uses, and it skipped the night of 25-nov (134.6 MiB free). If the container is short, the kernel kills this process first
+(``oom_score_adj`` 1000), never the worker."""
+FILL_WINDOW_START: Final = time(22, 30)
+FILL_STOP_AT: Final = time(3, 25)
+"""The fill's window (UTC), the same as ``scripts.period_backfill``'s: the scheduler asks it to start a pass after a restart of the worker."""
 FILL_SINCE: Final = datetime(2024, 1, 1, tzinfo=UTC)
 """The provider gives the halves from the 2024 season (``fbi.providers.api_football.integration``)."""
 
@@ -80,6 +88,12 @@ def fill_mode(env: Mapping[str, str] | None = None) -> str:
     """``on`` only when ``FBI_STATS_BY_PERIOD_FILL`` says so (the night-time fill of PM-05-02, off by default)."""
     e = os.environ if env is None else env
     return "on" if e.get(BACKFILL_SWITCH, "off").strip().lower() in ("1", "on", "true", "yes") else "off"
+
+
+def fill_window_open(at: datetime) -> bool:
+    """True from 22:30 to 03:25 UTC (the fill's window, across midnight)."""
+    t = at.astimezone(UTC).time()
+    return t >= FILL_WINDOW_START or t < FILL_STOP_AT
 
 
 def in_quiet_window(at: datetime) -> bool:
@@ -261,6 +275,14 @@ def asked_today(conn: psycopg.Connection, *, at: datetime, channel: str) -> int:
     day = at.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     with conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM core.fixture_period_asks WHERE channel = %s AND asked_at >= %s", (channel, day))
+        row = cur.fetchone()
+    return int(row[0]) if row else 0
+
+
+def asked_since(conn: psycopg.Connection, *, since: datetime, channel: str) -> int:
+    """How many matches of ``channel`` were asked at or after ``since`` (OPS-027: the night's total, whichever start of the fill asked)."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM core.fixture_period_asks WHERE channel = %s AND asked_at >= %s", (channel, since))
         row = cur.fetchone()
     return int(row[0]) if row else 0
 
