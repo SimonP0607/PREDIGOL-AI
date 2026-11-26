@@ -96,6 +96,7 @@
     "nextNone": "Sin partido a la vista",
     "nations": "Selecciones",
     "nationsHelp": "Toca una selección para buscarla; también puedes escribir su nombre arriba.",
+    "world": "Internacional",
     "countries": "{n} países"
   },
   "teamMissing": "Este equipo no existe o no tiene datos."

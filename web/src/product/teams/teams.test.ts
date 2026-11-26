@@ -15,6 +15,10 @@ import {
   teamLabel,
 } from "./model";
 import { byCountry, byRegion, NATION_SHORTCUTS } from "./TeamsPage";
+import { REGIONS } from "@/product/competitions/region";
+import { t as tc } from "@/product/competitions/text";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 const m = (id: number, home: number, away: number, score: [number, number] | null) =>
   ({
@@ -160,5 +164,34 @@ describe("Equipos como portada (AP-E02)", () => {
     setLocale("en");
     expect(countryName("Spain")).toBe("Spain");
     setLocale("es");
+  });
+});
+
+describe("Equipos · las palabras de las regiones (26-nov-2026)", () => {
+  test("cada región y «Mundo» se traducen en es y en en, nunca se muestra la clave", () => {
+    for (const locale of ["es", "en"] as const) {
+      setLocale(locale);
+      for (const r of REGIONS) {
+        const key = `competitions.directory.region.${r}`;
+        expect(tc(key)).not.toBe(key);
+      }
+      expect(countryName("World")).toBe(locale === "es" ? "Internacional" : "International");
+    }
+    setLocale("es");
+  });
+
+  test("ningún módulo registra un catálogo con un `import` sin nombres (package.json dice sideEffects:false y el empaquetador lo descarta)", () => {
+    const bare = /^import\s+"@\/[^"]*";\s*$/m;
+    const bad: string[] = [];
+    const walk = (dir: string) => {
+      for (const f of readdirSync(dir)) {
+        const p = join(dir, f);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(f) && !/\.test\./.test(f) && bare.test(readFileSync(p, "utf8")))
+          bad.push(p);
+      }
+    };
+    walk(join(import.meta.dir, "..", ".."));
+    expect(bad).toEqual([]);
   });
 });
