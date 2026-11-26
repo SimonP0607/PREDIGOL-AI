@@ -15,6 +15,8 @@ import "@/components/analytics/evidenceText";
 import "@/components/analytics/stats/readText";
 import "@/admin/userText";
 import "@/admin/usageText";
+import "@/live/researchReasonText";
+import "@/product/picks/pickWhyText";
 import "@/admin/emailText";
 import "@/admin/helpGapsText";
 import "@/product/news/storyText";

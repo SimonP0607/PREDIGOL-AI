@@ -22,6 +22,7 @@ import type {
 } from "@/lib/api/v1/types_research";
 import { utcDateTime } from "./format";
 import { baselineLabel } from "./labels";
+import { reasonText } from "./researchReasonText";
 
 const ROLE_TONE: Record<ResearchRole, BadgeTone> = {
   CHAMPION: "brand",
@@ -93,7 +94,7 @@ function ModelsTable({ models }: { models: ResearchEntry[] }) {
                   className="max-w-[28rem] text-caption text-subtle-foreground"
                   title={m.role_reason ?? ""}
                 >
-                  {m.role_reason}
+                  {reasonText(m)}
                 </div>
               </TD>
               <TD>
@@ -141,7 +142,15 @@ function MarketsTable({ markets }: { markets: ResearchEntry[] }) {
           const key = m.name.split(":market:")[1] ?? m.name;
           return (
             <TRow key={m.experiment_id}>
-              <TD className="text-sm">{baselineLabel(key)}</TD>
+              <TD>
+                <div className="text-sm">{baselineLabel(key)}</div>
+                <div
+                  className="max-w-[28rem] text-caption text-subtle-foreground"
+                  title={m.role_reason ?? ""}
+                >
+                  {reasonText(m)}
+                </div>
+              </TD>
               <TD>
                 <RoleBadge role={m.role} />
               </TD>

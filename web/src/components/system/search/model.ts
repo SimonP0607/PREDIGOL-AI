@@ -38,10 +38,28 @@ export function cleanQuery(raw: string): string {
 
 export function groupHits<H extends { type: SearchGroup }>(
   hits: readonly H[],
+  /** The group that leads when what was typed is exactly its name («España» is the national team, not a club). */
+  lead?: SearchGroup,
 ): { group: SearchGroup; hits: H[] }[] {
-  return GROUP_ORDER.map((group) => ({ group, hits: hits.filter((h) => h.type === group) })).filter(
-    (g) => g.hits.length > 0,
-  );
+  const order = lead ? [lead, ...GROUP_ORDER.filter((g) => g !== lead)] : GROUP_ORDER;
+  return order
+    .map((group) => ({ group, hits: hits.filter((h) => h.type === group) }))
+    .filter((g) => g.hits.length > 0);
+}
+
+/** Whether the national teams lead: the first entry is the country itself (see `entriesOfV2`). */
+export function leadOf(hits: readonly { type: SearchGroup }[]): SearchGroup | undefined {
+  return hits[0]?.type === "national_team" ? "national_team" : undefined;
+}
+
+/** A name without accents, case or extra spaces, to compare what was typed with what matched. */
+function plainName(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** What of the profiles the reader has open: a club's, a national team's and a player's (FBI_PROFILES), a competition's page. */
@@ -58,9 +76,17 @@ export function entriesOfV2(answer: SearchV2, opened: Opened): Entry[] {
   const g = answer.groups;
   const of = (type: SearchGroup, hits: SearchV2["groups"]["teams"]["items"]): Entry[] =>
     hits.map((h) => ({ type, id: h.id, label: h.label, sublabel: h.sublabel }));
+  // C-10 1.1: a national team whose Spanish (or English) name is exactly what was typed is the country itself («España» is
+  // Spain, not «Real Espana»), and leads the list; the rest keep the maqueta's order
+  const typed = plainName(answer.normalized || answer.query);
+  const itself = g.national_teams.items.filter(
+    (h) => h.alias_type === "localized" && typed.length > 0 && plainName(h.matched ?? "") === typed,
+  );
+  const others = g.national_teams.items.filter((h) => !itself.includes(h));
   return [
+    ...of("national_team", itself),
     ...of("team", g.teams.items),
-    ...of("national_team", g.national_teams.items),
+    ...of("national_team", others),
     ...(opened.profiles ? of("player", g.players.items) : []),
     ...of("competition", g.competitions.items),
     ...g.fixtures.items.map((f): Entry => ({
