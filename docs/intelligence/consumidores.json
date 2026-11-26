@@ -415,7 +415,7 @@
    "sin_pruebas": 14
   },
   "evidence": {
-   "archivos": 178,
+   "archivos": 180,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -483,6 +483,7 @@
     "backend/src/fbi/chronicle/plan.py",
     "backend/src/fbi/chronicle/review.py",
     "backend/src/fbi/chronicle/writer.py",
+    "backend/src/fbi/competitions/calendar_facts.py",
     "backend/src/fbi/competitions/stakes_facts.py",
     "backend/src/fbi/decision/shadow.py",
     "backend/src/fbi/evalcycle/__init__.py",
@@ -533,7 +534,7 @@
     "ai": 40,
     "api": 17,
     "chronicle": 4,
-    "competitions": 1,
+    "competitions": 2,
     "decision": 1,
     "evalcycle": 3,
     "evalpass": 1,
@@ -555,14 +556,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 80,
-    "prueba": 73,
+    "módulo": 81,
+    "prueba": 74,
     "ruta": 17,
     "script": 5,
     "trabajo": 2,
     "web": 1
    },
-   "sin_pruebas": 105
+   "sin_pruebas": 106
   },
   "extract_v1": {
    "archivos": 23,
