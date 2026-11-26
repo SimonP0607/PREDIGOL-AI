@@ -33,7 +33,7 @@ def report(rows: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
     new_total = new_complete = old_total = old_with_all = 0
     for r in rows:
         n = int(r["n"])
-        category = factor_schema.category_of(r["status"], str(r["origin"]), r["source_tier"]) or "sin_categoria"
+        category = factor_schema.category_of(r["status"], str(r["origin"]), r["source_tier"], r.get("certainty")) or "sin_categoria"
         if r["fact_schema"] is not None:
             new_total += n
             new_complete += n if _has_all(r) else 0
