@@ -45,7 +45,7 @@ def test_the_last_hour_of_prices_makes_the_consensus_and_older_prices_do_not(db:
     close(pm, "F3", books[3], ("1.50", "5.00", "9.00"), 90)  # a book whose last price is older than the hour: out
     made = cc.run(db, at=NOW, days=5)
     assert made["rows"] > 0
-    row = db.execute("SELECT p_fair, n_bookmakers, minutes_to_ko, newest_minutes_to_ko FROM market.closing_consensus WHERE fixture_id = %s "
+    row = db.execute("SELECT p_fair, n_bookmakers, minutes_to_ko, newest_minutes_to_ko FROM market.near_close_consensus WHERE fixture_id = %s "
                      "AND selection = 'Home' AND devig_method = 'shin'", (pm.f["F3"],)).fetchone()
     assert row is not None
     assert (row[1], row[2], row[3]) == (3, 25, 10), "three books, the median of 10/25/55 and the nearest"
@@ -60,7 +60,7 @@ def test_a_match_with_two_books_has_no_consensus_and_does_not_hold_back_the_next
     for b, prices in zip(books[:3], PRICES, strict=True):
         close(pm, "F2", b, prices, 15)
     cc.run(db, at=NOW, days=5)
-    got = {int(r[0]) for r in db.execute("SELECT DISTINCT fixture_id FROM market.closing_consensus").fetchall()}
+    got = {int(r[0]) for r in db.execute("SELECT DISTINCT fixture_id FROM market.near_close_consensus").fetchall()}
     assert got == {pm.f["F2"]}
 
 

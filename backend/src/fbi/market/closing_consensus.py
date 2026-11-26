@@ -6,12 +6,16 @@ after the match (``market.final_prematch_odds``, a median of ~85 minutes before 
 This module builds the objective consensus of it - each bookmaker's LAST price, stamped in the last hour before kick-off, de-vigged per book and
 averaged by ``fbi.market.consensus`` (the one de-vig of the system) - and stores it beside the other one, never instead of it:
 
-    market.closing_consensus      per match / market / selection / line / method: the fair probability, how many books, and the minutes before
+    market.near_close_consensus      per match / market / selection / line / method: the fair probability, how many books, and the minutes before
                                   kick-off it stands for (the median of the books' stamps, and the nearest).
     intel.decision_real_close     per settled decision: ``clv_real`` = ``closing_value.clv(odds, p_fair)`` at that real close.
 
 The reference that was "the close" is renamed in the words of the screens "reference prior to the close" (``REFERENCE_PRIOR``); its numbers, its
 column names and its history are not touched. Nothing here is read before a match and no decision reads it: the real close does not exist then.
+
+NAMING. The table says ``near_close``, not ``closing``: the schema refuses an object that claims to be a closing line before the equivalence is shown
+(``tests/integration/test_near_close_invariants.py``), and the last price of each book stamped in the last hour is nearer the close than the other
+reference, not shown to BE it. The words of the plan, «cierre real», name what it is for; the stored names say what it is.
 
 A consensus of fewer than ``MIN_BOOKS`` books is not a consensus and is not stored (the same three as the families); a price is never guessed.
 ``run`` computes the matches of a window that have none yet (the backfill is the same call over a long window: it is idempotent); ``settle`` writes
@@ -53,7 +57,7 @@ FIXTURES_SQL: Final = """
 SELECT DISTINCT p.fixture_id
   FROM market.final_prematch_odds p
  WHERE p.fetched_at >= %(since)s AND p.fetched_at < %(until)s AND p.fixture_id > %(after)s AND p.minutes_to_ko <= %(window)s
-   AND NOT EXISTS (SELECT 1 FROM market.closing_consensus c WHERE c.fixture_id = p.fixture_id)
+   AND NOT EXISTS (SELECT 1 FROM market.near_close_consensus c WHERE c.fixture_id = p.fixture_id)
  ORDER BY p.fixture_id
  LIMIT %(limit)s
 """
@@ -66,7 +70,7 @@ SELECT p.fixture_id, p.bookmaker_id, p.market_key, p.selection, p.line, p.odds_d
 """
 
 INSERT_SQL: Final = (
-    "INSERT INTO market.closing_consensus (fixture_id, market_key, selection, line, devig_method, p_fair, n_bookmakers, minutes_to_ko, "
+    "INSERT INTO market.near_close_consensus (fixture_id, market_key, selection, line, devig_method, p_fair, n_bookmakers, minutes_to_ko, "
     "newest_minutes_to_ko, best_odds, version, computed_at) VALUES (%(fixture)s, %(market)s, %(selection)s, %(line)s, %(method)s, %(p)s, %(n)s, "
     "%(median)s, %(newest)s, %(best)s, %(version)s, %(at)s) ON CONFLICT DO NOTHING")
 
@@ -74,7 +78,7 @@ SETTLE_SQL: Final = """
 SELECT d.id, d.fixture_id, d.odds, c.p_fair, c.n_bookmakers, c.minutes_to_ko
   FROM intel.decision_outcomes o
   JOIN intel.decisions d ON d.id = o.decision_id
-  JOIN market.closing_consensus c ON c.fixture_id = d.fixture_id AND c.market_key = d.market_key AND c.selection = d.selection
+  JOIN market.near_close_consensus c ON c.fixture_id = d.fixture_id AND c.market_key = d.market_key AND c.selection = d.selection
    AND c.line = d.line AND c.devig_method = 'shin'
   LEFT JOIN intel.decision_real_close r ON r.decision_id = d.id
  WHERE r.decision_id IS NULL AND d.odds IS NOT NULL
@@ -98,7 +102,7 @@ class Stamped:
 
 @dataclass(frozen=True, slots=True)
 class Row:
-    """A closing consensus of one selection: what ``market.closing_consensus`` keeps."""
+    """A closing consensus of one selection: what ``market.near_close_consensus`` keeps."""
 
     fixture_id: int
     market_key: str
@@ -209,7 +213,7 @@ WITH priced AS (
      WHERE p.fetched_at >= %(since)s AND p.fetched_at < %(until)s GROUP BY p.fixture_id
 ), real AS (
     SELECT c.fixture_id, min(c.minutes_to_ko) AS median_min, min(c.newest_minutes_to_ko) AS newest_min, max(c.n_bookmakers) AS books
-      FROM market.closing_consensus c JOIN priced USING (fixture_id) WHERE c.devig_method = 'shin' GROUP BY c.fixture_id
+      FROM market.near_close_consensus c JOIN priced USING (fixture_id) WHERE c.devig_method = 'shin' GROUP BY c.fixture_id
 ), prior AS (
     SELECT m.fixture_id, extract(epoch FROM f.kickoff_at - max(m.as_of)) / 60 AS minutes
       FROM market.market_consensus m JOIN core.fixtures f ON f.id = m.fixture_id JOIN priced pr ON pr.fixture_id = m.fixture_id

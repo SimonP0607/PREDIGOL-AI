@@ -8,12 +8,15 @@ the match) is a median of ~85 minutes before kick-off and exists for most matche
 can be seen side by side; it replaces nothing and rewrites no row.
 
 WHAT CHANGES (additive: two new tables, no existing table is touched, ``lock_timeout`` 10 s)
-* ``market.closing_consensus``: the de-vigged consensus of the LAST price of each bookmaker, when it was stamped in the last hour before kick-off, per
+* ``market.near_close_consensus``: the de-vigged consensus of the LAST price of each bookmaker, when it was stamped in the last hour before kick-off, per
   match / market / selection / line / method, with the number of bookmakers and the minutes before kick-off it stands for. Written once.
 * ``intel.decision_real_close``: for each decision that was settled, the value of its price against that real close (``clv_real``, the same
   ``clv-v1`` formula) and how near kick-off it was. It is a table of its own and not two columns of ``intel.decision_outcomes`` because that table
   is append-only by trigger: a column added to it could never be filled for the decisions already settled, and the plan asks to backfill. Append-only
   by the same trigger (``intel.refuse_change``).
+
+The table is called ``near_close_consensus`` and not ``closing_*`` because the schema refuses an object that claims to be a closing line until the
+equivalence is shown (``test_near_close_invariants``): it is nearer the close than the other reference, not proven to be it.
 
 Nothing here is read before a match: the real close does not exist before it, and no decision, pick or model reads either table.
 
@@ -34,7 +37,7 @@ depends_on = None
 def upgrade() -> None:
     op.execute("SET LOCAL lock_timeout = '10s'")
     op.execute("""
-        CREATE TABLE market.closing_consensus (
+        CREATE TABLE market.near_close_consensus (
             fixture_id          BIGINT       NOT NULL REFERENCES core.fixtures(id) ON DELETE CASCADE,
             market_key          TEXT         NOT NULL REFERENCES market.markets(key),
             selection           TEXT         NOT NULL,
@@ -50,7 +53,7 @@ def upgrade() -> None:
             PRIMARY KEY (fixture_id, market_key, selection, line, devig_method)
         )""")
     op.execute("""
-        COMMENT ON TABLE market.closing_consensus IS
+        COMMENT ON TABLE market.near_close_consensus IS
           'The consensus of the real close: the last pre-match price of each bookmaker (market.final_prematch_odds) stamped in the last hour before
            kick-off, de-vigged and averaged. minutes_to_ko is the median of the books'' stamps, newest_minutes_to_ko the nearest. Evaluation only: it
            exists after the match, no decision may read it.'""")
@@ -68,7 +71,7 @@ def upgrade() -> None:
         )""")
     op.execute("""
         COMMENT ON TABLE intel.decision_real_close IS
-          'The value of a settled decision''s price against the consensus of the real close (market.closing_consensus, Shin): odds x p - 1, the
+          'The value of a settled decision''s price against the consensus of the real close (market.near_close_consensus, Shin): odds x p - 1, the
            clv-v1 formula. Beside intel.decision_outcomes.clv, which is measured against the last captured consensus; neither replaces the other.'""")
     op.execute("""
         CREATE TRIGGER decision_real_close_append_only BEFORE UPDATE OR DELETE ON intel.decision_real_close
@@ -78,4 +81,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute("SET LOCAL lock_timeout = '10s'")
     op.execute("DROP TABLE IF EXISTS intel.decision_real_close")
-    op.execute("DROP TABLE IF EXISTS market.closing_consensus")
+    op.execute("DROP TABLE IF EXISTS market.near_close_consensus")
