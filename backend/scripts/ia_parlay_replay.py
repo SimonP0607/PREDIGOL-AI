@@ -108,6 +108,9 @@ def render(r: dict[str, Any]) -> str:
         lines.append(f"  {name}: {m['n']} combinaciones; dicho {pct(m['said'])}, ocurrido {pct(m['came_in'])}, optimismo {pct(m['optimism'])}; {span}")
     for b in r["bands"]:
         lines.append(f"    banda {pct(b['from'])} a {pct(b['to'])}: {b['n']} combinaciones; dicho {pct(b['said'])}, ocurrido {pct(b['came_in'])}")
+    bound = r["within_bound"]
+    lines.append("  criterio de aceptación (optimismo de 2 puntos o menos, intervalo que contiene el cero), aplicado a la cifra del modelo: "
+                 + ("no se puede decidir (faltan combinaciones)" if bound is None else "CUMPLE" if bound else "NO CUMPLE"))
     lines.append("  " + r["note"])
     return "\n".join(lines) + "\n"
 

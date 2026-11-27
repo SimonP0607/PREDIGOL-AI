@@ -4,6 +4,7 @@
     python -m scripts.ia_parlays_v6 build [--dry-run]                        # one pass of parlay-v6 (needs FBI_PARLAY_V6=shadow)
     python -m scripts.ia_parlays_v6 preview --kind daily                     # what parlay-v6 would build now (read-only)
     python -m scripts.ia_parlays_v6 read --from 2026-11-20 --to 2026-11-30   # the parlays kept, their results and the calibration
+    python -m scripts.ia_parlays_v6 acceptance [--from 2026-11-27]            # the owner's criterion for the joint (``fbi.parlays.acceptance``) on the parlays of the window, per estimator
     python -m scripts.ia_parlays_v6 parity --days 14                         # AD-E05: the tracking against settle-v4 (read-only)
     python -m scripts.ia_parlays_v6 selection --fixture 123 --market OU --selection Over --line 2.5   # one selection, in plain words
 
@@ -22,6 +23,7 @@ from typing import Any
 import psycopg
 
 from fbi.core.clock import now
+from fbi.parlays import acceptance
 from fbi.tracking import parlay_v6 as v6
 from fbi.tracking import parlay_v6_shadow as v6_shadow
 from fbi.tracking import selections as tracking
@@ -40,6 +42,8 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("read")
     r.add_argument("--from", dest="date_from", required=True)
     r.add_argument("--to", dest="date_to", required=True)
+    a = sub.add_parser("acceptance")
+    a.add_argument("--from", dest="date_from", default=acceptance.FROZEN_ON.isoformat(), help="the first day of the window (never before the signature of the criterion)")
     q = sub.add_parser("parity")
     q.add_argument("--days", type=int, default=14)
     s = sub.add_parser("selection")
@@ -90,6 +94,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                     ap.error("a period is 1 to 93 days")
                 parlays = v6_shadow.read(conn, start=start, end=end)
                 out = {"parlays": parlays, "calibration": v6_shadow.calibration(parlays)}
+            elif args.command == "acceptance":
+                start = max(date.fromisoformat(args.date_from), acceptance.FROZEN_ON)
+                today = at.date()
+                parlays = []
+                for first in range((today - start).days // 90 + 1):
+                    block_start = start + timedelta(days=90 * first)
+                    parlays += v6_shadow.read(conn, start=block_start, end=min(today, block_start + timedelta(days=89)))
+                readings = acceptance.judge_all(parlays, since=start)
+                out = {"version": acceptance.VERSION, "protocol": acceptance.PROTOCOL.key, "since": start.isoformat(), "stated": acceptance.SAID,
+                       "estimators": {k: r.as_json() for k, r in readings.items()}, "opens_the_door": readings[acceptance.SAID].verdict == "cumple"}
             elif args.command == "parity":
                 out = tracking.parity(conn, start=at - timedelta(days=max(1, min(args.days, 62))), end=at)
             else:
