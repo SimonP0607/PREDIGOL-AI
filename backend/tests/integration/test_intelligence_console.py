@@ -96,6 +96,12 @@ def test_the_console_answers_c11_and_writes_nothing(db: psycopg.Connection[Any],
     assert security.schema_check.up_to_date and security.schema_check.missing_relations == []  # type: ignore[union-attr]
     assert security.gates.rule_holds and not any(g.approved for g in security.gates.items)  # type: ignore[union-attr]
     assert not hasattr(console.costs, "read_failed")
+    door = console.parlay_door
+    assert door is not None and not hasattr(door, "read_failed"), "the parlay door is read with the console"
+    assert door.can_publish is False and door.ready is False and door.conditions[-1].state == "solo_dueno"
+    states = {c.key: c.state for c in door.conditions}
+    assert states["historical_reliability"] == "no_evaluada" and states["prospective_reliability"] == "pendiente"
+    assert states["max_three_legs"] == "no_evaluada", "no parlay in the shadow to look at: not met by omission"
     assert console.news_engine.expected_piece == "AD-G01" and console.alert_queue.expected_piece == "AD-D08"
 
 
