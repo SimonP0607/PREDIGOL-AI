@@ -31,5 +31,5 @@ def test_the_experiment_registers_from_the_launcher_script_and_waits_for_the_mat
         state = exp_conditions.check(db, "EXP-E7", at=AT, model_code="code")
         assert (state.due, state.code, state.required) == (False, "sample", exp_e7.REQUIRED)
     finally:
-        for key in ("EXP-E1", "EXP-E3", "EXP-E7"):
+        for key in ("EXP-E1", "EXP-E3", "EXP-E6", "EXP-E7"):
             exp_conditions.unregister(key)
