@@ -7,10 +7,10 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 | Candidato | Destino | Archivos | Sin pruebas | Escriben | Rutas | Trabajos | Web | Scripts |
 |---|---|---|---|---|---|---|---|---|
 | decision-v1 (referencia estable) (`decision_v1`) | conservar | 123 | 70 | 0 | 10 | 3 | 1 | 9 |
-| decision-v2 en sombra (`decision_v2`) | consolidar | 98 | 56 | 1 | 8 | 6 | 0 | 1 |
+| decision-v2 en sombra (`decision_v2`) | consolidar | 100 | 57 | 1 | 8 | 6 | 0 | 2 |
 | decisiones de familias (decision-fam-v1) (`decision_families`) | consolidar | 69 | 36 | 2 | 7 | 1 | 5 | 1 |
 | ciclo de evaluación E1 a E4 (`eval_cycle`) | consolidar | 21 | 14 | 1 | 4 | 2 | 0 | 0 |
-| ciclo de estados de la selección (`lifecycle`) | consolidar | 23 | 15 | 1 | 4 | 1 | 0 | 1 |
+| ciclo de estados de la selección (`lifecycle`) | consolidar | 24 | 16 | 1 | 4 | 1 | 0 | 2 |
 | forecast-v1 (cifra por modelo) (`forecast_v1`) | consolidar | 69 | 35 | 1 | 10 | 0 | 0 | 7 |
 | forecast-v2 (cifra única) (`forecast_v2`) | conservar | 36 | 21 | 0 | 5 | 0 | 0 | 3 |
 | circuito de noticias: news.items (`news_items`) | consolidar | 31 | 20 | 2 | 2 | 1 | 1 | 2 |
@@ -35,7 +35,7 @@ Nadie la escribe por nombre de tabla en este mapa (puede ser una versión o un i
 
 ## decision-v2 en sombra (`decision_v2`) — consolidar
 
-Paquetes: `ai` (3), `api` (8), `apps` (1), `chronicle` (1), `decision` (10), `evalcycle` (5), `evalpass` (1), `evaluation` (1), `forecasting` (3), `intel` (2), `lifecycle` (3), `ops` (1), `plugins` (5), `protosign` (1), `research` (1), `scripts` (1), `shadowjobs` (5), `tracking` (2), `valuation` (2).
+Paquetes: `ai` (3), `api` (8), `apps` (1), `chronicle` (1), `decision` (10), `evalcycle` (5), `evalpass` (1), `evaluation` (1), `forecasting` (3), `intel` (2), `lifecycle` (3), `ops` (1), `plugins` (5), `protosign` (1), `research` (1), `scripts` (2), `shadowjobs` (5), `tracking` (2), `valuation` (2).
 
 Escriben: `backend/src/fbi/decision/shadow.py`.
 
@@ -53,7 +53,7 @@ Escriben: `backend/src/fbi/evalcycle/run.py`.
 
 ## ciclo de estados de la selección (`lifecycle`) — consolidar
 
-Paquetes: `api` (4), `apps` (1), `countcal` (1), `decision` (1), `evalcycle` (1), `lifecycle` (4), `scripts` (1), `tracking` (2).
+Paquetes: `api` (4), `apps` (1), `countcal` (1), `decision` (1), `evalcycle` (1), `lifecycle` (4), `scripts` (2), `tracking` (2).
 
 Escriben: `backend/src/fbi/lifecycle/store.py`.
 
