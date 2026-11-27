@@ -8,6 +8,7 @@ from decimal import Decimal
 import pytest
 
 from fbi.api.contracts.intelligence.base import Missing
+from fbi.api.services import market_probs as mp
 from fbi.api.services.market_probs import history
 from fbi.market.eligibility import verdict
 from fbi.market.in_force import implied
@@ -117,3 +118,35 @@ def test_a_double_chance_of_a_family_is_read_from_its_outcomes() -> None:
     corners_dc = cat.for_bet(spec_for(307).bet_id).entry
     unit = _one_x_two_unit(cat, corners_dc.family, corners_dc.period, corners_dc.subject)
     assert unit is not None and cat.status(unit).entry.kind == "one_x_two" and cat.status(unit).entry.family == "corners"
+
+
+def test_a_sides_history_reads_the_teams_own_matches_first_and_the_view_only_for_those_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    """BE-115: one statement joining the view of outcomes to the fixtures made the planner compute the whole view (20 s) for a team with few
+    matches, and the shadow of the matrix ran out of time. Two steps: the team's ids (its index), then the view with ``= ANY(ids)``."""
+    seen: list[tuple[str, dict[str, object]]] = []
+
+    def fake(conn: object, sql: str, params: dict[str, object] | tuple[object, ...] | None = None) -> list[dict[str, object]]:
+        assert isinstance(params, dict)
+        seen.append((sql, params))
+        return [{"id": 7}, {"id": 5}] if sql == mp.SIDE_IDS_SQL.format(column="f.home_team_id") else [{"fixture_id": 7}, {"fixture_id": 5}]
+
+    monkeypatch.setattr(mp, "fetch_all", fake)
+    kickoff = datetime(2026, 11, 28, 12, tzinfo=UTC)
+    rows = mp.side_history(object(), "f.home_team_id", 315007, kickoff)  # type: ignore[arg-type]
+    assert rows == [{"fixture_id": 7}, {"fixture_id": 5}]
+    assert [s for s, _ in seen] == [mp.SIDE_IDS_SQL.format(column="f.home_team_id"), mp.SIDE_HISTORY_SQL]
+    assert seen[0][1] == {"team": 315007, "kickoff": kickoff, "slack": mp.HISTORY * mp.HISTORY_SLACK}
+    assert seen[1][1] == {"ids": [7, 5], "n": mp.HISTORY}
+    assert "core.fixtures" not in mp.SIDE_HISTORY_SQL, "the view is read alone: a join to fixtures brings the full scan back"
+
+
+def test_a_team_without_matches_asks_the_view_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fake(conn: object, sql: str, params: dict[str, object] | tuple[object, ...] | None = None) -> list[dict[str, object]]:
+        calls.append(sql)
+        return []
+
+    monkeypatch.setattr(mp, "fetch_all", fake)
+    assert mp.side_history(object(), "f.away_team_id", 1, datetime(2026, 11, 28, tzinfo=UTC)) == []  # type: ignore[arg-type]
+    assert len(calls) == 1
