@@ -280,10 +280,11 @@
    "sin_pruebas": 70
   },
   "decision_v2": {
-   "archivos": 98,
+   "archivos": 100,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/ia_decision_v2.py",
+    "backend/scripts/ia_parlay_replay.py",
     "backend/src/fbi/ai/readers.py",
     "backend/src/fbi/ai/replay/measure.py",
     "backend/src/fbi/ai/review_retirement.py",
@@ -360,19 +361,19 @@
     "plugins": 5,
     "protosign": 1,
     "research": 1,
-    "scripts": 1,
+    "scripts": 2,
     "shadowjobs": 5,
     "tracking": 2,
     "valuation": 2
    },
    "por_clase": {
     "módulo": 41,
-    "prueba": 42,
+    "prueba": 43,
     "ruta": 8,
-    "script": 1,
+    "script": 2,
     "trabajo": 6
    },
-   "sin_pruebas": 56
+   "sin_pruebas": 57
   },
   "eval_cycle": {
    "archivos": 21,
@@ -880,10 +881,11 @@
    "sin_pruebas": 4
   },
   "lifecycle": {
-   "archivos": 23,
+   "archivos": 24,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/ia_lifecycle.py",
+    "backend/scripts/ia_parlay_replay.py",
     "backend/src/fbi/api/repositories/profiles.py",
     "backend/src/fbi/api/services/match_intelligence_v2.py",
     "backend/src/fbi/api/services/selection_intelligence.py",
@@ -910,17 +912,17 @@
     "decision": 1,
     "evalcycle": 1,
     "lifecycle": 4,
-    "scripts": 1,
+    "scripts": 2,
     "tracking": 2
    },
    "por_clase": {
     "módulo": 9,
     "prueba": 8,
     "ruta": 4,
-    "script": 1,
+    "script": 2,
     "trabajo": 1
    },
-   "sin_pruebas": 15
+   "sin_pruebas": 16
   },
   "news_items": {
    "archivos": 31,

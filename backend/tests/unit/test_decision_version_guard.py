@@ -39,6 +39,9 @@ BY_ID = "reads one decision (or its outcome) by its id: an id belongs to one lay
 READS_BY_ID: dict[tuple[str, str], str] = {
     ("tracking/parlay_v6_shadow.py", "LEFT JOIN intel.decisions d1 ON t.source = 'intel.decisions' AND d1.id = t.source_id"):
         "parlay-v6 (IA-110) reads the price of a chain's confirmation by the id the cycle recorded with its source; the chain knows its layer",
+    ("scripts/ia_parlay_replay.py", "LEFT JOIN intel.decisions d1 ON t.source = 'intel.decisions' AND d1.id = t.source_id"):
+        "the replay of the parlays' joint (RP-11.1) reads the probability of a chain's confirmation by the id the cycle recorded with its source, as parlay-v6 does; "
+        "the chain knows its layer",
     ("tracking/selections.py", "SELECT id, odds, p_market FROM intel.decisions WHERE id = ANY(%(ids)s)"):
         "the tracking (IA-109) reads the price a confirmed selection was taken at by the ids its chain recorded; the chain knows its layer",
     ("api/services/intelligence.py", "FROM intel.decisions d JOIN core.fixtures f ON f.id = d.fixture_id"):
