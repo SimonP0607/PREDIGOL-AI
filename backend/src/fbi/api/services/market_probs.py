@@ -62,11 +62,18 @@ SELECT f.id, f.kickoff_at, f.home_team_id, f.away_team_id, th.name AS home_name,
   FROM core.fixtures f JOIN core.teams th ON th.id = f.home_team_id JOIN core.teams ta ON ta.id = f.away_team_id
  WHERE f.id = %(f)s
 """
+SIDE_IDS_SQL: Final = """
+SELECT f.id FROM core.fixtures f
+ WHERE {column} = %(team)s AND f.kickoff_at < %(kickoff)s AND f.status_group = 'finished'
+ ORDER BY f.kickoff_at DESC LIMIT %(slack)s
+"""
 SIDE_HISTORY_SQL: Final = """
-SELECT o.* FROM market.fixture_outcomes o JOIN core.fixtures f ON f.id = o.fixture_id
- WHERE {column} = %(team)s AND o.kickoff_at < %(kickoff)s AND o.goals_ft_home IS NOT NULL
+SELECT o.* FROM market.fixture_outcomes o
+ WHERE o.fixture_id = ANY(%(ids)s::bigint[]) AND o.goals_ft_home IS NOT NULL
  ORDER BY o.kickoff_at DESC LIMIT %(n)s
 """
+HISTORY_SLACK: Final = 5
+"""Finished matches read per match wanted: the first ones of a team without a score (a view row needs a result) do not leave the history short."""
 FORECASTS_SQL: Final = """
 WITH last AS (
     SELECT version, market_key, line, max(known_at) AS k
@@ -85,6 +92,20 @@ ForecastKey = tuple[str, str, Decimal]
 
 def _missing(reason: str) -> Missing:
     return Missing.model_validate({"missing_reason": reason})
+
+
+def side_history(conn: Conn, column: str, team: int, kickoff: datetime) -> list[dict[str, Any]]:
+    """The last ``HISTORY`` finished matches of a team on one side, before ``kickoff``, with every figure a rule reads (BE-115).
+
+    Two steps on purpose: the team's own matches by its index first (a few ids), then the view of outcomes ONLY for those ids. One
+    statement joining the view to ``core.fixtures`` made the planner compute the whole view (some 243,000 finished matches, 20 s) for a
+    team with fewer than ``HISTORY`` matches - every team of a competition added this week - and the shadow of the availability matrix
+    (PM-02-06) ran out of its 25 minutes. The result is the same rows in the same order."""
+    ids = [int(r["id"]) for r in fetch_all(conn, SIDE_IDS_SQL.format(column=column),
+                                           {"team": team, "kickoff": kickoff, "slack": HISTORY * HISTORY_SLACK})]
+    if not ids:
+        return []
+    return fetch_all(conn, SIDE_HISTORY_SQL, {"ids": ids, "n": HISTORY})
 
 
 def history(rows_home: Sequence[dict[str, Any]], rows_away: Sequence[dict[str, Any]], q: CurrentQuote) -> HistoryMark | Missing:
@@ -235,10 +256,8 @@ def build(conn: Conn, fixture_id: int, *, at: datetime | None = None, catalogue:
     cat = catalogue or load_catalogue()
     kickoff: datetime = fx_row["kickoff_at"]
     started = moment >= kickoff
-    home_rows = fetch_all(conn, SIDE_HISTORY_SQL.format(column="f.home_team_id"),
-                          {"team": fx_row["home_team_id"], "kickoff": kickoff, "n": HISTORY})
-    away_rows = fetch_all(conn, SIDE_HISTORY_SQL.format(column="f.away_team_id"),
-                          {"team": fx_row["away_team_id"], "kickoff": kickoff, "n": HISTORY})
+    home_rows = side_history(conn, "f.home_team_id", fx_row["home_team_id"], kickoff)
+    away_rows = side_history(conn, "f.away_team_id", fx_row["away_team_id"], kickoff)
     forecasts = _forecasts(conn, fixture_id, moment)
     figures = _shadow_figures(conn, fixture_id, moment) if shadow else None
     readers_see_forecast = users_may_see()

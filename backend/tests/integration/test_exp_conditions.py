@@ -44,7 +44,7 @@ def box() -> Iterator[Box]:
     b = Box()
     ec.register("EXP-E1", count=b.count, run=b.run)
     yield b
-    for key in ("EXP-E1", "EXP-E3", "EXP-E7"):  # the launcher's gate registers the plugins it finds: leave nothing behind
+    for key in ("EXP-E1", "EXP-E3", "EXP-E6", "EXP-E7"):  # the launcher's gate registers the plugins it finds: leave nothing behind
         ec.unregister(key)
 
 
@@ -147,7 +147,7 @@ def test_the_launcher_gate_finds_the_plugins_by_itself_and_none_of_them_is_due_b
     try:
         assert set(ec.registered()) == set()
         assert launcher.experiments_gate(db, NOW, launcher.JOBS["experiments_due"]) == "no experiment of the plan is due"
-        assert set(ec.registered()) == {"EXP-E1", "EXP-E3", "EXP-E7"}, "the gate registered what the plan's pieces say about themselves"
+        assert set(ec.registered()) == {"EXP-E1", "EXP-E3", "EXP-E6", "EXP-E7"}, "the gate registered what the plan's pieces say about themselves"
     finally:
-        for key in ("EXP-E1", "EXP-E3", "EXP-E7"):
+        for key in ("EXP-E1", "EXP-E3", "EXP-E6", "EXP-E7"):
             ec.unregister(key)
