@@ -14,8 +14,8 @@ The answer is built the way the plan says, and no more:
 THE INTERVAL is what keeps the report honest. The combinations of one day share their legs, so they are not independent: counting them as if they were would
 make the interval look far narrower than it is. The interval is a bootstrap that resamples whole DAYS (a block of every combination of the day) with a fixed seed,
 and the report also gives the number of days and of distinct legs next to the number of combinations. No threshold is invented here: the plan asks for a report
-with its interval and 1.500 combinations or more; whether the error is inside a bound is for the acceptance criteria the owner approved to say, so
-``within_bound`` is never decided by this module.
+with its interval and 1.500 combinations or more, and whether the error is inside the bound is the owner's criterion of 27-nov-2026 (``fbi.parlays.acceptance``: optimism of 2 points
+or less, with an interval that holds zero), applied to the figure as it stands and never adjusted to it. ``within_bound`` is None with fewer combinations than the plan asks.
 
 Pure: it reads nothing and writes nothing.
 """
@@ -30,6 +30,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Final
+
+from fbi.parlays import acceptance
 
 VERSION: Final = "parlay-replay-v1"
 MAX_LEGS: Final = 3
@@ -155,9 +157,11 @@ def report(legs: Sequence[Leg], *, max_legs: int = MAX_LEGS, seed: int = SEED, r
         "combinations": len(combos), "by_size": dict(sorted(by_size.items())), "days": len({c.day for c in combos}),
         "distinct_legs": len({k for c in combos for k in c.chains}), "enough": len(combos) >= MIN_COMBINATIONS, "needed": MIN_COMBINATIONS,
         "model": {**overall, "interval": interval}, "market": {**market, "interval": market_interval}, "bands": _bands(combos),
-        "within_bound": None,
-        "note": "within_bound lo decide los criterios de aceptación aprobados, no este informe; el intervalo remuestrea días enteros porque las combinaciones "
-                "de un día comparten sus selecciones.",
+        "within_bound": acceptance.historical(combinations=len(combos), optimism=overall["optimism"], interval=interval),
+        "acceptance": {"version": acceptance.VERSION, "max_optimism": acceptance.MAX_OPTIMISM, "interval_holds_zero": True,
+                       "note": "criterio del dueño del 27-nov-2026, aplicado a la cifra tal como salió; la ventana prospectiva (30 días) empieza el día de la firma"},
+        "note": "within_bound aplica el criterio de aceptación aprobado (optimismo de 2 puntos o menos, intervalo que contiene el cero); el intervalo remuestrea días enteros "
+                "porque las combinaciones de un día comparten sus selecciones.",
         "rule": "dos o tres selecciones de partidos y equipos distintos del mismo día; la conjunta es el producto; aciertan si todas aciertan",
     }
 
