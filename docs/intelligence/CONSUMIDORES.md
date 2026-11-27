@@ -6,11 +6,11 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 
 | Candidato | Destino | Archivos | Sin pruebas | Escriben | Rutas | Trabajos | Web | Scripts |
 |---|---|---|---|---|---|---|---|---|
-| decision-v1 (referencia estable) (`decision_v1`) | conservar | 123 | 70 | 0 | 10 | 3 | 1 | 9 |
-| decision-v2 en sombra (`decision_v2`) | consolidar | 100 | 57 | 1 | 8 | 6 | 0 | 2 |
+| decision-v1 (referencia estable) (`decision_v1`) | conservar | 124 | 70 | 0 | 10 | 3 | 1 | 9 |
+| decision-v2 en sombra (`decision_v2`) | consolidar | 101 | 57 | 1 | 8 | 6 | 0 | 2 |
 | decisiones de familias (decision-fam-v1) (`decision_families`) | consolidar | 69 | 36 | 2 | 7 | 1 | 5 | 1 |
 | ciclo de evaluación E1 a E4 (`eval_cycle`) | consolidar | 21 | 14 | 1 | 4 | 2 | 0 | 0 |
-| ciclo de estados de la selección (`lifecycle`) | consolidar | 24 | 16 | 1 | 4 | 1 | 0 | 2 |
+| ciclo de estados de la selección (`lifecycle`) | consolidar | 25 | 16 | 1 | 4 | 1 | 0 | 2 |
 | forecast-v1 (cifra por modelo) (`forecast_v1`) | consolidar | 69 | 35 | 1 | 10 | 0 | 0 | 7 |
 | forecast-v2 (cifra única) (`forecast_v2`) | conservar | 36 | 21 | 0 | 5 | 0 | 0 | 3 |
 | circuito de noticias: news.items (`news_items`) | consolidar | 31 | 20 | 2 | 2 | 1 | 1 | 2 |
