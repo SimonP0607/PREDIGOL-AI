@@ -94,7 +94,7 @@ at worst, and a duplicated tick costs nothing at all.
     default): ``player-engine-v2`` (``fbi.shadowjobs.player_forecast``, IA-129) forecasts every player market of the tracked matches at
     E1 and E4 - expected minutes x rate per 90 x the start probability of ``lineup-estimate-v1`` - one row per player, family and line
     in ``intel.player_forecasts``. Database only; no provider, no model; nothing a reader, a pick or a decision reads.
-  * ``stats_documents``  once a night at 07:20 UTC (and 12 minutes after the worker starts), only while ``FBI_STATS_AGG`` is ``on`` (off
+  * ``stats_documents``  once a night at 07:20 UTC (and 12 minutes after the worker starts, unless a full pass ended in the last 20 hours: OPS-026), only while ``FBI_STATS_AGG`` is ``on`` (off
     by default): the statistics documents of plan EA (``fbi.stats.job``: percentiles, pulse, goals by interval, survival of 0-0, game
     states, trends) into ``analytics.stat_documents``. Database only; no provider, no model; nothing a model, a pick or a decision reads.
   * ``availability_refresh``  once a night at 08:00 UTC (attempts again at 08:40 and 11:20 when the first found no room), only while
@@ -1436,6 +1436,26 @@ async def _stats_documents() -> None:
     await asyncio.to_thread(_stats_documents_now)
 
 
+STATS_CATCH_UP_HOURS = 20
+"""PM-13-05 (OPS-026): the catch-up pass that follows a start of the worker runs only when no full pass ended in this many hours."""
+
+
+def _stats_pass_needed(hours: int = STATS_CATCH_UP_HOURS) -> bool:
+    """PM-13-05 (OPS-026): should a start of the worker schedule the catch-up pass of the statistics documents? Measured on 26 Nov 2026:
+    nine restarts of the worker in a day (every merge deploys) started nine passes twelve minutes after each, 26 to 35 minutes long, that
+    grew the process by 470 to 1,930 MiB each and at least five stopped at the 35-minute limit: the biggest peaks of the day, for
+    documents the nightly pass (07:20 UTC) rewrites anyway. It is needed only when no pass finished whole (no ``stopped_reason``) in the
+    last ``hours``. Whatever fails to answer says yes: the behaviour of before."""
+    try:
+        with _connect() as conn:
+            row = conn.execute("SELECT 1 FROM analytics.stat_runs WHERE finished_at IS NOT NULL AND stopped_reason IS NULL "
+                               "AND finished_at > now() - make_interval(hours => %s) LIMIT 1", (hours,)).fetchone()
+        return row is None
+    except Exception as exc:
+        log.warning("worker.stats_pass_check_failed", error=f"{type(exc).__name__}: {exc}"[:200])
+        return True
+
+
 APP_DIR = Path(__file__).resolve().parents[2]
 """Where ``python -m scripts.<name>`` runs (``/app`` in the image)."""
 
@@ -2728,8 +2748,11 @@ async def main() -> None:
         scheduler.add_job(_deadline("stats_documents", "stats_documents", _stats_documents), "cron", hour=stats_job.HOUR,
                           minute=stats_job.MINUTE, timezone="UTC", id="stats_documents", max_instances=1, coalesce=True,
                           misfire_grace_time=3 * 3600)
-        scheduler.add_job(_deadline("stats_documents", "stats_documents", _stats_documents), "date",
-                          run_date=moment + timedelta(minutes=12), id="stats_documents_catch_up", max_instances=1)
+        if _stats_pass_needed():
+            scheduler.add_job(_deadline("stats_documents", "stats_documents", _stats_documents), "date",
+                              run_date=moment + timedelta(minutes=12), id="stats_documents_catch_up", max_instances=1)
+        else:
+            log.info("worker.stats_documents_catch_up_skipped", hint=f"a full pass ended in the last {STATS_CATCH_UP_HOURS} hours")
     else:
         log.info("worker.stats_documents_off", hint="FBI_STATS_AGG is not on: no statistics documents are computed (plan EA)")
     from fbi.coverage import job as cov_job

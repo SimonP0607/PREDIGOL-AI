@@ -26,7 +26,7 @@ import psycopg
 import structlog
 
 from fbi.ai import capability_budget as caps_budget
-from fbi.ai import costs_v3, gates_panel, gates_panel_readers
+from fbi.ai import costs_v3, gates_panel, gates_panel_readers, publication_door
 from fbi.ai.budget_v3 import JOINT_CEILING_PENDING, EnvelopeFigure
 from fbi.ai.config import AGENTS, KNOWN_ENGINES, AiSettings
 from fbi.ai.gating import enforcement
@@ -45,6 +45,7 @@ from fbi.api.contracts.intelligence.console import (
     Costs,
     Cycle,
     Declared,
+    DoorCondition,
     EnvelopeView,
     Flow,
     FlowStage,
@@ -56,6 +57,7 @@ from fbi.api.contracts.intelligence.console import (
     LeakRule,
     Panel,
     PanelStage,
+    PublicationDoor,
     ReadFailure,
     Schema,
     Security,
@@ -511,19 +513,36 @@ def flow(conn: Conn, at: datetime) -> Flow:
     return flow_of(freshness.read_all(conn, at=at), panel_of(stages, unmapped))
 
 
+# ── the door of a pick ────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def door_of(sec: Security, *, switch_on: bool) -> PublicationDoor:
+    """The door (``fbi.ai.publication_door``) from what the console has read: the panel's statuses, the battery's verdict and the night's leak audit. The
+    figure validated and the method's history are not measured by anything yet: they say so (``no_evaluada``)."""
+    gates = {} if isinstance(sec.gates, ReadFailure) else {g.id: str(g.status) for g in sec.gates.items}
+    battery = None if isinstance(sec.battery, ReadFailure) or isinstance(sec.battery.verdict, Missing) else str(sec.battery.verdict)
+    leaks = None if isinstance(sec.leak_audit, (ReadFailure, Missing)) else sec.leak_audit.violations
+    door = publication_door.evaluate(gates=gates, battery=battery, leak_violations=leaks, validated_figures=None, value_history=None, switch_on=switch_on)
+    return PublicationDoor(
+        version=publication_door.VERSION, switch_on=door.switch_on, ready=door.ready, can_publish=False,
+        first_open=NO_DATA if door.first_open is None else door.first_open,
+        conditions=[DoorCondition(key=c.key, group=c.group, label=c.label, state=c.state, why=c.why) for c in door.conditions])
+
+
 # ── the console ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> ConsoleContract:
     """C-11 at ``at``: every block in its own savepoint of one read-only transaction."""
     settings = settings or AiSettings.from_env()
+    sec = security(conn, settings, at)
     return ConsoleContract(
         freshness=Freshness(generated_at=at, stale=False),
         shadow=shadow(conn, settings, environment()),
         capabilities=attempt(conn, lambda: capabilities_of(registry.overview(conn, at=at))),
         costs=attempt(conn, lambda: costs_of(costs_v3.month_of(conn, at=at, settings=settings), settings)),
-        security=security(conn, settings, at),
+        security=sec,
         protocols=attempt(conn, lambda: protocols(conn)),
         flow=attempt(conn, lambda: flow(conn, at)),
+        publication_door=attempt(conn, lambda: door_of(sec, switch_on=PicksSourceSettings().from_intelligence)),
         news_engine=NEWS_ENGINE, alert_queue=ALERT_QUEUE)
 
 

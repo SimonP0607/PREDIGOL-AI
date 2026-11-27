@@ -1,6 +1,6 @@
 {
   "contract": "C-11",
-  "contract_version": "1.3.0",
+  "contract_version": "1.4.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T16:42:00Z",
@@ -576,6 +576,78 @@
   "flow": {
     "read_failed": true,
     "error": "UndefinedTable"
+  },
+  "publication_door": {
+    "version": "publication-door-v1",
+    "switch_on": false,
+    "ready": false,
+    "can_publish": false,
+    "first_open": "validated_figure",
+    "conditions": [
+      {
+        "key": "validated_figure",
+        "group": "tecnica",
+        "label": "Cifra calibrada sin mercado que superó sus puertas",
+        "state": "no_evaluada",
+        "why": "no hay medida de la cifra validada"
+      },
+      {
+        "key": "value_history",
+        "group": "tecnica",
+        "label": "El método tiene historial: 300 selecciones fuera de muestra con valor frente al cierre real ≥ 0",
+        "state": "no_evaluada",
+        "why": "la regla por evidencia (RP-10.3) no ha medido el método"
+      },
+      {
+        "key": "g_coh",
+        "group": "estadistica",
+        "label": "Coherencia de las probabilidades (G-COH)",
+        "state": "pendiente",
+        "why": "pendiente por dependencias"
+      },
+      {
+        "key": "ai_gate_v2",
+        "group": "estadistica",
+        "label": "Puerta de la capa de IA",
+        "state": "pendiente",
+        "why": "pendiente por acciones manuales"
+      },
+      {
+        "key": "research_v2",
+        "group": "estadistica",
+        "label": "Gate de Research v2",
+        "state": "pendiente",
+        "why": "pendiente por tiempo real"
+      },
+      {
+        "key": "gate_b",
+        "group": "seguridad",
+        "label": "Gate B",
+        "state": "pendiente",
+        "why": "pendiente por tiempo real"
+      },
+      {
+        "key": "battery",
+        "group": "seguridad",
+        "label": "Batería adversarial",
+        "state": "no_evaluada",
+        "why": "sin fila de la batería"
+      },
+      {
+        "key": "leaks",
+        "group": "seguridad",
+        "label": "Auditoría de fugas de la última noche limpia",
+        "state": "no_evaluada",
+        "why": "sin auditoría"
+      },
+      {
+        "key": "owner_authorization",
+        "group": "autorizacion",
+        "label": "Tu autorización expresa",
+        "state": "solo_dueno",
+        "why": "la da el dueño con el interruptor FBI_PICKS_SOURCE; el código no puede darla ni inferirla"
+      }
+    ]
   },
   "news_engine": {
     "missing_reason": "no_entregado",

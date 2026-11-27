@@ -1,0 +1,1624 @@
+{
+  "contract": "C-11",
+  "contract_version": "1.3.0",
+  "projection": "private",
+  "freshness": {
+    "generated_at": "2026-11-21T16:42:00Z",
+    "stale": false,
+    "stale_reason": null
+  },
+  "decides": false,
+  "shadow": {
+    "verdict": "se_cumple",
+    "breaks": [],
+    "picks_source": {
+      "switch": "FBI_PICKS_SOURCE",
+      "audience": "lector",
+      "reads_as": "legacy",
+      "default": "legacy",
+      "at_default": true,
+      "worker_recorded": {
+        "missing_reason": "sin_datos"
+      },
+      "effect": "intelligence: la página de Picks lee la decisión de Intelligence (decision-v1); apagado: la de siempre. Sigue apagado: lo enciende solo el dueño.",
+      "changeable_here": false
+    },
+    "ai_mode": {
+      "switch": "FBI_AI_MODE",
+      "audience": "intelligence",
+      "reads_as": "enforce",
+      "default": "shadow",
+      "at_default": false,
+      "worker_recorded": "enforce",
+      "effect": "enforce: la revisión de la IA puede quitar un pick a los lectores, solo si el último informe de combined dice pass; shadow: revisa sin efecto; off: no revisa.",
+      "changeable_here": false
+    },
+    "ai_enforcement": {
+      "mode": "enforce",
+      "enforced": false,
+      "reason": "shadow_gate_not_passed",
+      "gate_verdict": "fail"
+    },
+    "published_picks": 0,
+    "switches": [
+      {
+        "switch": "FBI_AI_RESEARCH_V2",
+        "audience": "intelligence",
+        "reads_as": "shadow",
+        "default": "off",
+        "at_default": false,
+        "worker_recorded": "shadow",
+        "effect": "Research v2 (AD-C05): shadow corre al lado de la v1 sin mover nada de ella.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_AGENTS",
+        "audience": "intelligence",
+        "reads_as": "match,council,stats",
+        "default": "ninguno",
+        "at_default": false,
+        "worker_recorded": "match,council,stats",
+        "effect": "Los agentes que pueden correr (partido, estadísticas, Council), solo en sombra.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_ENGINES",
+        "audience": "intelligence",
+        "reads_as": "rules,llm,ma-v1,ma-v1-h",
+        "default": "rules,llm",
+        "at_default": false,
+        "worker_recorded": "rules,llm,ma-v1,ma-v1-h",
+        "effect": "Los motores que revisan: rules y llm siempre; los demás, solo en sombra.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_FAMILY_DECISIONS",
+        "audience": "intelligence",
+        "reads_as": "shadow",
+        "default": "off",
+        "at_default": false,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Familias de conteos (AD-B07): shadow decide en sombra con versiones propias que ningún pick lee.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_PM_REVIEWER",
+        "audience": "intelligence",
+        "reads_as": "on",
+        "default": "off",
+        "at_default": false,
+        "worker_recorded": "on",
+        "effect": "La revisión mecánica de los post-mortems y la atribución (attr-v1).",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_LEARNING_ANALYST",
+        "audience": "intelligence",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": "off",
+        "effect": "El analista de aprendizaje semanal: propone, nunca aplica.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_AI_ENVELOPES_INDEPENDENT",
+        "audience": "intelligence",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Preparado y sin usar (IA-058): encendido, el LAB deja de ceder ante el techo conjunto de 190.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_MATCH_INTELLIGENCE",
+        "audience": "lector",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "La pestaña «Intelligence» del partido para lectores (solo lo publicado).",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_NEWS_V2",
+        "audience": "lector",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Noticias como las maquetas 08-10.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_SEARCH",
+        "audience": "lector",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "La búsqueda global de los lectores.",
+        "changeable_here": false
+      },
+      {
+        "switch": "FBI_PROFILES",
+        "audience": "lector",
+        "reads_as": "off",
+        "default": "off",
+        "at_default": true,
+        "worker_recorded": {
+          "missing_reason": "sin_datos"
+        },
+        "effect": "Las páginas de club, selección y jugador.",
+        "changeable_here": false
+      }
+    ],
+    "worker_ledger": {
+      "row": 4312,
+      "at": "2026-11-08T20:46:59Z"
+    }
+  },
+  "capabilities": {
+    "registry_version": "capabilities-v1",
+    "by_state": [
+      {
+        "state": "construida",
+        "count": 0
+      },
+      {
+        "state": "en_sombra",
+        "count": 7
+      },
+      {
+        "state": "lista_revision",
+        "count": 0
+      },
+      {
+        "state": "autorizada",
+        "count": 0
+      }
+    ],
+    "unregistered": [],
+    "not_in_code": [],
+    "items": {
+      "items": [
+        {
+          "key": "research_v2",
+          "piece": "AD-C05",
+          "title": "Research v2: investigación por entidad y tema",
+          "switch": "FBI_AI_RESEARCH_V2",
+          "state": "en_sombra",
+          "since": "2026-11-17T05:00:00Z",
+          "decided_by": "system",
+          "signed_by_owner": false,
+          "safety": "PENDIENTE POR ACCIONES MANUALES",
+          "validation": "PENDIENTE POR DEPENDENCIAS",
+          "validation_sample": {
+            "missing_reason": "sin_datos"
+          },
+          "safety_gates": [
+            {
+              "gate": "battery",
+              "verdict": "NO PASA",
+              "row": 4410,
+              "at": "2026-11-15T17:12:20Z"
+            }
+          ],
+          "validation_gates": [
+            {
+              "gate": "research_v2",
+              "verdict": {
+                "missing_reason": "sin_datos"
+              },
+              "row": {
+                "missing_reason": "sin_datos"
+              },
+              "at": {
+                "missing_reason": "sin_datos"
+              }
+            }
+          ],
+          "warnings": [
+            "seguridad: la última fila de battery (ai.feature_gates, fila 4410) dice NO PASA; no puede avanzar",
+            "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+            "no validada (PENDIENTE POR DEPENDENCIAS)"
+          ]
+        },
+        {
+          "key": "readers",
+          "piece": "AD-D09",
+          "title": "Lectores especialistas: Partido y Estadísticas",
+          "switch": "FBI_AI_AGENTS",
+          "state": "en_sombra",
+          "since": "2026-11-17T05:00:00Z",
+          "decided_by": "system",
+          "signed_by_owner": false,
+          "safety": "PENDIENTE POR ACCIONES MANUALES",
+          "validation": "PENDIENTE POR DEPENDENCIAS",
+          "validation_sample": {
+            "missing_reason": "sin_datos"
+          },
+          "safety_gates": [
+            {
+              "gate": "battery",
+              "verdict": "NO PASA",
+              "row": 4410,
+              "at": "2026-11-15T17:12:20Z"
+            }
+          ],
+          "validation_gates": [],
+          "warnings": [
+            "seguridad: la última fila de battery (ai.feature_gates, fila 4410) dice NO PASA; no puede avanzar",
+            "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+            "no validada (PENDIENTE POR DEPENDENCIAS)"
+          ]
+        },
+        {
+          "key": "council",
+          "piece": "AD-D10",
+          "title": "Council: juez council-v1 sobre council-protocol-v1",
+          "switch": "FBI_AI_AGENTS",
+          "state": "en_sombra",
+          "since": "2026-11-17T05:00:00Z",
+          "decided_by": "system",
+          "signed_by_owner": false,
+          "safety": "PENDIENTE POR ACCIONES MANUALES",
+          "validation": "PENDIENTE POR DEPENDENCIAS",
+          "validation_sample": {
+            "missing_reason": "sin_datos"
+          },
+          "safety_gates": [
+            {
+              "gate": "battery",
+              "verdict": "NO PASA",
+              "row": 4410,
+              "at": "2026-11-15T17:12:20Z"
+            }
+          ],
+          "validation_gates": [],
+          "warnings": [
+            "seguridad: la última fila de battery (ai.feature_gates, fila 4410) dice NO PASA; no puede avanzar",
+            "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+            "no validada (PENDIENTE POR DEPENDENCIAS)"
+          ]
+        },
+        {
+          "key": "haiku_arm",
+          "piece": "AD-D10",
+          "title": "Brazo Haiku del Council (ma-v1-h)",
+          "switch": "FBI_AI_ENGINES",
+          "state": "en_sombra",
+          "since": "2026-11-17T05:00:00Z",
+          "decided_by": "system",
+          "signed_by_owner": false,
+          "safety": "PENDIENTE POR ACCIONES MANUALES",
+          "validation": "PENDIENTE POR DEPENDENCIAS",
+          "validation_sample": {
+            "missing_reason": "sin_datos"
+          },
+          "safety_gates": [
+            {
+              "gate": "battery",
+              "verdict": "NO PASA",
+              "row": 4410,
+              "at": "2026-11-15T17:12:20Z"
+            }
+          ],
+          "validation_gates": [],
+          "warnings": [
+            "seguridad: la última fila de battery (ai.feature_gates, fila 4410) dice NO PASA; no puede avanzar",
+            "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+            "no validada (PENDIENTE POR DEPENDENCIAS)"
+          ]
+        },
+        {
+          "key": "family_decisions",
+          "piece": "AD-B07",
+          "title": "Familias de conteos: córners, tarjetas y goles por mitad",
+          "switch": "FBI_FAMILY_DECISIONS",
+          "state": "en_sombra",
+          "since": "2026-11-17T05:00:00Z",
+          "decided_by": "system",
+          "signed_by_owner": false,
+          "safety": "PENDIENTE POR ACCIONES MANUALES",
+          "validation": "PENDIENTE POR DEPENDENCIAS",
+          "validation_sample": {
+            "missing_reason": "sin_datos"
+          },
+          "safety_gates": [],
+          "validation_gates": [],
+          "warnings": [
+            "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+            "no validada (PENDIENTE POR DEPENDENCIAS)"
+          ]
+        },
+        {
+          "key": "attribution",
+          "piece": "AD-K03",
+          "title": "Atribución de la sombra (attr-v1)",
+          "switch": "FBI_AI_PM_REVIEWER",
+          "state": "en_sombra",
+          "since": "2026-11-17T05:00:00Z",
+          "decided_by": "system",
+          "signed_by_owner": false,
+          "safety": "PENDIENTE POR ACCIONES MANUALES",
+          "validation": "PENDIENTE POR DEPENDENCIAS",
+          "validation_sample": {
+            "missing_reason": "sin_datos"
+          },
+          "safety_gates": [],
+          "validation_gates": [],
+          "warnings": [
+            "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+            "no validada (PENDIENTE POR DEPENDENCIAS)"
+          ]
+        },
+        {
+          "key": "chronicle_review",
+          "piece": "AD-F06",
+          "title": "Revisión posterior de la crónica (chronicle-review-v1)",
+          "switch": {
+            "missing_reason": "sin_datos"
+          },
+          "state": "en_sombra",
+          "since": "2026-11-17T05:00:00Z",
+          "decided_by": "system",
+          "signed_by_owner": false,
+          "safety": "PENDIENTE POR ACCIONES MANUALES",
+          "validation": "PENDIENTE POR DEPENDENCIAS",
+          "validation_sample": {
+            "missing_reason": "sin_datos"
+          },
+          "safety_gates": [],
+          "validation_gates": [],
+          "warnings": [
+            "seguridad sin juzgar por el registro (PENDIENTE POR ACCIONES MANUALES)",
+            "no validada (PENDIENTE POR DEPENDENCIAS)"
+          ]
+        }
+      ]
+    }
+  },
+  "costs": {
+    "month": "2026-11-01",
+    "budget_version": "capability-budget-v1",
+    "envelopes": [
+      {
+        "scope": "production",
+        "spent_usd": "61.37",
+        "budget_usd": "185.00",
+        "decided_usd": "185.00",
+        "matches_decision": true,
+        "share": 0.3317,
+        "alert": "ninguno",
+        "parts": [
+          {
+            "name": "intelligence",
+            "spent_usd": "52.10"
+          },
+          {
+            "name": "readers",
+            "spent_usd": "9.27"
+          }
+        ]
+      },
+      {
+        "scope": "exa",
+        "spent_usd": "11.42",
+        "budget_usd": "35.00",
+        "decided_usd": "35.00",
+        "matches_decision": true,
+        "share": 0.3263,
+        "alert": "ninguno",
+        "parts": []
+      },
+      {
+        "scope": "lab",
+        "spent_usd": "47.05",
+        "budget_usd": "55.00",
+        "decided_usd": "55.00",
+        "matches_decision": true,
+        "share": 0.8555,
+        "alert": "80",
+        "parts": []
+      }
+    ],
+    "capabilities": [
+      {
+        "key": "chronicle_v4",
+        "piece": "AD-F02",
+        "envelope": "production",
+        "monthly_usd": "14.00",
+        "spent_usd": "0.00",
+        "share": 0.0,
+        "alert": "ninguno",
+        "tagged": true,
+        "source": "ficha AD-F02: 0,004 por crónica x 120 al día con el modelo pequeño"
+      },
+      {
+        "key": "news_summaries",
+        "piece": "AD-G04",
+        "envelope": "production",
+        "monthly_usd": "13.50",
+        "spent_usd": "0.00",
+        "share": 0.0,
+        "alert": "ninguno",
+        "tagged": false,
+        "source": "ficha AD-G04: 4 con 300 noticias al día, 13,5 con 1.000 (se toma el alto)"
+      },
+      {
+        "key": "deep_extraction",
+        "piece": "AD-C05",
+        "envelope": "production",
+        "monthly_usd": "4.40",
+        "spent_usd": "0.00",
+        "share": 0.0,
+        "alert": "ninguno",
+        "tagged": false,
+        "source": "ficha AD-C05: 210 páginas al día en tiempo real (2,2 por lotes)"
+      },
+      {
+        "key": "specialist_readers",
+        "piece": "AD-D09",
+        "envelope": "production",
+        "monthly_usd": "15.00",
+        "spent_usd": "0.00",
+        "share": 0.0,
+        "alert": "ninguno",
+        "tagged": false,
+        "source": "costes del plan: unos 15 al mes que pasan del LAB a producción (7,33 en 15 días)"
+      },
+      {
+        "key": "page_bodies",
+        "piece": "AD-C05",
+        "envelope": "exa",
+        "monthly_usd": "9.00",
+        "spent_usd": "0.00",
+        "share": 0.0,
+        "alert": "ninguno",
+        "tagged": false,
+        "source": "ficha AD-C05 y costes del plan: de 6 a 9 al mes de cuerpos completos (se toma el alto)"
+      },
+      {
+        "key": "battery_v4",
+        "piece": "AD-A03",
+        "envelope": "lab",
+        "monthly_usd": "3.00",
+        "spent_usd": "0.00",
+        "share": 0.0,
+        "alert": "ninguno",
+        "tagged": true,
+        "source": "ficha AD-A03: menos de 3 por ejecución; una ejecución al mes"
+      },
+      {
+        "key": "quarantine_tests",
+        "piece": "AD-A01",
+        "envelope": "lab",
+        "monthly_usd": "3.00",
+        "spent_usd": "0.00",
+        "share": 0.0,
+        "alert": "ninguno",
+        "tagged": false,
+        "source": "ficha AD-A01: pruebas A1-A6 por debajo de 3, una vez"
+      },
+      {
+        "key": "label_bank_arms",
+        "piece": "AD-C09",
+        "envelope": "lab",
+        "monthly_usd": "2.00",
+        "spent_usd": "0.00",
+        "share": 0.0,
+        "alert": "ninguno",
+        "tagged": false,
+        "source": "ficha AD-C09: menos de 2 para los cuatro brazos"
+      },
+      {
+        "key": "replay_regression",
+        "piece": "AD-K04",
+        "envelope": "lab",
+        "monthly_usd": "2.93",
+        "spent_usd": "2.81",
+        "share": 0.959,
+        "alert": "95",
+        "tagged": true,
+        "source": "ficha AD-K04: 2,93 por pasada completa medida (15-nov); una pasada al mes"
+      }
+    ],
+    "declared": [
+      {
+        "envelope": "production",
+        "declared_usd": "46.90",
+        "envelope_usd": "185.00",
+        "fits": true
+      },
+      {
+        "envelope": "exa",
+        "declared_usd": "9.00",
+        "envelope_usd": "35.00",
+        "fits": true
+      },
+      {
+        "envelope": "lab",
+        "declared_usd": "10.93",
+        "envelope_usd": "55.00",
+        "fits": true
+      }
+    ],
+    "joint_ceiling": {
+      "usd": "190.00",
+      "applies": true,
+      "pending_owner": true,
+      "production_plus_lab_usd": "240.00"
+    }
+  },
+  "security": {
+    "battery": {
+      "verdict": "NO PASA",
+      "row": 4410,
+      "at": "2026-11-15T17:12:20Z"
+    },
+    "leak_audit": {
+      "day": "2026-11-20",
+      "versions": [
+        "leak-audit-v9"
+      ],
+      "rules": 22,
+      "violations": 3,
+      "with_violations": [
+        {
+          "rule": "evidence_known",
+          "checked": 412,
+          "violations": 2
+        },
+        {
+          "rule": "price_known",
+          "checked": 1180,
+          "violations": 1
+        }
+      ]
+    },
+    "gates": {
+      "version": "gates-panel-v1",
+      "as_of": "2026-11-21T16:42:00Z",
+      "rule_holds": true,
+      "summary": [
+        {
+          "status": "PASA",
+          "count": 0
+        },
+        {
+          "status": "NO PASA",
+          "count": 0
+        },
+        {
+          "status": "NO EVALUADO",
+          "count": 1
+        },
+        {
+          "status": "RECHAZA",
+          "count": 2
+        },
+        {
+          "status": "PENDIENTE POR ACCIONES MANUALES",
+          "count": 2
+        },
+        {
+          "status": "PENDIENTE POR TIEMPO REAL",
+          "count": 2
+        },
+        {
+          "status": "PENDIENTE POR MUESTRA",
+          "count": 0
+        },
+        {
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "count": 9
+        }
+      ],
+      "items": [
+        {
+          "id": "gate_b",
+          "name": "Gate B",
+          "piece": "Plan Maestro IA, sección 24 (gate-b-v1)",
+          "status": "NO EVALUADO",
+          "approved": false,
+          "recorded_row": 4501,
+          "recorded_at": "2026-11-16T22:10:00Z",
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "No evaluado (cerrado por el dueño): NO EVALUADO — ventana interrumpida por decisión del dueño — registrado el 2026-11-16T22:10:00+00:00 (ai.feature_gates, fila 4501, gate-b-closure-v1)"
+          ]
+        },
+        {
+          "id": "research_v2",
+          "name": "Research v2",
+          "piece": "Plan Maestro IA, fase 2 (su propio gate de equivalencia)",
+          "status": "PENDIENTE POR TIEMPO REAL",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": "2026-11-23",
+          "why": [
+            "sin fila registrada: es el veredicto de hoy de su evaluador (vista previa, sin registrar)",
+            "ningún día completo con research v2 en sombra en todas las pasadas (2026-11-15 had no passes); el primer día evaluable sería 2026-11-23, si empieza en la próxima pasada (en este entorno FBI_AI_RESEARCH_V2 es off: hay que ponerlo en shadow)"
+          ]
+        },
+        {
+          "id": "gate_a",
+          "name": "Gate A",
+          "piece": "Plan Maestro IA, sección 24 (fin de la fase 0)",
+          "status": "PENDIENTE POR ACCIONES MANUALES",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "ninguna fila registrada en ai.feature_gates (python -m scripts.ia_gate evaluate --record)"
+          ]
+        },
+        {
+          "id": "ai_gate_v2",
+          "name": "Puerta de la capa IA (ai-gate-v2)",
+          "piece": "Plan Maestro IA (fbi.ai.shadow, fbi.ai.gating)",
+          "status": "PENDIENTE POR ACCIONES MANUALES",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "no hay informe de combined en ai.shadow_reports"
+          ]
+        },
+        {
+          "id": "g_coh",
+          "name": "G-COH",
+          "piece": "INT-A04",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "INT-A03 (IA-053) está en sombra: el 12-nov lo que guarda el Match Center y lo que lee la decisión coinciden en 2.528 de 2.528 filas (24 h) y 2.955 de 2.955 (72 h); falta Picks (con UX) e INT-A04, el informe y la fila del gate",
+            "su experimento del LAB, INT-A02 (IA-036), RECHAZA en los tres mercados: según la regla de rechazo, queda la reescalada como cifra coherente y se sigue en el LAB"
+          ]
+        },
+        {
+          "id": "g_precio",
+          "name": "G-PRECIO",
+          "piece": "INT-A06",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: el umbral de edad fijado por el dueño con la medida de INT-A06 (IA-037: 0 decisiones con precio sin edad el 11-nov; propuesta 45/75/195 min, sin aplicar) y la fila del gate"
+          ]
+        },
+        {
+          "id": "g_fuentes_1",
+          "name": "G-FUENTES 1",
+          "piece": "INT-B01",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "el registro depurado de INT-B01 aún no está en la sombra: el gate no se puede evaluar",
+            "las cifras son la medida de IA-040 (11-nov-2026), antes del registro nuevo: ninguna es el veredicto del gate"
+          ]
+        },
+        {
+          "id": "g_fuentes_2",
+          "name": "G-FUENTES 2",
+          "piece": "INT-B02",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: INT-B01; INT-B03; INT-B02 (búsqueda dirigida en Research v2, en sombra)"
+          ]
+        },
+        {
+          "id": "g_fuentes_3",
+          "name": "G-FUENTES 3",
+          "piece": "INT-B04",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: INT-B04 (enlace en mundo cerrado, en sombra); gate de Research v2"
+          ]
+        },
+        {
+          "id": "g_eventos",
+          "name": "G-EVENTOS",
+          "piece": "INT-B09",
+          "status": "RECHAZA",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "INT-B09 (IA-045): RECHAZA, evaluado el 2026-11-11 05:19:31-05:19:59 UTC (una sola evaluación)",
+            "Válido: 3.095 eventos (≥ 200), intervalo agrupado por 371 partidos y controles 0,096 [-0,011; 0,203], que incluye 0.",
+            "Ningún segmento tiene el intervalo de D por encima de 0: el mercado ya tenía los hechos y no se propone ninguna fuente nueva.",
+            "La diferencia mínima detectable de los segmentos es aproximada (del ancho del intervalo); la global es 0,050 pp."
+          ]
+        },
+        {
+          "id": "g_e4",
+          "name": "G-E4",
+          "piece": "INT-A09",
+          "status": "RECHAZA",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "INT-A09 (IA-039): RECHAZA, evaluado el 2026-11-11 05:32-05:35 UTC (una sola evaluación)",
+            "Auditoría de fugas limpia.",
+            "El retador se archiva con su motivo y el modelo activo no cambia (regla de rechazo)."
+          ]
+        },
+        {
+          "id": "g_e6",
+          "name": "G-E6",
+          "piece": "INT-A08",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "protocolo proto-int-a08-v1 registrado (a37fdb4265f4…), sin resultado congelado todavía"
+          ]
+        },
+        {
+          "id": "g_delib",
+          "name": "G-DELIB",
+          "piece": "INT-C08",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: INT-C03; INT-C04; INT-C05; INT-C06; INT-C07 (en sombra, tras el Gate B); la ventana de P1"
+          ]
+        },
+        {
+          "id": "g_cron",
+          "name": "G-CRON",
+          "piece": "INT-D04",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: INT-D02 (crónica v4 en sombra; no ha empezado)"
+          ]
+        },
+        {
+          "id": "p1",
+          "name": "P1",
+          "piece": "Plan Maestro IA (ventana de evaluación de la sombra)",
+          "status": "PENDIENTE POR TIEMPO REAL",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "no hay ancla de configuración (el Gate B no pudo calcularla): nada que contar todavía"
+          ]
+        },
+        {
+          "id": "f_player",
+          "name": "F-Player",
+          "piece": "fuera de este plan",
+          "status": "PENDIENTE POR DEPENDENCIAS",
+          "approved": false,
+          "recorded_row": {
+            "missing_reason": "sin_datos"
+          },
+          "recorded_at": {
+            "missing_reason": "sin_datos"
+          },
+          "evaluable_on": {
+            "missing_reason": "sin_datos"
+          },
+          "why": [
+            "espera: fuera del Plan Maestro de Intelligence 2026"
+          ]
+        }
+      ]
+    },
+    "schema_check": {
+      "database_revision": "0139",
+      "code_head": "0139",
+      "up_to_date": true,
+      "missing_relations": []
+    }
+  },
+  "protocols": {
+    "register_version": "protocol-signatures-v1",
+    "signed": 1,
+    "pending": 15,
+    "items": [
+      {
+        "key": "INT-A02",
+        "version": "proto-int-a02-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Calibración coherente multiclase",
+        "registered_on": "2026-11-11",
+        "fingerprint": "2a1cdb3ec31a6b5075010a989e6205bf60bc699c54891a62ac861ad0fd69ae6d",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "INT-A09",
+        "version": "proto-int-a09-v1",
+        "framework": "lab-protocol-v1",
+        "title": "E4: tiros y xG en los ratings",
+        "registered_on": "2026-11-11",
+        "fingerprint": "400778f85de7acdfc59b1d9e265d7f4c4d5fe42abc4abf71cb5785b33604bd36",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "INT-B09",
+        "version": "proto-int-b09-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Estudio de eventos: noticia → precio",
+        "registered_on": "2026-11-11",
+        "fingerprint": "2b8e49fb115f5cecbcb5e61f52d9ac11d8c8464ce7b3da97af62b3f9382e9232",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "INT-A08",
+        "version": "proto-int-a08-v1",
+        "framework": "lab-protocol-v1",
+        "title": "E6: quién juega, en el modelo",
+        "registered_on": "2026-11-11",
+        "fingerprint": "a37fdb4265f407c892e11f793ce86a083667ec491f0251fdd4d1f1d3603a1c43",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "INT-C02",
+        "version": "proto-int-c02-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Banco de repetición: la variante actual reproduce la sombra",
+        "registered_on": "2026-11-11",
+        "fingerprint": "f954582c9594c509dfc93f4abd9a847292a023d74dc5495daf0eead00bd0cc63",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-A03",
+        "version": "proto-ad-a03-v1",
+        "framework": "lab-protocol-v1",
+        "title": "battery-v4: batería adversaria que separa ataque de variabilidad",
+        "registered_on": "2026-11-16",
+        "fingerprint": "205e671347e7c9ab21a4fb0ab03d1b6c66a2c4d9e44494f937e3e23707653bae",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-B03",
+        "version": "proto-ad-b03-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Sello estable: el calibrador campeón con un precio de más de 6 horas",
+        "registered_on": "2026-11-16",
+        "fingerprint": "989b82a53fe35ae6712f39ce71d75588a1f868e38b9a2832ba2e393162364bd5",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-B07",
+        "version": "proto-ad-b07-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Córners y tarjetas: calibrador de conteos por familia (count-cal-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "aac10f7f5cc48dfbf136283f0c76d1c6043556536b137e7df2bd4cbe05299128",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-K02",
+        "version": "proto-ad-k02-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Tablero de validación por mercado y familia (board-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "6eff7d3066cbeed274d457c2694f478e339fc8232610be74f4c56f54e570def1",
+        "signed_by_owner": true,
+        "signed_at": "2026-11-21T09:05:00Z",
+        "signature_row": 1,
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-C08",
+        "version": "proto-ad-c08-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Credibilidad de fuentes por tipo de hecho (credibility-v2)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "7ae65569c4f330956c9437c99a1224f36448d94fdba90d371d7ec6eb144943a4",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-C09",
+        "version": "proto-ad-c09-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Medición de la extracción frente a etiquetas humanas de páginas enteras (extract-protocol-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "f0bd0d90c7747bcab6e48dde47676c64b784d2d18fe9e78635c21efbc2106ed8",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-K03",
+        "version": "proto-ad-k03-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Rendimiento de lectores y fuentes frente a las reglas (perf-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "c5638110bd730e99a7d841caace34731bafb73cfac2c93d3c9bef89e49c719d3",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-K04",
+        "version": "proto-ad-k04-v1",
+        "framework": "lab-protocol-v1",
+        "title": "Banco de repetición como prueba de regresión con tolerancia (replay-regression-v1)",
+        "registered_on": "2026-11-17",
+        "fingerprint": "9d37ca84b4dba0aa37e0b40cd9add0be4ea96951bac59e6c53802763482a9d14",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-F04",
+        "version": "repeat-check-v1",
+        "framework": "own-record-v1",
+        "title": "Coletillas y repeticiones de la crónica única: umbrales",
+        "registered_on": "2026-11-17",
+        "fingerprint": "17c942303fbc2cd0f39f90a1184f8cf0a699e1c3bffa5c783967952fb32d3608",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-F05",
+        "version": "retire-compare-v1",
+        "framework": "own-record-v1",
+        "title": "Retirada de los textos duplicados: la comparación preregistrada",
+        "registered_on": "2026-11-17",
+        "fingerprint": "1fbeadbddd163eb4eae3b15e952e340c11226544aa304a5551988060f07a7b6a",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      },
+      {
+        "key": "AD-F06",
+        "version": "chronicle-protocol-v1",
+        "framework": "own-record-v1",
+        "title": "Evaluación factual de la crónica única: revisión humana por muestreo",
+        "registered_on": "2026-11-17",
+        "fingerprint": "33b296c7c3852187e5cb59b223bc752b9f36f997fdf9320b5f8beb4fbee8b47b",
+        "signed_by_owner": false,
+        "signed_at": {
+          "missing_reason": "sin_datos"
+        },
+        "signature_row": {
+          "missing_reason": "sin_datos"
+        },
+        "other_fingerprints": 0
+      }
+    ],
+    "notice_es": "Una firma no activa nada: deja constancia de que el protocolo es el que el dueño aprobó antes de mirar los datos. Ningún veredicto enciende, promociona ni cambia un umbral por estar firmado (AD-K07)."
+  },
+  "flow": {
+    "cycle": {
+      "rule_version": "freshness-v1",
+      "stopped": 2,
+      "stages": [
+        {
+          "number": 1,
+          "key": "observacion",
+          "name_es": "Observación",
+          "alarm_es": "Sin filas en 36 horas",
+          "status": "al_dia",
+          "detail_es": "Último post-mortem de partido: hace 6.2 horas (límite 36.0).",
+          "value": 6.2,
+          "limit": 36.0,
+          "unit": "horas",
+          "last_at": "2026-11-24T08:48:00Z"
+        },
+        {
+          "number": 2,
+          "key": "patron",
+          "name_es": "Patrón",
+          "alarm_es": "Sin corrida en 8 días",
+          "status": "parada",
+          "detail_es": "Última corrida de la investigación semanal: hace 211.4 horas (límite 192.0).",
+          "value": 211.4,
+          "limit": 192.0,
+          "unit": "horas",
+          "last_at": "2026-11-15T19:36:00Z"
+        },
+        {
+          "number": 3,
+          "key": "hipotesis",
+          "name_es": "Hipótesis",
+          "alarm_es": "Más de 20 propuestas sin triage",
+          "status": "parada",
+          "detail_es": "23 hipótesis propuestas sin triage (límite 20).",
+          "value": 23.0,
+          "limit": 20.0,
+          "unit": "hipótesis",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 4,
+          "key": "triage",
+          "name_es": "Triage",
+          "alarm_es": "Hipótesis propuesta sin triage hace más de 31 días",
+          "status": "al_dia",
+          "detail_es": "La propuesta más antigua espera hace 12.0 días (límite 31).",
+          "value": 12.0,
+          "limit": 31.0,
+          "unit": "días",
+          "last_at": "2026-11-12T15:00:00Z"
+        },
+        {
+          "number": 5,
+          "key": "experimento",
+          "name_es": "Experimento",
+          "alarm_es": "Aceptada sin protocolo pasadas 24 horas",
+          "status": "al_dia",
+          "detail_es": "0 hipótesis aceptadas sin experimento pasadas 24 horas.",
+          "value": 0.0,
+          "limit": 0.0,
+          "unit": "hipótesis",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 6,
+          "key": "validacion_historica",
+          "name_es": "Validación histórica",
+          "alarm_es": "Experimento sin resultado",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.3.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 7,
+          "key": "sombra_prospectiva",
+          "name_es": "Sombra prospectiva",
+          "alarm_es": "Sombra sin condición de decisión",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-9.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 8,
+          "key": "comparacion",
+          "name_es": "Comparación",
+          "alarm_es": "Muestra alcanzada sin comparar",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.3.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 9,
+          "key": "veredicto",
+          "name_es": "Veredicto",
+          "alarm_es": "Comparación sin veredicto",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 10,
+          "key": "propuesta_de_cambio",
+          "name_es": "Propuesta de cambio",
+          "alarm_es": "Éxito sin propuesta",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-8.1.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 11,
+          "key": "aprobacion",
+          "name_es": "Aprobación y promoción o descarte",
+          "alarm_es": "Propuesta sin decidir",
+          "status": "informativa",
+          "detail_es": "0 propuestas de cambio esperan tu decisión. El plan no fija plazo: se informa la cifra.",
+          "value": 0.0,
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": "propuestas",
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "number": 12,
+          "key": "seguimiento",
+          "name_es": "Seguimiento",
+          "alarm_es": "Promoción sin vigilancia",
+          "status": "sin_almacen",
+          "detail_es": "Todavía no existe el almacén de esta etapa. Lo entrega RP-12.2.",
+          "value": {
+            "missing_reason": "sin_datos"
+          },
+          "limit": {
+            "missing_reason": "sin_datos"
+          },
+          "unit": {
+            "missing_reason": "sin_datos"
+          },
+          "last_at": {
+            "missing_reason": "sin_datos"
+          }
+        }
+      ]
+    },
+    "panel": {
+      "rule_version": "flow-v1",
+      "window_hours": 24,
+      "stages": [
+        {
+          "stage": "sources",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 3,
+          "runs": 108,
+          "completed": 108,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "ingest",
+          "state": "error",
+          "reason": "ultima_abortada",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 11,
+          "completed": 7,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 3,
+          "interrupted": 1,
+          "stale": 0,
+          "errors": 4,
+          "worst_job": "period_backfill"
+        },
+        {
+          "stage": "validation",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "models",
+          "state": "late",
+          "reason": "fallos_en_24h",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 14,
+          "completed": 13,
+          "partial": 0,
+          "failed": 1,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 1,
+          "worst_job": "elo_refresh"
+        },
+        {
+          "stage": "calibration",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 7,
+          "completed": 7,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "value",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 96,
+          "completed": 96,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "intelligence",
+          "state": "late",
+          "reason": "parciales_en_24h",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 46,
+          "completed": 37,
+          "partial": 9,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": "chronicle_v4"
+        },
+        {
+          "stage": "selection",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "publication",
+          "state": "closed",
+          "reason": "cerrada_por_decision",
+          "last_run_at": {
+            "missing_reason": "sin_datos"
+          },
+          "jobs": 0,
+          "runs": 0,
+          "completed": 0,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "settlement",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 1,
+          "runs": 6,
+          "completed": 6,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        },
+        {
+          "stage": "learning",
+          "state": "ok",
+          "reason": "al_dia",
+          "last_run_at": "2026-11-24T14:20:00Z",
+          "jobs": 2,
+          "runs": 25,
+          "completed": 25,
+          "partial": 0,
+          "failed": 0,
+          "aborted": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "errors": 0,
+          "worst_job": {
+            "missing_reason": "sin_datos"
+          }
+        }
+      ],
+      "unmapped_jobs": [
+        "an_unclaimed_job"
+      ]
+    }
+  },
+  "news_engine": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-G01"
+  },
+  "alert_queue": {
+    "missing_reason": "no_entregado",
+    "expected_piece": "AD-D08"
+  }
+}
