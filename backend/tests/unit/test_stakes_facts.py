@@ -128,3 +128,26 @@ def test_the_switch_is_born_off() -> None:
 def test_the_sentence_agrees_in_number(n: int, expected: str) -> None:
     s = sf.Stake("t", 1, 3, 20, n, ("ascender",), (), (), ())
     assert expected in sf.sentence(s, name="Equipo", multiple=False)
+
+
+def test_two_objectives_of_one_kind_say_how_far_up_each_is_so_the_sentence_never_names_one_thing_twice() -> None:
+    """A table with two continental places (as the Brazilian league has) used to say «ya tiene asegurado lograr una plaza continental, lograr una plaza
+    continental» and, with one secured and one open, «sigue en juego lograr una plaza continental; ya tiene asegurado lograr una plaza continental»."""
+    row = {"team": 7, "puesto": 3, "puntos": 66, "partidos_restantes": 2, "objetivos": [
+        {"objetivo": "plaza_continental", "terminar_entre_los": 4, "estado": "conseguido", "decidido": {"demostrado": True}},
+        {"objetivo": "plaza_continental", "terminar_entre_los": 2, "estado": "abierto", "decidido": {"demostrado": False}},
+        {"objetivo": "evitar_descenso", "terminar_entre_los": 16, "estado": "conseguido", "decidido": {"demostrado": True}}]}
+    reading_ = {"status": "ok", "tables": [{"key": "liga", "teams": [row]}]}
+    (stake,) = sf.stakes_of(reading_, 7)
+    assert stake.secured == ("lograr una plaza continental (entre los 4 primeros)", "evitar el descenso")
+    assert stake.open == ("lograr una plaza continental (entre los 2 primeros)",)
+    text = sf.sentence(stake, name="Cruzeiro", multiple=False)
+    assert "sigue en juego lograr una plaza continental (entre los 2 primeros)" in text
+    assert "ya tiene asegurado lograr una plaza continental (entre los 4 primeros) y evitar el descenso" in text
+
+
+def test_an_objective_alone_in_its_kind_keeps_its_plain_phrase() -> None:
+    row = {"team": 7, "puesto": 1, "puntos": 10, "partidos_restantes": 1, "objetivos": [
+        {"objetivo": "titulo", "terminar_entre_los": 1, "estado": "abierto", "decidido": {"demostrado": False}}]}
+    (stake,) = sf.stakes_of({"status": "ok", "tables": [{"key": "liga", "teams": [row]}]}, 7)
+    assert stake.open == ("ganar el título",)
