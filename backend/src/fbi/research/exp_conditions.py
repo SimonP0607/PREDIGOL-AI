@@ -69,7 +69,7 @@ def register(experiment: str, *, count: Counter, required: int | None = None, ru
     return spec
 
 
-PLUGINS: Final[tuple[str, ...]] = ("fbi.research.exp_e1", "fbi.research.exp_e3", "fbi.families.exp_e7")
+PLUGINS: Final[tuple[str, ...]] = ("fbi.research.exp_e1", "fbi.research.exp_e3", "fbi.research.exp_e6", "fbi.families.exp_e7")
 """The modules that say how an experiment counts and runs (each has a ``register()`` that calls ``register``). The pieces RP-9.1 to RP-9.7 add themselves here, one each;
 they are imported by name when asked (``load_plugins``), so this module imports none of them."""
 
