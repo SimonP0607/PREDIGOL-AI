@@ -1,6 +1,6 @@
 {
   "contract": "C-11",
-  "contract_version": "1.4.0",
+  "contract_version": "1.5.0",
   "projection": "private",
   "freshness": {
     "generated_at": "2026-11-21T16:42:00Z",
@@ -646,6 +646,50 @@
         "label": "Tu autorización expresa",
         "state": "solo_dueno",
         "why": "la da el dueño con el interruptor FBI_PICKS_SOURCE; el código no puede darla ni inferirla"
+      }
+    ]
+  },
+  "parlay_door": {
+    "version": "parlay-door-v1",
+    "ready": false,
+    "can_publish": false,
+    "first_open": "max_three_legs",
+    "conditions": [
+      {
+        "key": "max_three_legs",
+        "label": "Como mucho 3 selecciones por parlay",
+        "state": "no_evaluada",
+        "why": "no hay parlays en sombra que mirar"
+      },
+      {
+        "key": "distinct_fixtures",
+        "label": "Todas las selecciones son de partidos distintos",
+        "state": "no_evaluada",
+        "why": "no hay parlays en sombra que mirar"
+      },
+      {
+        "key": "legs_pass_pick_door",
+        "label": "Cada selección pasa las condiciones de un pick",
+        "state": "no_cumplida",
+        "why": "la puerta de los picks tiene condiciones abiertas"
+      },
+      {
+        "key": "historical_reliability",
+        "label": "Fiabilidad histórica de la conjunta: error de calibración medido en 1500 combinaciones o más",
+        "state": "no_evaluada",
+        "why": "la repetición histórica de RP-11.1 no se ha medido"
+      },
+      {
+        "key": "prospective_reliability",
+        "label": "Fiabilidad prospectiva: 100 parlays en sombra liquidados con la conjunta calibrada",
+        "state": "no_evaluada",
+        "why": "no se pudo leer la calibración de los parlays en sombra"
+      },
+      {
+        "key": "owner_authorization",
+        "label": "Tu autorización expresa y específica para parlays",
+        "state": "solo_dueno",
+        "why": "la da el dueño; el código no puede darla ni inferirla"
       }
     ]
   },

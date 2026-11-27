@@ -443,6 +443,33 @@ class PublicationDoor(IntelligenceModel):
         return self
 
 
+class ParlayDoorCondition(IntelligenceModel):
+    key: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    state: DoorState
+    why: str = Field(min_length=1)
+
+
+class ParlayDoor(IntelligenceModel):
+    """The conditions an experimental parlay has to meet to be considered, each with its real state (RP-11.3, ``parlay-door-v1``). Nothing here publishes a
+    parlay or changes what the reader sees: ``can_publish`` is always false and the last condition is the owner's."""
+
+    version: str
+    ready: bool = Field(description="Every condition the code can check is met; only the owner's authorization is left.")
+    can_publish: Literal[False] = Field(default=False, description="Always false: publishing is the owner's act.")
+    first_open: str | Missing = Field(description="The first condition not met, in the door's order; sin_datos when all are met.")
+    conditions: list[ParlayDoorCondition] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _owner_last(self) -> ParlayDoor:
+        last = self.conditions[-1]
+        if last.key != "owner_authorization" or last.state != "solo_dueno":
+            raise ValueError("the last condition is the owner's authorization and it is only the owner's")
+        if self.ready and any(c.state != "cumplida" for c in self.conditions[:-1]):
+            raise ValueError("ready means every checkable condition is met")
+        return self
+
+
 class Flow(IntelligenceModel):
     """The state of the flows, computed by the server: ``cycle`` is the learning cycle (RP-1.5, 1.2.0); ``panel`` is «El camino de un pick»
     (RP-1.2, 1.3.0)."""
@@ -457,7 +484,7 @@ class ConsoleContract(IntelligenceContract):
     """C-11, private only."""
 
     CONTRACT_ID: ClassVar[str] = "C-11"
-    CONTRACT_VERSION: ClassVar[str] = "1.4.0"
+    CONTRACT_VERSION: ClassVar[str] = "1.5.0"
     PRIVATE_ONLY: ClassVar[bool] = True
 
     decides: Literal[False] = Field(default=False, description="Nothing here decides, records or switches anything.")
@@ -473,5 +500,8 @@ class ConsoleContract(IntelligenceContract):
     publication_door: PublicationDoor | ReadFailure | None = Field(
         default=None, exclude_if=_absent,
         description="1.4.0 (RP-10.5): the conditions of the door a pick passes to be published, each with its state. Absent in a 1.3.0 answer.")
+    parlay_door: ParlayDoor | ReadFailure | None = Field(
+        default=None, exclude_if=_absent,
+        description="1.5.0 (RP-11.3): the conditions an experimental parlay has to meet to be considered, each with its state. Absent in a 1.4.0 answer.")
     news_engine: Missing = Field(description="The news engine (AD-G01): no_entregado until it exists.")
     alert_queue: Missing = Field(description="The private alerts' queue (AD-D08): no_entregado until it exists.")

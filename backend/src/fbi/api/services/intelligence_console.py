@@ -57,6 +57,8 @@ from fbi.api.contracts.intelligence.console import (
     LeakRule,
     Panel,
     PanelStage,
+    ParlayDoor,
+    ParlayDoorCondition,
     PublicationDoor,
     ReadFailure,
     Schema,
@@ -71,12 +73,15 @@ from fbi.api.contracts.intelligence.console import (
 from fbi.api.contracts.intelligence.vocab import CapabilityState
 from fbi.api.envelope import Envelope, ok
 from fbi.api.repositories import Conn, fetch_all, fetch_one
+from fbi.api.services import parlay_states
+from fbi.core.calendar import local_day
 from fbi.core.clock import now
 from fbi.core.config.picks import INTELLIGENCE, PicksSourceSettings
 from fbi.core.env import environment
 from fbi.intel import capabilities as registry
 from fbi.ops import flow as flow_book
 from fbi.ops import freshness
+from fbi.parlays import door as parlay_door
 from fbi.protosign import NOTICE as PROTOCOLS_NOTICE
 from fbi.protosign import VERSION as PROTOCOLS_VERSION
 from fbi.protosign import store as protocol_signatures
@@ -528,12 +533,43 @@ def door_of(sec: Security, *, switch_on: bool) -> PublicationDoor:
         conditions=[DoorCondition(key=c.key, group=c.group, label=c.label, state=c.state, why=c.why) for c in door.conditions])
 
 
+# ── the door of a parlay ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+PARLAY_BACK_DAYS: Final = 30
+"""The product days of shadow parlays the door reads (``parlay_states.MAX_DAYS`` is 31)."""
+
+
+def parlay_door_of(conn: Conn, *, at: datetime, pick_door_ready: bool | None) -> ParlayDoor:
+    """The door (``fbi.parlays.door``) from the parlays built in the shadow in the last 30 days: their fixtures, the calibration of the settled ones and the
+    door of a pick. The historical repetition (RP-11.1) is measured by nothing yet: it says so (``no_evaluada``). Reading only."""
+    answer = parlay_states.private(conn, live=[], date_from=local_day(at) - timedelta(days=PARLAY_BACK_DAYS), date_to=local_day(at), at=at)
+    cards = [c for c in answer.parlays.items if c.source == "intel.parlays_v6" and c.status != "ninguno"]
+    combos = [[leg.fixture_id for leg in card.legs.items] for card in cards if not isinstance(card.legs, Missing)]
+    cal = answer.calibration
+    prospective = None
+    if not isinstance(cal, Missing):
+        low = high = None
+        if not isinstance(cal.expected_wins, Missing) and cal.settled:
+            # The wins a parlay-v6 joint expects, plus or minus 1.96 standard deviations of a binomial of the same mean. No threshold of the plan is behind
+            # this interval (it names none); it is the plain reading of «the observed wins are what the joint expected», and with fewer than 100 settled
+            # parlays the door does not even look at it.
+            mean = float(cal.expected_wins)
+            sd = (mean * (1 - mean / cal.settled)) ** 0.5
+            low, high = mean - 1.96 * sd, mean + 1.96 * sd
+        prospective = parlay_door.Prospective(settled=cal.settled, won=cal.won, expected_low=low, expected_high=high)
+    door = parlay_door.evaluate(combinations=combos, pick_door_ready=pick_door_ready, reliability=None, prospective=prospective)
+    return ParlayDoor(
+        version=parlay_door.VERSION, ready=door.ready, can_publish=False, first_open=NO_DATA if door.first_open is None else door.first_open,
+        conditions=[ParlayDoorCondition(key=c.key, label=c.label, state=c.state, why=c.why) for c in door.conditions])
+
+
 # ── the console ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> ConsoleContract:
     """C-11 at ``at``: every block in its own savepoint of one read-only transaction."""
     settings = settings or AiSettings.from_env()
     sec = security(conn, settings, at)
+    pick_door = attempt(conn, lambda: door_of(sec, switch_on=PicksSourceSettings().from_intelligence))
     return ConsoleContract(
         freshness=Freshness(generated_at=at, stale=False),
         shadow=shadow(conn, settings, environment()),
@@ -542,7 +578,8 @@ def build(conn: Conn, *, at: datetime, settings: AiSettings | None = None) -> Co
         security=sec,
         protocols=attempt(conn, lambda: protocols(conn)),
         flow=attempt(conn, lambda: flow(conn, at)),
-        publication_door=attempt(conn, lambda: door_of(sec, switch_on=PicksSourceSettings().from_intelligence)),
+        publication_door=pick_door,
+        parlay_door=attempt(conn, lambda: parlay_door_of(conn, at=at, pick_door_ready=pick_door.ready if isinstance(pick_door, PublicationDoor) else None)),
         news_engine=NEWS_ENGINE, alert_queue=ALERT_QUEUE)
 
 
