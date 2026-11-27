@@ -82,8 +82,9 @@ def test_no_rule_of_the_parlays_is_relaxed_to_get_more_combinations() -> None:
 
 
 def test_the_reading_of_the_script_is_held_equal_to_the_shadows_own() -> None:
-    """The script restates the shadow's reading of its confirmed selections (the tracking is imported only by its own doors); the parts that decide WHICH
-    selections count are the same text in both, and so is the writer."""
+    """The script restates the shadow's reading of its confirmed selections (the tracking is imported only by its own doors); the writer, the window and the
+    price and probability it reads are the same text in both. The one difference is the point of the replay: the shadow looks at the NEWEST row of a chain (a
+    confirmation, to build a parlay before the match), the replay at the newest CONFIRMATION before kick-off (the chain has been settled since)."""
     from scripts import ia_parlay_replay as script
 
     from fbi.tracking import parlay_v6_shadow as shadow
@@ -93,7 +94,7 @@ def test_the_reading_of_the_script_is_held_equal_to_the_shadows_own() -> None:
 
     assert script.WRITER == shadow.CHAINS
     for part in ("WHERE s.writer = %(writer)s AND f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND s.known_at <= %(at)s",
-                 "ORDER BY s.chain_key, s.id DESC", "WHERE t.state = 'confirmada_sombra'",
+                 "ORDER BY s.chain_key, s.id DESC",
                  "LEFT JOIN intel.decisions_v2 d2 ON t.source = 'intel.decisions_v2' AND d2.id = t.source_id",
                  "LEFT JOIN intel.decisions d1 ON t.source = 'intel.decisions' AND d1.id = t.source_id",
                  "COALESCE(d2.p_market, d1.p_market)::float8 AS p_market"):

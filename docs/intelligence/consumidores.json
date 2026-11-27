@@ -163,7 +163,7 @@
    "sin_pruebas": 36
   },
   "decision_v1": {
-   "archivos": 123,
+   "archivos": 124,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/compare_probabilities.py",
@@ -271,7 +271,7 @@
    },
    "por_clase": {
     "módulo": 47,
-    "prueba": 53,
+    "prueba": 54,
     "ruta": 10,
     "script": 9,
     "trabajo": 3,
@@ -280,7 +280,7 @@
    "sin_pruebas": 70
   },
   "decision_v2": {
-   "archivos": 100,
+   "archivos": 101,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/ia_decision_v2.py",
@@ -368,7 +368,7 @@
    },
    "por_clase": {
     "módulo": 41,
-    "prueba": 43,
+    "prueba": 44,
     "ruta": 8,
     "script": 2,
     "trabajo": 6
@@ -881,7 +881,7 @@
    "sin_pruebas": 4
   },
   "lifecycle": {
-   "archivos": 24,
+   "archivos": 25,
    "consumidores": [
     "backend/apps/worker/scheduler.py",
     "backend/scripts/ia_lifecycle.py",
@@ -917,7 +917,7 @@
    },
    "por_clase": {
     "módulo": 9,
-    "prueba": 8,
+    "prueba": 9,
     "ruta": 4,
     "script": 2,
     "trabajo": 1

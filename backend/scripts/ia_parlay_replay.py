@@ -28,12 +28,13 @@ from fbi.parlays import replay
 READ_ONLY = "-c TimeZone=UTC -c default_transaction_read_only=on -c statement_timeout=120000"
 WRITER = "decision-v2-shadow-v1"
 """The writer of the chains whose confirmations are the shadow's legs (the same one ``fbi.tracking.parlay_v6_shadow`` reads; the tracking is imported only by its own doors, so
-the reading is restated here and held equal by the test that reads both)."""
+the parts of the reading that name the writer, the price and the probability are restated here and held equal by the test that reads both)."""
 CONFIRMED_SQL = """
 WITH tip AS (
     SELECT DISTINCT ON (s.chain_key) s.id, s.chain_key, s.fixture_id, s.state, s.source, s.source_id
       FROM intel.selection_lifecycle s JOIN core.fixtures f ON f.id = s.fixture_id
      WHERE s.writer = %(writer)s AND f.kickoff_at >= %(start)s AND f.kickoff_at < %(end)s AND s.known_at <= %(at)s
+       AND s.state = 'confirmada_sombra' AND s.known_at < f.kickoff_at
      ORDER BY s.chain_key, s.id DESC
 )
 SELECT t.chain_key, t.fixture_id, f.kickoff_at, f.home_team_id, f.away_team_id,
@@ -43,10 +44,10 @@ SELECT t.chain_key, t.fixture_id, f.kickoff_at, f.home_team_id, f.away_team_id,
   JOIN core.fixtures f ON f.id = t.fixture_id
   LEFT JOIN intel.decisions_v2 d2 ON t.source = 'intel.decisions_v2' AND d2.id = t.source_id
   LEFT JOIN intel.decisions d1 ON t.source = 'intel.decisions' AND d1.id = t.source_id
- WHERE t.state = 'confirmada_sombra'
  ORDER BY f.kickoff_at, t.chain_key
 """
-"""The chains whose newest row is a confirmation, with the probability the shadow gave the leg (the calibrated one when there is one) and the market's."""
+"""The chains confirmed in the shadow BEFORE the match kicked off (their newest such confirmation), with the probability the shadow gave the leg (the calibrated one
+when there is one) and the market's. A settled chain's newest row is no longer the confirmation, so the replay asks for the confirmation itself, not for the tip."""
 SETTLED_SQL = """
 SELECT DISTINCT ON (s.chain_key) s.chain_key, s.result
   FROM intel.selection_settlements s
