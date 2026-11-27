@@ -34,6 +34,12 @@ from fbi.chronicle.verify import ChronicleOut, Dropped, Verdict, verify
 
 VERSION: Final = "chronicle-v4"
 PROMPT_VERSION: Final = "chronicle-v4"
+PROMPT_REVISION: Final = 2
+"""The revision of the prompt's wording under the same version (part of ``WriterInput.hash``, so a plan written under an older wording is asked again).
+2 (27 Nov 2026, IA-215): measured on the 200 chronicles written after the cut was fixed, 197 lost sentences to the verifier and 542 of the 720 lost
+were the prompt's own doing - the glossary told the model that ``unknown.rules`` and ``unknown.scenarios`` were about «what is at stake» (the cue of
+the class OBJETIVO_EN_JUEGO, which those facts do not authorise: 336 sentences of ``que_falta``), and a figure's market reached it as the code
+``1X2`` or ``BTTS`` (218 sentences). The wording now gives the reader's words for both; the verifier and its classes are untouched."""
 SCHEMA_NAME: Final = "submit_chronicle"
 MAX_TOKENS: Final = 12000
 """The cap of one answer, in OUTPUT tokens - and the model's adaptive thinking is billed as output and counted in it (``fbi.ai.usage.TIER_EFFORT``).
@@ -90,10 +96,11 @@ GLOSSARY: Final[dict[str, str]] = {
     "news.probable": "a PROBABLE news item from [source]: told ATTRIBUTED (según [source] / according to [source])",
     "news.rumour": "a RUMOUR or conflicting reports [level], from [source]: only in risks, called a rumour (rumor sin confirmar / "
                    "unconfirmed rumour) or conflicting reports",
-    "figure": "PrediGol's single figure for [market] [selection] [line]: when stated, copy [cita] EXACTLY as it is, citation included",
+    "figure": "PrediGol's single figure for [market] [selection] [line]: when stated, copy [cita] EXACTLY as it is, citation included. [market] "
+              "is a code and is NEVER written: say the event in the reader's words (see MARKETS)",
     "unknown.lineups": "the official line-ups are not out yet",
-    "unknown.rules": "the competition's regulation is not coded: what is at stake cannot be computed",
-    "unknown.scenarios": "there is no computation of what is at stake yet",
+    "unknown.rules": "the competition's regulation is not coded: the table objectives cannot be calculated (see NOT KNOWN YET)",
+    "unknown.scenarios": "the table objectives of this match have not been calculated yet (see NOT KNOWN YET)",
 }
 """Every kind a fact of the plan may have, for the model (a test holds that none is missing)."""
 
@@ -132,6 +139,14 @@ SYSTEM: Final = (
     "win, bet, value, stake.\n"
     "- es and en say exactly the same: the same number of sentences in each section and, sentence by sentence, the same fact ids and the "
     "same numbers.\n\n"
+    "MARKETS. A figure's market is told as its event, never as its code: the home win, the draw or the away win (la victoria local, el "
+    "empate, la victoria visitante); over or under [line] goals (más de / menos de [line] goles); both teams to score (que ambos equipos "
+    "marquen). «46 % [cifra ...] for the home win», never «in the 1X2 market».\n\n"
+    "NOT KNOWN YET. A fact of kind unknown.rules or unknown.scenarios is told as a calculation that does not exist yet, with these "
+    "words: «Todavía no están calculados los objetivos de la tabla para este partido» / «The table objectives have not been calculated "
+    "yet for this match»; for unknown.rules add that the competition's regulation is not coded. Do NOT write there se juega, en juego, "
+    "pelea por, aspira / at stake, playing for, fighting for, chasing: those words state an objective, and only a scenario, table or tie "
+    "fact supports one.\n\n"
     "THE KINDS OF THE FACTS (params in brackets):\n"
     + "\n".join(f"- {kind}: {meaning}" for kind, meaning in GLOSSARY.items())
 )
@@ -158,9 +173,10 @@ class WriterInput:
 
     @property
     def hash(self) -> str:
-        """The identity of what the chronicle is written from: the version, the plan's hash, the claims and the cap of the answer."""
-        return hashlib.sha256(json.dumps({"v": VERSION, "plan": self.plan.hash, "classes": claims.table_hash(), "cap": MAX_TOKENS,
-                                          "claims": dict(sorted(self.claims.items()))}, sort_keys=True,
+        """The identity of what the chronicle is written from: the version and the revision of its wording, the plan's hash, the claims and the
+        cap of the answer."""
+        return hashlib.sha256(json.dumps({"v": VERSION, "rev": PROMPT_REVISION, "plan": self.plan.hash, "classes": claims.table_hash(),
+                                          "cap": MAX_TOKENS, "claims": dict(sorted(self.claims.items()))}, sort_keys=True,
                                          ensure_ascii=False).encode()).hexdigest()
 
 
@@ -211,5 +227,5 @@ def write(inp: WriterInput, *, call: Caller) -> Written:
     return Written(verdict.status, inp.hash, verdict, outcome.cost, outcome.provider, outcome.model, outcome.usage_id)
 
 
-__all__ = ["GLOSSARY", "MAX_TOKENS", "PROMPT_VERSION", "SCHEMA", "SCHEMA_NAME", "SYSTEM", "VERSION", "Caller", "WriterInput", "Written",
+__all__ = ["GLOSSARY", "MAX_TOKENS", "PROMPT_REVISION", "PROMPT_VERSION", "SCHEMA", "SCHEMA_NAME", "SYSTEM", "VERSION", "Caller", "WriterInput", "Written",
            "read", "request", "write"]
