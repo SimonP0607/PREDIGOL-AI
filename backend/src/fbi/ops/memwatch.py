@@ -1,4 +1,5 @@
-"""How much memory each job of the worker takes (Plan Maestro PM, PM-13-05; OPS-010). Measurement only: it changes nothing.
+"""How much memory each job of the worker takes (Plan Maestro PM, PM-13-05; OPS-010). It measures; since OPS-026 it can also hand memory back after a heavy
+run (``fbi.ops.memrelease``, ``FBI_WORKER_MEMTRIM``).
 
 WHY. On 19 Nov 2026 the worker sat at 2.80 of its 3 GiB and touched the limit 4,160 times in ten hours, and nothing said which job
 puts it there. This module answers that, by sampling, at the cost of one small file read every ``SAMPLE_SECONDS``:
@@ -78,10 +79,14 @@ def _mib(value: int) -> float:
 class MemWatch:
     """The open spans and the sampler that feeds them. One per process (``WATCH``); thread-safe."""
 
-    def __init__(self, *, rss: Any = rss_bytes, hwm: Any = hwm_bytes, every: float = SAMPLE_SECONDS) -> None:
+    def __init__(self, *, rss: Any = rss_bytes, hwm: Any = hwm_bytes, every: float = SAMPLE_SECONDS,
+                 release: Any = None) -> None:
         self._rss = rss
         self._hwm = hwm
         self._every = every
+        self.release = release
+        """PM-13-05 (OPS-026): what hands memory back after a heavy run (``fbi.ops.memrelease.Release.after``), or None: a run's report
+        then carries no ``release``. The worker sets it in ``start``."""
         self._lock = threading.Lock()
         self._spans: dict[str, _Span] = {}
         self._stop = threading.Event()
@@ -151,11 +156,16 @@ class MemWatch:
                 return None
             rss, hwm = self._rss() or span.rss_start, self._hwm() or span.hwm_start
             top = max(span.rss_max, rss)
-            return {"job": span.name, "seconds": round(time.monotonic() - span.started, 1),
+            out: dict[str, Any] = {"job": span.name, "seconds": round(time.monotonic() - span.started, 1),
                     "rss_start_mib": _mib(span.rss_start), "rss_end_mib": _mib(rss), "rss_max_mib": _mib(top),
                     "grew_mib": _mib(rss - span.rss_start), "peak_over_start_mib": _mib(top - span.rss_start),
                     "hwm_raised_mib": _mib(max(hwm - span.hwm_start, 0)), "hwm_mib": _mib(hwm),
                     "overlap": span.overlap, "samples": span.samples}
+            if self.release is not None:
+                freed = self.release(out)  # after the report is made: its figures are those of the run, not of the release
+                if freed:
+                    out["release"] = freed
+            return out
         except Exception:
             return None
 
@@ -169,5 +179,11 @@ WATCH: Final = MemWatch()
 
 
 def start() -> bool:
-    """Start the process's sampler when the switch allows it. True when it is sampling."""
+    """Start the process's sampler when the switch allows it. True when it is sampling. PM-13-05 (OPS-026): with ``FBI_WORKER_MEMTRIM``
+    on (the default) it also keeps glibc to two arenas and wires the release after heavy runs (``fbi.ops.memrelease``)."""
+    from fbi.ops import memrelease
+
+    if memrelease.enabled():
+        memrelease.cap_arenas()
+        WATCH.release = memrelease.RELEASE.after
     return enabled() and WATCH.start()
