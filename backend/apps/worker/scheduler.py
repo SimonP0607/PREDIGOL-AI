@@ -1479,20 +1479,23 @@ def _tail(done: subprocess.CompletedProcess[str], lines: int = 3) -> str:
     return " | ".join(out + err)[:600]
 
 
-def _no_room(job_type: str, retry: bool) -> bool:
-    """True, with a ledger row, when the container lacks the room for one of the matrix's processes (``fbi.coverage.job.HEADROOM_MIB``)."""
+def _no_room(job_type: str, retry: bool, needed_mib: float | None = None, *, record: bool = True) -> bool:
+    """True, with a ledger row (unless ``record`` is off), when the container lacks the room for one of the processes the worker starts:
+    the matrix's (``fbi.coverage.job.HEADROOM_MIB``) or, with ``needed_mib``, the one the caller names (the night's fill, OPS-027)."""
     from fbi.coverage import job as cov
     from fbi.ingestion.ledger import RunCounters, RunLedger
 
+    needed = cov.HEADROOM_MIB if needed_mib is None else needed_mib
     room = cov.headroom_mib()
-    if room is None or room >= cov.HEADROOM_MIB:
+    if room is None or room >= needed:
         return False
-    with _connect() as conn:
-        ledger = RunLedger(conn)
-        run_id = ledger.open(job_type, params={"skipped": "sin_margen_de_memoria", "headroom_mib": room,
-                                               "needed_mib": cov.HEADROOM_MIB, "retry": retry})
-        ledger.close(run_id, RunCounters(stopped_early="sin_margen_de_memoria"))
-    log.warning(f"{job_type}.skipped", reason="sin_margen_de_memoria", headroom_mib=room, needed_mib=cov.HEADROOM_MIB)
+    if record:
+        with _connect() as conn:
+            ledger = RunLedger(conn)
+            run_id = ledger.open(job_type, params={"skipped": "sin_margen_de_memoria", "headroom_mib": room,
+                                                   "needed_mib": needed, "retry": retry})
+            ledger.close(run_id, RunCounters(stopped_early="sin_margen_de_memoria"))
+    log.warning(f"{job_type}.skipped", reason="sin_margen_de_memoria", headroom_mib=room, needed_mib=needed)
     return True
 
 
@@ -1593,6 +1596,8 @@ async def _period_stats() -> None:
 PERIOD_FILL_TIMEOUT = 5 * 3600.0
 """The night's fill stops by itself at 03:25 UTC (``scripts.period_backfill``): this is the most the worker waits for the process."""
 PERIOD_FILL_MEMORY_MIB = 384
+_PERIOD_FILL_START = threading.Lock()
+"""One start of the night's fill at a time in this worker (the slots of the scheduler and the start after a restart may meet)."""
 
 
 def _period_backfill_running() -> bool:
@@ -1602,30 +1607,41 @@ def _period_backfill_running() -> bool:
     return row is not None
 
 
-def _period_backfill_now() -> None:
-    """PM-05-02 (BE-098): START the night's fill of the statistics by half in a process of its own (``scripts.period_backfill``), never
-    here: its own cap, its own priority, and nothing of the worker's memory. Only while ``FBI_STATS_BY_PERIOD_FILL`` is on and the
-    container has the room; one at a time (a start while the night's process still runs does nothing). Never raises."""
+def _period_backfill_now(*, retry: bool = False) -> None:
+    """PM-05-02 (BE-098, OPS-027): START the night's fill of the statistics by half in a process of its own (``scripts.period_backfill``),
+    never here: its own cap, its own priority, and nothing of the worker's memory. Only while ``FBI_STATS_BY_PERIOD_FILL`` is on and the
+    container has the room the process needs (``period_stats.FILL_HEADROOM_MIB``); one at a time (a start while the night's process still
+    runs does nothing). Every start after the first of a night is a retry: it leaves no ledger row when it finds no room (the process
+    writes its own, and the night's caps are the process's, not the number of starts). Never raises."""
     from fbi.ingestion import period_stats
 
     if period_stats.fill_mode() != "on":
         return
+    if not _PERIOD_FILL_START.acquire(blocking=False):  # another start of this worker is on it: two processes would ask the same matches
+        return
     try:
-        if _period_backfill_running() or _no_room("period_backfill", False):
+        if _period_backfill_running() or _no_room("period_backfill", retry, period_stats.FILL_HEADROOM_MIB, record=not retry):
             return
         done = subprocess.run([sys.executable, "-m", "scripts.period_backfill", "run", "--scheduled", "--max-memory-mib",
                                str(PERIOD_FILL_MEMORY_MIB)], cwd=APP_DIR, capture_output=True, text=True, timeout=PERIOD_FILL_TIMEOUT,
                               check=False, env={**os.environ, **LEAN_ENV})
-        log.info("period_backfill.run", exit=done.returncode, last=_tail(done))
+        log.info("period_backfill.run", exit=done.returncode, last=_tail(done), retry=retry)
     except subprocess.TimeoutExpired:
         log.error("period_backfill.timeout", seconds=PERIOD_FILL_TIMEOUT)
     except Exception as exc:
         log.error("period_backfill.failed", error=f"{type(exc).__name__}: {exc}"[:300])
+    finally:
+        _PERIOD_FILL_START.release()
 
 
 async def _period_backfill() -> None:
     new_run_id()
     await asyncio.to_thread(_period_backfill_now)
+
+
+async def _period_backfill_retry() -> None:
+    new_run_id()
+    await asyncio.to_thread(functools.partial(_period_backfill_now, retry=True))
 
 
 async def _availability_shadow_retry() -> None:
@@ -2772,12 +2788,19 @@ async def main() -> None:
     else:
         log.info("worker.period_stats_off", hint="FBI_STATS_BY_PERIOD is off: the statistics by half are not asked for")
     if period_job.fill_mode() == "on":
-        # PM-05-02 (BE-098): the night's fill starts at 22:30 UTC in a process of its own; the two later starts do nothing while it runs and
-        # pick the night up again when a restart of the worker cut it short.
-        for hour, minute in ((22, 30), (0, 50), (2, 0)):
-            scheduler.add_job(_deadline("period_backfill", "period_backfill", _period_backfill), "cron", hour=hour, minute=minute,
-                              timezone="UTC", id=f"period_backfill_{hour:02d}{minute:02d}", max_instances=1, coalesce=True,
+        # PM-05-02 (BE-098, OPS-027): the night's fill starts at 22:30 UTC in a process of its own. A deploy restarts the worker (and the
+        # process with it) several times a day, so the pass is picked up again at 10 past each hour until 02:10 and four minutes after
+        # each start of the worker inside the window: a start while the pass runs does nothing, and the night's caps (5,000 requests, the
+        # lane, the budget) are the process's, however many starts there are.
+        scheduler.add_job(_deadline("period_backfill", "period_backfill", _period_backfill), "cron", hour=22, minute=30,
+                          timezone="UTC", id="period_backfill_2230", max_instances=1, coalesce=True, misfire_grace_time=20 * 60)
+        for hour in (23, 0, 1, 2):
+            scheduler.add_job(_deadline("period_backfill", "period_backfill", _period_backfill_retry), "cron", hour=hour, minute=10,
+                              timezone="UTC", id=f"period_backfill_{hour:02d}10", max_instances=1, coalesce=True,
                               misfire_grace_time=20 * 60)
+        if period_job.fill_window_open(moment + timedelta(minutes=4)):
+            scheduler.add_job(_deadline("period_backfill", "period_backfill", _period_backfill_retry), "date",
+                              run_date=moment + timedelta(minutes=4), id="period_backfill_resume", max_instances=1)
     else:
         log.info("worker.period_backfill_off", hint="FBI_STATS_BY_PERIOD_FILL is off: the fill of the statistics by half does not run")
     from fbi.shadowjobs import eval_cycle as ec
