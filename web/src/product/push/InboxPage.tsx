@@ -17,6 +17,7 @@ import { formatRelative } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { EmptyState, ErrorState, PageTitle, SkeletonCards } from "@/product/shared/States";
 import { INBOX_UNREAD_KEY, noticeTarget } from "./inbox";
+import { groupByDay } from "./inboxDays";
 
 const FILTERS: readonly InboxFilter[] = ["all", "picks", "matches", "account"];
 
@@ -166,14 +167,29 @@ export function InboxPage() {
             />
           ) : (
             <>
-              <ul
-                className="card-surface divide-y divide-border overflow-hidden rounded-card"
-                data-testid="inbox-list"
-              >
-                {items.map((item) => (
-                  <Notice key={item.id} item={item} onOpen={(id) => void markRead([id])} />
+              <div className="flex flex-col gap-5" data-testid="inbox-list">
+                {groupByDay(items).map(({ day, items: group }) => (
+                  <section
+                    key={day}
+                    aria-labelledby={`inbox-day-${day}`}
+                    data-testid="inbox-day"
+                    data-day={day}
+                    className="space-y-2"
+                  >
+                    <h2
+                      id={`inbox-day-${day}`}
+                      className="px-1 text-caption font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      {t(`push.inbox.group.${day}`)}
+                    </h2>
+                    <ul className="card-surface divide-y divide-border overflow-hidden rounded-card">
+                      {group.map((item) => (
+                        <Notice key={item.id} item={item} onOpen={(id) => void markRead([id])} />
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-              </ul>
+              </div>
               {q.hasNextPage ? (
                 <button
                   type="button"
