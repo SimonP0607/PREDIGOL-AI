@@ -22,6 +22,7 @@ result. Reads ``intel.scenario_readings`` and ``core.fixtures``; writes ``ai.evi
 from __future__ import annotations
 
 import os
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -118,8 +119,12 @@ class Counts:
 # ── pure facts ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-def _phrase(objective: Mapping[str, Any]) -> str:
-    return PHRASE.get(str(objective["objetivo"]), str(objective["objetivo"]))
+def _phrase(objective: Mapping[str, Any], *, qualify: bool = False) -> str:
+    """The objective as a phrase. When a table holds two objectives of one kind (two continental places, say) each says how far up it has to finish, so that
+    «secured» and «still open» never name the same thing twice."""
+    base = PHRASE.get(str(objective["objetivo"]), str(objective["objetivo"]))
+    within = objective.get("terminar_entre_los")
+    return f"{base} (entre los {within} primeros)" if qualify and within is not None else base
 
 
 def stakes_of(reading: Mapping[str, Any], team: int) -> list[Stake]:
@@ -132,16 +137,18 @@ def stakes_of(reading: Mapping[str, Any], team: int) -> list[Stake]:
             if int(row["team"]) != team:
                 continue
             opened, secured, lost, conditional = [], [], [], []
+            kinds = Counter(str(o["objetivo"]) for o in row.get("objetivos", []))
             for o in row.get("objetivos", []):
+                qualify = kinds[str(o["objetivo"])] > 1
                 proved = bool(o.get("decidido", {}).get("demostrado"))
                 if o.get("condicional"):
-                    conditional.append(_phrase(o))
+                    conditional.append(_phrase(o, qualify=qualify))
                 elif proved and o["estado"] == "conseguido":
-                    secured.append(_phrase(o))
+                    secured.append(_phrase(o, qualify=qualify))
                 elif proved and o["estado"] == "descartado":
-                    lost.append(_phrase(o))
+                    lost.append(_phrase(o, qualify=qualify))
                 else:
-                    opened.append(_phrase(o))
+                    opened.append(_phrase(o, qualify=qualify))
             out.append(Stake(str(table["key"]), team, row.get("puesto"), int(row["puntos"]), int(row["partidos_restantes"]), tuple(opened),
                              tuple(secured), tuple(lost), tuple(conditional)))
     return out
