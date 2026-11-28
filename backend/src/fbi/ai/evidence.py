@@ -293,7 +293,8 @@ class EvidenceIn:
 
     def fact_view(self, *, status: str | None = None) -> factor_schema.FactView:
         return factor_schema.FactView(self.origin, self.kind, status, self.source_name, self.source_url, self.published_at, self.subject_type,
-                                      self.subject_id, self.fresh_until, self.claim, self.payload_hash, self.attributes, self.side, self.fact_schema)
+                                      self.subject_id, self.fresh_until, self.claim, self.payload_hash, self.attributes, self.side, self.fact_schema,
+                                      self.claim_type, self.fixture_id, self.team_id, self.provider_player_id)
 
     def content_hash(self) -> str:
         body: dict[str, Any] = {"claim": " ".join(self.claim.split()), "url": self.source_url, "source": self.source_name,

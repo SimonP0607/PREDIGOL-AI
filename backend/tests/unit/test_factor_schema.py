@@ -84,3 +84,17 @@ def test_the_counts_keep_the_new_facts_apart_from_the_old_and_say_which_new_kind
     assert doc["before"]["facts"] == 80 and doc["before"]["with_all_attributes"] == 0
     assert doc["new_kinds_seen"] == ["referee", "stakes"] and doc["new_kinds_missing"] == ["format", "formation", "rotation", "statement"]
     assert "100% completos" in "\n".join(factor_counts.lines(doc))
+
+
+def test_a_fact_of_the_first_path_names_its_entity_by_the_identifiers_of_the_row_and_never_by_a_subject_type() -> None:
+    """RP-4.1: a ``subject_type`` is what makes a row «typed by research v2» (read apart, shown only when v2 is on). A provider's report that moves to the schema
+    keeps its path: its entity is the match, team or player it always named."""
+    first = {"origin": "provider", "source_url": None, "subject_type": None, "subject_id": None, "claim_type": None, "fixture_id": 10, "team_id": 7}
+    assert fs.names_its_entity(fact(**first)) and fs.missing(fact(**first)) == []
+    assert fs.missing(fact(**{**first, "origin": "owner"})) == [] and fs.missing(fact(**{**first, "origin": "web", "source_url": "https://x.example/a"})) == []
+    assert fs.missing(fact(**{**first, "fixture_id": None, "team_id": None})) == ["entity"], "no identifier: it is about nothing"
+    assert fs.missing(fact(**{**first, "fixture_id": None, "team_id": None, "provider_player_id": 99})) == [], "a player is an entity"
+    assert fs.missing(fact(**{**first, "claim_type": "INJURY"})) == ["entity"], "a typed claim says its subject: the identifiers do not stand in for it"
+    assert fs.missing(fact(**{**first, "subject_type": "TEAM"})) == ["entity"], "half a pair is no entity"
+    assert fs.missing(fact(**{**first, "origin": "own_calc", "attributes": {"calculation": "x"}})) == ["entity"], "a calculation of ours is typed: it names its subject"
+    assert fs.missing(fact()) == [], "a typed fact is complete as before"
