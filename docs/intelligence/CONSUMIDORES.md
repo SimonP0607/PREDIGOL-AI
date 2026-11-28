@@ -12,7 +12,7 @@ Quién lee o escribe cada tabla y cada versión que el plan conserva, consolida 
 | ciclo de evaluación E1 a E4 (`eval_cycle`) | consolidar | 21 | 14 | 1 | 4 | 2 | 0 | 0 |
 | ciclo de estados de la selección (`lifecycle`) | consolidar | 25 | 16 | 1 | 4 | 1 | 0 | 2 |
 | forecast-v1 (cifra por modelo) (`forecast_v1`) | consolidar | 69 | 35 | 1 | 10 | 0 | 0 | 7 |
-| forecast-v2 (cifra única) (`forecast_v2`) | conservar | 36 | 21 | 0 | 5 | 0 | 0 | 3 |
+| forecast-v2 (cifra única) (`forecast_v2`) | conservar | 38 | 23 | 0 | 5 | 0 | 0 | 4 |
 | circuito de noticias: news.items (`news_items`) | consolidar | 31 | 20 | 2 | 2 | 1 | 1 | 2 |
 | almacén de evidencia: ai.evidence (`evidence`) | conservar | 186 | 110 | 2 | 17 | 2 | 1 | 5 |
 | texto de los lectores (user-narrative-v3) (`user_narrative`) | consolidar | 25 | 14 | 0 | 4 | 1 | 3 | 0 |
@@ -65,7 +65,7 @@ Escriben: `backend/src/fbi/forecasting/match_forecast.py`.
 
 ## forecast-v2 (cifra única) (`forecast_v2`) — conservar
 
-Paquetes: `api` (5), `chronicle` (5), `decision` (3), `forecasting` (4), `scripts` (3), `valuation` (1).
+Paquetes: `api` (5), `chronicle` (5), `decision` (3), `forecasting` (5), `scripts` (4), `valuation` (1).
 
 Nadie la escribe por nombre de tabla en este mapa (puede ser una versión o un interruptor, no una tabla).
 

@@ -739,10 +739,11 @@
    "sin_pruebas": 35
   },
   "forecast_v2": {
-   "archivos": 36,
+   "archivos": 38,
    "consumidores": [
     "backend/scripts/ia_coherence_audit.py",
     "backend/scripts/ia_decision_v2.py",
+    "backend/scripts/ia_ladder_projection.py",
     "backend/scripts/ia_single_figure.py",
     "backend/src/fbi/api/contracts/intelligence/match.py",
     "backend/src/fbi/api/contracts/intelligence/match_v2.py",
@@ -759,6 +760,7 @@
     "backend/src/fbi/decision/view.py",
     "backend/src/fbi/forecasting/battery_audit.py",
     "backend/src/fbi/forecasting/figure_text.py",
+    "backend/src/fbi/forecasting/ladder_eval.py",
     "backend/src/fbi/forecasting/market_reader.py",
     "backend/src/fbi/forecasting/single_figure.py",
     "backend/src/fbi/valuation/dependence.py"
@@ -770,17 +772,17 @@
     "api": 5,
     "chronicle": 5,
     "decision": 3,
-    "forecasting": 4,
-    "scripts": 3,
+    "forecasting": 5,
+    "scripts": 4,
     "valuation": 1
    },
    "por_clase": {
-    "módulo": 13,
+    "módulo": 14,
     "prueba": 15,
     "ruta": 5,
-    "script": 3
+    "script": 4
    },
-   "sin_pruebas": 21
+   "sin_pruebas": 23
   },
   "haiku_arm": {
    "archivos": 86,
