@@ -70,10 +70,31 @@ class FactView:
     attributes: Mapping[str, Any]
     side: str | None
     fact_schema: str | None = None
+    claim_type: str | None = None
+    fixture_id: int | None = None
+    team_id: int | None = None
+    provider_player_id: int | None = None
+    """The identifiers a row of the first path (the provider's reports, what v1 collects) always carried: with no ``claim_type`` they are its entity."""
 
 
 def _blank(value: str | None) -> bool:
     return value is None or not value.strip()
+
+
+V1_ORIGINS: Final = frozenset({"provider", "web", "owner"})
+"""The origins whose facts can stay on the FIRST path (what v1 decides and the packet always shows): the provider's reports, what v1 collects, the owner's notes."""
+
+
+def names_its_entity(fact: FactView) -> bool:
+    """Whether the fact says who or what it is about. Typed (research v2, a calculation of ours): an entity of the schema (``subject_type`` and ``subject_id``).
+    On the first path (``claim_type`` and ``subject_type`` both empty: the row is untyped, so it is decided by v1 and always shown) the entity is the one the row
+    has always named by its own identifiers: a match, a team or a player. A ``subject_type`` is never written to say it: it is what separates what research v2
+    wrote from what v1 decides (``fbi.ai.evidence.LOAD_SQL`` and ``TYPED_SQL``), so a fact that migrates to the schema keeps its path."""
+    if fact.subject_type is not None and fact.subject_id is not None:
+        return True
+    if fact.subject_type is not None or fact.subject_id is not None or fact.claim_type is not None or fact.origin not in V1_ORIGINS:
+        return False
+    return any(v is not None for v in (fact.fixture_id, fact.team_id, fact.provider_player_id))
 
 
 def missing(fact: FactView) -> list[str]:
@@ -83,7 +104,7 @@ def missing(fact: FactView) -> list[str]:
         out.append("source")
     if fact.published_at is None:
         out.append("source_date")
-    if fact.subject_type is None or fact.subject_id is None:
+    if not names_its_entity(fact):
         out.append("entity")
     if fact.fresh_until is None:
         out.append("validity")

@@ -416,7 +416,7 @@
    "sin_pruebas": 14
   },
   "evidence": {
-   "archivos": 185,
+   "archivos": 186,
    "consumidores": [
     "backend/scripts/ia_baseline.sql",
     "backend/scripts/ia_baseline_report.py",
@@ -442,6 +442,7 @@
     "backend/src/fbi/ai/evidence.py",
     "backend/src/fbi/ai/evidence_tiers.py",
     "backend/src/fbi/ai/extract_v2.py",
+    "backend/src/fbi/ai/factor_schema.py",
     "backend/src/fbi/ai/gate_research.py",
     "backend/src/fbi/ai/gates.py",
     "backend/src/fbi/ai/gates_panel.py",
@@ -535,7 +536,7 @@
    ],
    "etiqueta": "almacén de evidencia: ai.evidence",
    "paquetes": {
-    "ai": 44,
+    "ai": 45,
     "api": 17,
     "chronicle": 4,
     "decision": 1,
@@ -559,14 +560,14 @@
     "web": 1
    },
    "por_clase": {
-    "módulo": 84,
+    "módulo": 85,
     "prueba": 76,
     "ruta": 17,
     "script": 5,
     "trabajo": 2,
     "web": 1
    },
-   "sin_pruebas": 109
+   "sin_pruebas": 110
   },
   "extract_v1": {
    "archivos": 23,
