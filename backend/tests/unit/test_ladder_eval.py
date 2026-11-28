@@ -11,7 +11,7 @@ import pytest
 from fbi.forecasting import ladder_eval as ev
 from fbi.research.protocol import fingerprint
 
-PINNED = "4c3d66a62166316ddbc4f03eb57521c5471621d6749f40412c9cfe303bd321de"
+PINNED = "35ea0f04eca769a19eac3573512016587183e67ba6d29973bdf3127bff8e3fc7"
 DAY0 = ev.FROZEN_ON
 
 

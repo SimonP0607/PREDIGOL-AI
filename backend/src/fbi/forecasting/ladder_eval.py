@@ -49,7 +49,7 @@ PROTOCOL: Final = Protocol(
     question="¿Cifras de líneas de goles y hándicap leídas de una sola escalera coherente pronostican igual de bien que las cifras guardadas, línea por línea, y hacen publicables los partidos que hoy la batería rechaza por contradecirse entre líneas?",
     null="La pérdida logarítmica de las cifras proyectadas es peor que la de las guardadas en más de 0,001 nats por cifra (límite superior del intervalo del 95 % por días), o la proyección deja sin publicar a más de la mitad de los partidos que la batería rechaza por las pruebas 3 y 7.",
     alternative="La pérdida de las cifras proyectadas no es peor que la de las guardadas en más de 0,001 nats por cifra, y al menos la mitad de los partidos rechazados por las pruebas 3 y 7 quedan publicables.",
-    unit="Una cifra de una línea de más/menos (total, equipo o mitad) o de hándicap de un partido liquidado, con tres estados posibles: gana, se devuelve o pierde.",
+    unit="Una cifra de una línea media o entera de más/menos (total, equipo o mitad) o de hándicap de un partido liquidado, con tres estados posibles: gana, se devuelve o pierde.",
     data=(
         "Las cifras de pronóstico `forecast-v2` guardadas en la sombra de la escalera desde el 27-nov-2026 (la cifra guardada y la proyectada de cada línea, calculadas con los mismos datos en el mismo instante), "
         "con el resultado liquidado del partido. La medición con partidos ya jugados no existe: el modelo y el mercado de entonces no se reconstruyen."
@@ -66,6 +66,7 @@ PROTOCOL: Final = Protocol(
     min_sample="30 días distintos con partidos liquidados y 5.000 cifras liquidadas.",
     power_note="Con una desviación de la diferencia por cifra de unos 0,05 nats y 5.000 cifras, el error estándar es de unos 0,0007 nats: el intervalo, no el punto, decide.",
     exclusions=(
+        "Líneas de cuarto: su resultado tiene cinco estados y su cifra es el promedio de las dos vecinas, que sí entran; no se puntúan aparte.",
         "Cifras de líneas cuyo resultado es una anulación del partido.",
         "Líneas sin la escalera completa (se informan como `kept` y no entran en la pérdida).",
         "Partidos anteriores a la firma.",
